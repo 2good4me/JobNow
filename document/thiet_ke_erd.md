@@ -1,0 +1,183 @@
+# Thiết kế Cơ sở dữ liệu (ERD)
+
+Tài liệu này được chia làm 2 phần:
+1.  **Phần Tổng quan:** Dành cho việc nắm bắt luồng dữ liệu (Business Logic).
+2.  **Phần Kỹ thuật (Cuối trang):** Dành cho Developer để tạo bảng (Physical Schema).
+
+---
+
+## 1. Quy tắc ERD
+*   **Thực thể (Entity):** Tương ứng với Bảng dữ liệu.
+*   **Quan hệ:** Đường nối thể hiện sự liên kết (1 người đăng được nhiều tin, 1 tin có nhiều người nộp...).
+
+## 2. Giải thích mô hình User (Quan trọng)
+Chúng ta sử dụng chiến lược **"Một bảng User duy nhất"** (Single Table Inheritance) cho cả Candidate và Employer.
+*   **Lý do:** Để dùng chung API Đăng nhập, Chat, Báo cáo.
+*   **Phân biệt:** Dựa vào cột `role` và mối quan hệ (Ai đăng tin là Employer, Ai nộp đơn là Candidate).
+
+---
+
+## 3. Sơ đồ Quan hệ Tổng quan (Mức Logic)
+
+Biểu đồ này hiển thị các **Thuộc tính quan trọng nhất** để giúp bạn hiểu nghiệp vụ (Ví dụ: Job thì phải có Lương, User thì phải có Vai trò), nhưng lược bỏ các thông tin kỹ thuật rườm rà (URL ảnh, ID, ngày tạo).
+
+### 3.1. Danh sách Thực thể & Thuộc tính chính
+Dưới đây là các đối tượng chính trong hệ thống và những thông tin nghiệp vụ quan trọng nhất (đã lược bỏ các trường kỹ thuật).
+
+*   **NGUOI_DUNG (User):**
+    *   `Tài khoản` (SĐT)
+    *   `Vai trò` (Candidate / Employer)
+    *   `Điểm uy tín`
+    *   `Trạng thái xác thực` (Đã eKYC chưa?)
+
+*   **HO_SO (Profile):**
+    *   `Họ tên đầy đủ`
+    *   `Ngày sinh`
+    *   `Giới thiệu bản thân`
+    *   `Địa chỉ`
+
+*   **VIEC_LAM (Job):**
+    *   `Tên công việc`
+    *   `Mức lương`
+    *   `Số lượng cần tuyển`
+    *   `Nơi làm việc` (Địa chỉ & GPS)
+    *   `Trạng thái tin` (Đang tuyển / Đã đóng)
+
+*   **DON_UNG_TUYEN (Application):**
+    *   `Ngày nộp đơn`
+    *   `Lời nhắn` (Cover letter)
+    *   `Trạng thái` (Đậu / Trượt / Chờ)
+
+*   **CHAM_CONG (Attendance):**
+    *   `Giờ đến` (Check-in)
+    *   `Giờ về` (Check-out)
+    *   `Trạng thái` (Hợp lệ / Không hợp lệ)
+
+*   **DANH_GIA (Review):**
+    *   `Số sao` (1-5)
+    *   `Nội dung nhận xét`
+
+*   **BAO_CAO (Report):**
+    *   `Lý do báo cáo`
+    *   `Trạng thái xử lý`
+
+### 3.2. Các Mối liên kết (Relationships)
+Mô tả cách các thực thể tương tác với nhau:
+
+1.  **NGUOI_DUNG --(chi tiết)--> HO_SO:**
+    *   Mỗi tài khoản gắn liền với một bộ hồ sơ cá nhân chi tiết.
+2.  **NGUOI_DUNG (Employer) --(đăng)--> VIEC_LAM:**
+    *   Người dùng với vai trò Employer sẽ tạo ra các Tin tuyển dụng.
+3.  **NGUOI_DUNG (Candidate) --(nộp)--> DON_UNG_TUYEN:**
+    *   Người dùng với vai trò Candidate sẽ tạo ra Đơn ứng tuyển.
+4.  **VIEC_LAM --(nhận)--> DON_UNG_TUYEN:**
+    *   Một công việc sẽ chứa nhiều đơn ứng tuyển nộp vào.
+5.  **DON_UNG_TUYEN --(sinh ra)--> CHAM_CONG:**
+    *   Khi đơn được duyệt và ứng viên đi làm, hệ thống sẽ ghi nhận lịch sử Chấm công cho đơn đó.
+6.  **NGUOI_DUNG --(viết)--> DANH_GIA:**
+    *   Người dùng có thể viết đánh giá cho nhau sau khi hoàn thành công việc.
+
+---
+
+## 4. Chi tiết Kỹ thuật (Physical Schema - Dành cho Dev)
+
+Phần này đặc tả chi tiết kiểu dữ liệu, index, khóa ngoại để Lập trình viên xây dựng Database.
+
+### 4.1. Bảng NGUOI_DUNG (Người dùng) - Quản lý tài khoản
+| Tên cột | Kiểu dữ liệu | Ý nghĩa & Index |
+| :--- | :--- | :--- |
+| `id` | INT | **PK, Auto Increment**. |
+| `phone_number` | VARCHAR(15) | **Unique Index**. Số điện thoại đăng nhập. |
+| `email` | VARCHAR(100) | Email (để nhận tin tức/khôi phục pass). |
+| `password_hash` | VARCHAR(255) | Mật khẩu đã mã hóa (Bcrypt). |
+| `role` | ENUM | `CANDIDATE`, `EMPLOYER`, `ADMIN`. |
+| `reputation_score`| INT | Điểm uy tín (Default: 100). |
+| `is_verified` | TINYINT(1) | Trạng thái eKYC (0: Chưa, 1: Đã duyệt, 2: Chờ duyệt). |
+| `status` | ENUM | `ACTIVE`, `BANNED`, `LOCKED`. |
+| `fcm_token` | VARCHAR(255) | Token Firebase (Để bắn thông báo đẩy). |
+| `last_login_at` | DATETIME | Thời gian đăng nhập gần nhất. |
+| `created_at` | DATETIME | Ngày tạo tài khoản. |
+
+### 4.2. Bảng HO_SO (Hồ sơ cá nhân / Doanh nghiệp)
+| Tên cột | Kiểu dữ liệu | Ý nghĩa |
+| :--- | :--- | :--- |
+| `user_id` | INT | **PK, FK** (1-1 với NGUOI_DUNG). |
+| `full_name` | VARCHAR(100) | Họ tên hiển thị. |
+| `avatar_url` | VARCHAR(255) | Link ảnh đại diện. |
+| `date_of_birth` | DATE | Ngày sinh (để tính tuổi lao động). |
+| `gender` | ENUM | `MALE`, `FEMALE`, `OTHER`. |
+| `address_text` | VARCHAR(255) | Địa chỉ thường trú (Text hiển thị). |
+| `bio` | TEXT | Giới thiệu bản thân / Mô tả công ty. |
+| `skills` | JSON | Danh sách kỹ năng (VD: `["Bưng bê", "Tiếng Anh"]`). |
+| `identity_front_url`| VARCHAR | Ảnh CCCD mặt trước (Ẩn với người thường). |
+| `identity_back_url` | VARCHAR | Ảnh CCCD mặt sau. |
+| `business_license_url`| VARCHAR | Giấy phép KD (Nếu là Employer Doanh nghiệp). |
+
+### 4.3. Bảng VIEC_LAM (Tin tuyển dụng)
+| Tên cột | Kiểu dữ liệu | Ý nghĩa |
+| :--- | :--- | :--- |
+| `id` | INT | **PK**. |
+| `employer_id` | INT | **FK** -> NGUOI_DUNG. |
+| `category_id` | INT | **FK** -> Categories (Loại việc: Phục vụ, PG, Shipper...). |
+| `title` | VARCHAR(200) | Tiêu đề tin tuyển dụng. |
+| `description` | TEXT | Mô tả chi tiết công việc. |
+| `salary` | DECIMAL(10,2) | Mức lương. |
+| `salary_type` | ENUM | `HOURLY` (Giờ), `DAILY` (Ngày), `JOB` (Khoán). |
+| `quantity` | INT | Số lượng cần tuyển (VD: 5 người). |
+| `gender_require`| ENUM | Yêu cầu giới tính (`ANY`, `MALE`, `FEMALE`). |
+| `latitude` | DOUBLE | **Index (Geospatial)**. Vĩ độ quán. |
+| `longitude` | DOUBLE | **Index (Geospatial)**. Kinh độ quán. |
+| `address_work` | VARCHAR(255) | Địa chỉ làm việc cụ thể. |
+| `start_time` | DATETIME | Thời gian bắt đầu làm. |
+| `end_time` | DATETIME | Thời gian kết thúc. |
+| `status` | ENUM | `OPEN` (Đang tuyển), `FULL` (Đủ người), `CLOSED` (Hết hạn), `HIDDEN` (Vi phạm). |
+| `created_at` | DATETIME | Ngày đăng tin. |
+| `updated_at` | DATETIME | Ngày sửa lần cuối. |
+
+### 4.4. Bảng DON_UNG_TUYEN (Hồ sơ ứng tuyển)
+| Tên cột | Kiểu dữ liệu | Ý nghĩa |
+| :--- | :--- | :--- |
+| `id` | INT | **PK**. |
+| `job_id` | INT | **FK** -> VIEC_LAM. |
+| `candidate_id` | INT | **FK** -> NGUOI_DUNG. |
+| `cover_letter` | TEXT | Lời nhắn gửi chủ quán lúc nộp đơn. |
+| `status` | ENUM | `PENDING`, `APPROVED`, `REJECTED`, `CANCELLED` (Ứng viên hủy), `COMPLETED` (Xong việc). |
+| `payment_status`| ENUM | `UNPAID`, `PAID` (Trạng thái trả lương). |
+| `applied_at` | DATETIME | Thời gian nộp đơn. |
+| `approved_at` | DATETIME | Thời gian được nhận. |
+
+### 4.5. Bảng CHAM_CONG (Chấm công GPS)
+| Tên cột | Kiểu dữ liệu | Ý nghĩa |
+| :--- | :--- | :--- |
+| `id` | INT | **PK**. |
+| `application_id` | INT | **FK** -> DON_UNG_TUYEN. |
+| `check_in_time` | DATETIME | Giờ check-in thực tế. |
+| `check_in_lat` | DOUBLE | Vĩ độ lúc check-in (Latitude). |
+| `check_in_long` | DOUBLE | Kinh độ lúc check-in (Longitude). |
+| `check_out_time`| DATETIME | Giờ check-out. |
+| `check_out_lat` | DOUBLE | Vĩ độ lúc check-out. |
+| `check_out_long`| DOUBLE | Kinh độ lúc check-out. |
+| `image_evidence`| VARCHAR | Ảnh selfie tại nơi làm (nếu cần). |
+| `status` | ENUM | `VALID`, `INVALID` (Sai vị trí), `PENDING` (Chờ duyệt thủ công). |
+
+### 4.6. Bảng DANH_GIA (Đánh giá)
+| Tên cột | Kiểu dữ liệu | Ý nghĩa |
+| :--- | :--- | :--- |
+| `id` | INT | **PK**. |
+| `job_id` | INT | **FK**. |
+| `reviewer_id` | INT | **FK**. |
+| `reviewee_id` | INT | **FK**. |
+| `rating` | TINYINT | 1 đến 5 sao. |
+| `comment` | TEXT | Nội dung nhận xét. |
+| `tags` | JSON | Các thẻ (VD: "Nhiệt tình", "Đúng giờ"). |
+| `created_at` | DATETIME | Thời gian đánh giá. |
+
+### 4.7. Bảng BAO_CAO (Báo cáo vi phạm)
+| Tên cột | Kiểu dữ liệu | Ý nghĩa |
+| :--- | :--- | :--- |
+| `id` | INT | **PK**. |
+| `reporter_id` | INT | **FK** (Người báo cáo). |
+| `reported_user_id`| INT | **FK** (Người bị báo). |
+| `reason` | VARCHAR | Lý do (Chọn từ danh sách 1, 2, 3...). |
+| `proof_images` | JSON | Danh sách ảnh bằng chứng. |
+| `status` | ENUM | `PENDING`, `RESOLVED`, `DISMISSED`. |

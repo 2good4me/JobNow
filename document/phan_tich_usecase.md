@@ -57,10 +57,12 @@ Dựa trên các quy tắc trên, hệ thống của chúng ta được phân r�
 *   **Đăng tin tuyển dụng:** Nhập thông tin, chọn tọa độ GPS.
 *   **Quản lý Ứng viên:** Xem danh sách người nộp đơn.
     *   *Hành động con:* Duyệt đơn (Accept) hoặc Từ chối (Reject).
+*   **Chat:** Nhắn tin trao đổi với Candidate.
 *   **Xác nhận hoàn thành:** Xác nhận nhân viên đã làm xong để hệ thống ghi nhận/trả thưởng.
 *   **Đánh giá (Review):** Chấm sao cho Candidate.
 
 ### 2.3. Actor: Admin (Quản trị viên)
+*   **Đăng nhập vào hệ thống.**
 *   **Duyệt tin (Pre-moderation):** Xem xét các tin bị hệ thống đánh dấu nghi ngờ.
 *   **Xử lý Báo cáo:** Xem bằng chứng Report để xử phạt.
 *   **Quản lý người dùng:** Khóa (Ban) tài khoản vi phạm.
