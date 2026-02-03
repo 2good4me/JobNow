@@ -1,0 +1,41 @@
+# ĐỀ XUẤT CÔNG NGHỆ CHO DỰ ÁN (TECHNOLOGY STACK)
+
+Dựa trên quyết định sử dụng **React Native** cho ứng dụng di động, dưới đây là bảng công nghệ chi tiết được lựa chọn để tối ưu hóa hiệu năng, chi phí và khả năng mở rộng của hệ thống "Tuyển dụng việc làm theo vị trí GPS".
+
+## 1. Ứng dụng Di động (Mobile App)
+*   **Công nghệ chính:** **React Native** (sử dụng ngôn ngữ **TypeScript**).
+*   **Lý do lựa chọn:**
+    *   **Đa nền tảng:** Viết code một lần, chạy mượt mà trên cả iOS và Android, giúp tiết kiệm 50% thời gian phát triển so với Native.
+    *   **Hệ sinh thái mạnh:** Cộng đồng React Native cực lớn, sở hữu nhiều thư viện bản đồ (react-native-maps) ổn định và hỗ trợ update OTA (CodePush) để vá lỗi nóng mà không cần chờ duyệt Store.
+    *   **Hiệu năng:** Tuyệt vời cho các ứng dụng nghiệp vụ. Với kiến trúc mới (Fabric/TurboModules), React Native xử lý các tác vụ giao diện và bản đồ ngày càng mượt mà, tiệm cận Native.
+*   **Các thư viện quan trọng kèm theo:**
+    *   *State Management:* **Redux Toolkit** hoặc **Zustand** (để quản lý dữ liệu người dùng, trạng thái ứng dụng).
+    *   *Navigation:* **React Navigation** (điều hướng màn hình chuẩn Native).
+    *   *Maps:* **react-native-maps** (hiển thị bản đồ Google Maps/Apple Maps).
+
+## 2. Backend (Máy chủ & API)
+*   **Framework:** **Node.js** với **NestJS**.
+*   **Lý do:**
+    *   **Đồng bộ ngôn ngữ:** Cả Mobile (React Native) và Backend đều dùng **TypeScript**. Điều này giúp đội ngũ phát triển dễ dàng chia sẻ các định nghĩa dữ liệu (DTO, Interface), giảm lỗi và tăng tốc độ code.
+    *   **Kiến trúc chuẩn:** NestJS cung cấp cấu trúc code rành mạch (Controller, Service, Module), dễ bảo trì và mở rộng cho dự án lớn.
+    *   **Hiệu năng Real-time:** Node.js xử lý rất tốt các kết nối thời gian thực (như theo dõi vị trí shipper/ứng viên) nhờ cơ chế Non-blocking I/O.
+
+## 3. Cơ sở dữ liệu (Database)
+*   **Database chính:** **PostgreSQL** (cài đặt thêm Extension **PostGIS**).
+*   **Lý do:** Đây là *tiêu chuẩn vàng* cho các ứng dụng bản đồ. PostGIS hỗ trợ truy vấn không gian cực mạnh (ví dụ: "Tìm tất cả việc làm trong bán kính 2km từ vị trí của tôi") với tốc độ nhanh và độ chính xác cao hơn hẳn so với MySQL hay MongoDB cơ bản.
+*   **Caching & Queue:** **Redis**. Dùng để lưu trữ tạm thời vị trí GPS (Real-time tracking) để giảm tải cho Database chính và xử lý hàng đợi thông báo.
+
+## 4. Dịch vụ Bản đồ (Map Services)
+*   **Nền tảng:** **Google Maps Platform**.
+*   **Các API cần thiết:**
+    *   **Maps SDK (Mobile):** Hiển thị bản đồ nền trên ứng dụng.
+    *   **Geocoding API:** Chuyển đổi tọa độ GPS sang địa chỉ nhà và ngược lại.
+    *   **Places API:** Gợi ý địa điểm khi người dùng nhập tìm kiếm.
+    *   **Directions API:** Vẽ đường đi từ Ứng viên đến nơi làm việc.
+
+## 5. Hạ tầng & DevOps
+*   **Cloud:** **AWS** hoặc **Google Cloud Platform** (triển khai Docker/Kubernetes).
+*   **CI/CD:** **GitHub Actions** hoặc **GitLab CI** để tự động hóa quy trình kiểm thử và build ứng dụng.
+
+---
+**Tóm tắt Stack:** React Native (Mobile) + NestJS (Backend) + PostgreSQL/PostGIS (Database). Đây là sự kết hợp hiện đại, hiệu năng cao và cực kỳ phù hợp cho bài toán hệ thống định vị việc làm.
