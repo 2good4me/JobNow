@@ -73,9 +73,16 @@ Mô tả cách các thực thể tương tác với nhau:
 4.  **VIEC_LAM --(nhận)--> DON_UNG_TUYEN:**
     *   Một công việc sẽ chứa nhiều đơn ứng tuyển nộp vào.
 5.  **DON_UNG_TUYEN --(sinh ra)--> CHAM_CONG:**
-    *   Khi đơn được duyệt và ứng viên đi làm, hệ thống sẽ ghi nhận lịch sử Chấm công cho đơn đó.
+    *   **Tại sao lại dùng từ "sinh ra"?**
+    *   Đơn ứng tuyển giống như **Hợp đồng lao động**.
+    *   Chỉ khi có Hợp đồng (Đơn đã duyệt), thì hằng ngày nhân viên đi làm mới **phát sinh** ra các dòng dữ liệu chấm công.
+    *   Không có Đơn ứng tuyển -> Không có cơ sở để Chấm công.
+    *   Mối quan hệ là **1 Đơn (Cha) đẻ ra N lần Chấm công (Con)**.
+    *   **Cơ chế liên kết:** Check-in vào "Tấm vé" (Đơn ứng tuyển) để hệ thống biết cụ thể nhân viên đang làm cho Job nào (như ví dụ đi xem phim ở trên).
 6.  **NGUOI_DUNG --(viết)--> DANH_GIA:**
-    *   Người dùng có thể viết đánh giá cho nhau sau khi hoàn thành công việc.
+    *   Người dùng viết đánh giá cho nhau.
+    *   **Quan trọng:** Đánh giá này **BẮT BUỘC** phải gắn với một `VIEC_LAM` cụ thể (thông qua `job_id`).
+    *   Hệ thống sẽ kiểm tra: 2 người này có thực sự hoàn thành công việc đó không thì mới cho phép viết đánh giá.
 
 ---
 
