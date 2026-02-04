@@ -73,3 +73,38 @@ Trong biểu đồ Use Case đôi khi không vẽ System, nhưng ngầm hiểu n
 *   **Kiểm tra từ khóa cấm (Auto-filter):** `<<include>>` trong chức năng "Đăng tin".
 *   **Xác thực khuôn mặt AI:** `<<include>>` trong chức năng "Xác thực eKYC".
 *   **Gửi thông báo (Push Notification):** Gửi khi có trạng thái mới.
+
+---
+
+## 3. Chi tiết Quan hệ và Luồng tương tác
+
+Phần này mô tả chi tiết mối quan hệ giữa Tác nhân và Use Case, bao gồm cả các quan hệ hướng đối tượng như `<<include>>` và `<<extend>>` để làm rõ luồng đi của dữ liệu.
+
+### 3.1. Phân hệ Candidate (Người tìm việc)
+
+| **Tác nhân** | **Quan hệ** | **Use Case** | **Mô tả Mối quan hệ** |
+| :--- | :---: | :--- | :--- |
+| **Candidate** | Association | **Đăng ký / Đăng nhập** | Người dùng bắt đầu phiên làm việc. Use Case này là tiền điều kiện cho hầu hết các hành động khác. |
+| **Candidate** | Association | **Tìm việc làm** | Người dùng chủ động tìm kiếm việc xung quanh. <br>Hệ thống tự động gợi ý các việc làm phù hợp (Recommendation). |
+| **Candidate** | Association | **Ứng tuyển (Apply)** | Người dùng nộp đơn vào một việc làm cụ thể.<br>-> **`<<include>>`**: Cập nhật hồ sơ (Hệ thống yêu cầu phải có hồ sơ trước khi nộp). |
+| **Candidate** | Association | **Chấm công (Check-in)** | Người dùng báo cáo sự có mặt tại nơi làm việc.<br>-> **`<<include>>`**: Lấy vị trí GPS (Hệ thống bắt buộc lấy tọa độ để kiểm tra). |
+| **Candidate** | Association | **Chat** | Giao tiếp trực tiếp với Employer về công việc. |
+| **Candidate** | Association | **Đánh giá (Review)** | Viết nhận xét về Employer sau khi hoàn thành công việc. |
+
+### 3.2. Phân hệ Employer (Nhà tuyển dụng)
+
+| **Tác nhân** | **Quan hệ** | **Use Case** | **Mô tả Mối quan hệ** |
+| :--- | :---: | :--- | :--- |
+| **Employer** | Association | **Đăng tin tuyển dụng** | Employer tạo mới một tin tuyển dụng.<br>-> **`<<include>>`**: Kiểm tra từ khóa (Hệ thống tự động lọc nội dung xấu).<br>-> **`<<extend>>`**: Thanh toán phí (Nếu chọn gói tin VIP/Nổi bật). |
+| **Employer** | Association | **Quản lý ứng viên** | Xem danh sách người nộp đơn, duyệt hoặc từ chối.<br>-> **`<<extend>>`**: Chat (Có thể nhắn tin ngay từ màn hình quản lý). |
+| **Employer** | Association | **Xác thực eKYC** | Gửi ảnh giấy tờ tùy thân/GPKD.<br>-> **`<<include>>`**: AI Verification (Hệ thống tự động so khớp khuôn mặt). |
+| **Employer** | Association | **Phê duyệt chấm công** | (Tùy chọn) Xác nhận lại việc nhân viên đã đến làm nếu GPS bị lỗi. |
+
+### 3.3. Phân hệ Admin (Quản trị viên)
+
+| **Tác nhân** | **Quan hệ** | **Use Case** | **Mô tả Mối quan hệ** |
+| :--- | :---: | :--- | :--- |
+| **Admin** | Association | **Đăng nhập quản trị** | Truy cập vào trang Dashboard dành riêng cho Admin. |
+| **Admin** | Association | **Kiểm duyệt tin** | Xem xét các tin bị người dùng báo cáo hoặc AI đánh dấu nghi ngờ.<br>-> **`<<extend>>`**: Khóa tin (Nếu vi phạm thật). |
+| **Admin** | Association | **Quản lý người dùng** | Xem danh sách User toàn hệ thống.<br>-> **`<<extend>>`**: Ban User (Khóa tài khoản vĩnh viễn nếu lừa đảo). |
+| **Admin** | Association | **Xem báo cáo** | Theo dõi các chỉ số về lượng người dùng, lượng tin đăng (Analytics). |

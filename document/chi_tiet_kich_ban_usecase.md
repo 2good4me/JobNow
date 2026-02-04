@@ -47,3 +47,15 @@ Tài liệu này mô tả chi tiết từng bước tương tác (Step-by-step) 
 | 2 | Điền Tiêu đề, Lương, Mô tả | Validate dữ liệu (Không để trống). |
 | 3 | Chọn địa điểm làm việc | **Tự động ghim vị trí hiện tại** làm địa chỉ quán. (Cho phép kéo ghim để chỉnh sửa chính xác). |
 | 4 | Bấm "Đăng ngay" | 1. Kiểm tra từ khóa cấm.<br>2. Lưu `VIEC_LAM` vào DB.<br>3. Hiển thị tin lên bản đồ chung. |
+
+---
+
+## 4. Use Case: Cập nhật Hồ sơ (Update Profile)
+**Mục tiêu:** Người tìm việc bổ sung kỹ năng để tăng cơ hội được tuyển.
+
+| Bước | Người dùng | Hệ thống | Ghi chú Kỹ thuật (JSON Skill) |
+| :--- | :--- | :--- | :--- |
+| 1 | Vào màn hình "Hồ sơ cá nhân" | Hiển thị thông tin hiện tại. | `GET /api/me` |
+| 2 | Bấm "Chỉnh sửa" -> Tìm mục **Kỹ năng** | Hiển thị danh sách các thẻ (Tags) hoặc Checkbox để chọn. | UI không bắt nhập text JSON thủ công. |
+| 3 | Chọn các kỹ năng: "Pha chế", "Tiếng Anh" | Giao diện hiển thị các thẻ đã chọn (Chips). | Frontend gom lại thành mảng: `["Pha chế", "Tiếng Anh"]` |
+| 4 | Bấm "Lưu thay đổi" | 1. Nhận mảng String từ Client.<br>2. Convert sang chuẩn JSON.<br>3. Update vào cột `skills` trong DB. | `UPDATE profiles SET skills = '["Pha chế", "Tiếng Anh"]'` |
