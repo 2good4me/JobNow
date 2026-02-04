@@ -74,6 +74,10 @@ Trong biểu đồ Use Case đôi khi không vẽ System, nhưng ngầm hiểu n
 *   **Xác thực khuôn mặt AI:** `<<include>>` trong chức năng "Xác thực eKYC".
 *   **Gửi thông báo (Push Notification):** Gửi khi có trạng thái mới.
 
+### 2.5. Actor: Guest (Khách vãng lai)
+*   **Xem danh sách việc làm:** Có thể lướt xem danh sách việc làm trên bản đồ hoặc danh sách (nhưng không xem được chi tiết liên hệ).
+*   **Đăng ký / Đăng nhập:** Để chuyển đổi vai trò thành Candidate hoặc Employer.
+
 ---
 
 ## 3. Chi tiết Quan hệ và Luồng tương tác
@@ -108,3 +112,10 @@ Phần này mô tả chi tiết mối quan hệ giữa Tác nhân và Use Case, 
 | **Admin** | Association | **Kiểm duyệt tin** | Xem xét các tin bị người dùng báo cáo hoặc AI đánh dấu nghi ngờ.<br>-> **`<<extend>>`**: Khóa tin (Nếu vi phạm thật). |
 | **Admin** | Association | **Quản lý người dùng** | Xem danh sách User toàn hệ thống.<br>-> **`<<extend>>`**: Ban User (Khóa tài khoản vĩnh viễn nếu lừa đảo). |
 | **Admin** | Association | **Xem báo cáo** | Theo dõi các chỉ số về lượng người dùng, lượng tin đăng (Analytics). |
+
+### 3.4. Phân hệ Guest (Khách vãng lai)
+
+| **Tác nhân** | **Quan hệ** | **Use Case** | **Mô tả Mối quan hệ** |
+| :--- | :---: | :--- | :--- |
+| **Guest** | Association | **Xem danh sách việc làm** | Cho phép xem trước danh sách các công việc đang tuyển (View only) để thu hút người dùng. |
+| **Guest** | Association | **Đăng ký / Đăng nhập** | Hành động để chuyển đổi trạng thái từ Guest -> User (Candidate/Employer) để sử dụng full tính năng. |

@@ -188,3 +188,5 @@ Phần này đặc tả chi tiết kiểu dữ liệu, index, khóa ngoại đ�
 | `reason` | VARCHAR | Lý do (Chọn từ danh sách 1, 2, 3...). |
 | `proof_images` | JSON | Danh sách ảnh bằng chứng. |
 | `status` | ENUM | `PENDING`, `RESOLVED`, `DISMISSED`. |
+
+
