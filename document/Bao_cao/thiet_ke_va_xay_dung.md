@@ -87,7 +87,7 @@ Bảng 1: Danh sách bảng trong dữ liệu
 | 6 | **DANH_GIA** | Thực thể lưu đánh giá chất lượng sau khi hoàn thành công việc. Gồm các thuộc tính: rating (1-5 sao), comment, tags... | Quan hệ N-1 với NGUOI_DUNG (Người viết). Quan hệ N-1 với VIEC_LAM (Ngữ cảnh đánh giá). |
 | 7 | **BAO_CAO** | Thực thể lưu báo cáo vi phạm nội dung hoặc hành vi. Gồm các thuộc tính: reason, proof_images, status... | Quan hệ N-1 với NGUOI_DUNG (Người báo cáo và Người bị báo). |
 
-3.3. Từ điển dữ liệu (Data Dictionary)
+### 3.3. Từ điển dữ liệu (Data Dictionary)
 Danh sách bảng dữ liệu được mô tả chi tiết dưới đây:
 
 Bảng 2: Danh sách bảng trong dữ liệu (Đã liệt kê ở mục 3.1)
