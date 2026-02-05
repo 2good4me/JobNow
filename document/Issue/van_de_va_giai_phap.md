@@ -105,3 +105,20 @@ Tài liệu này phân tích các rủi ro, vấn đề tiềm ẩn trong quá t
         1.  Gửi thông báo nhắc nhở 2 lần.
         2.  **Tự động xác nhận hoàn thành (Auto-complete):** Coi như công việc đã xong, chuyển tiền/cần điểm cho Candidate.
     *   Điều này giúp bảo vệ quyền lợi người làm thuê, tránh bị "treo" tiền mãi.
+
+## 11. Vấn đề Tìm kiếm theo Kỹ năng (Free-text Skill Filter)
+**Vấn đề:** Do hệ thống cho phép người dùng nhập tự do (Free-text) kỹ năng (VD: "Múa lửa", "Bắt chuột"...), nên dữ liệu sẽ không đồng nhất. Nhà tuyển dụng sẽ khó khăn khi muốn lọc những người có kỹ năng này nếu không biết chính xác từ khóa.
+
+**Giải pháp đề xuất:**
+*   **Tìm kiếm gợi ý (Suggestive Search):**
+    *   Khi Nhà tuyển dụng gõ vào ô Filter, hệ thống sẽ **quét (scan) toàn bộ các kỹ năng đang có** trong Database để gợi ý.
+    *   *Ví dụ:* Employer gõ chữ "múa", hệ thống hiện ra Dropdown: "Múa lửa (10 người)", "Múa bụng (5 người)"... -> Employer chọn từ danh sách đó.
+*   **Công nghệ Full-text Search (Elasticsearch):**
+    *   Sử dụng các công cụ tìm kiếm mạnh mẽ để xử lý việc "tìm gần đúng".
+    *   *Ví dụ:* Employer gõ "tieng anh", hệ thống vẫn tìm ra người ghi "Tiếng Anh", "English", "Anh văn" (nhờ cơ chế đồng nghĩa - Synonym).
+*   **Đám mây từ khóa (Tag Cloud / Top Skills):**
+    *   **Hiển thị mặc định:** Khi chưa nhập gì, hệ thống sẽ hiện danh sách "Các kỹ năng phổ biến nhất" (VD: Top 10 skill nhiều người có nhất) hoặc gom theo nhóm ngành (F&B, Sự kiện...).
+    *   **Gợi ý thông minh:** *"Bạn đang tìm nhân viên Phục vụ? Thường họ sẽ có các kỹ năng: Bưng bê, Order món, Tiếng Anh giao tiếp..."*.
+*   **Chuẩn hóa định kỳ (Normalization Job):**
+    *   Định kỳ (hàng tuần/tháng), hệ thống chạy một tiến trình (Batch Job) để gom nhóm các kỹ năng giống nhau.
+    *   *Ví dụ:* Gom "English", "Tiếng Anh", "AV" -> chung 1 nhóm "Ngoại ngữ: Tiếng Anh".

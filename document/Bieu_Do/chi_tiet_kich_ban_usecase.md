@@ -56,6 +56,6 @@ Tài liệu này mô tả chi tiết từng bước tương tác (Step-by-step) 
 | Bước | Người dùng | Hệ thống | Ghi chú Kỹ thuật (JSON Skill) |
 | :--- | :--- | :--- | :--- |
 | 1 | Vào màn hình "Hồ sơ cá nhân" | Hiển thị thông tin hiện tại. | `GET /api/me` |
-| 2 | Bấm "Chỉnh sửa" -> Tìm mục **Kỹ năng** | Hiển thị danh sách các thẻ (Tags) hoặc Checkbox để chọn. | UI không bắt nhập text JSON thủ công. |
-| 3 | Chọn các kỹ năng: "Pha chế", "Tiếng Anh" | Giao diện hiển thị các thẻ đã chọn (Chips). | Frontend gom lại thành mảng: `["Pha chế", "Tiếng Anh"]` |
+| 2 | Bấm "Chỉnh sửa" -> Tìm mục **Kỹ năng** | Hiển thị danh sách gợi ý + Ô nhập liệu (Combobox). | Cho phép: Chọn có sẵn **HOẶC** Nhập mới (Free text). |
+| 3 | Chọn "Pha chế" & Nhập mới "Múa lửa" | Giao diện hiển thị các thẻ đã chọn (Chips). | Frontend gom lại: `["Pha chế", "Múa lửa"]`. Không bắt buộc check database. |
 | 4 | Bấm "Lưu thay đổi" | 1. Nhận mảng String từ Client.<br>2. Convert sang chuẩn JSON.<br>3. Update vào cột `skills` trong DB. | `UPDATE profiles SET skills = '["Pha chế", "Tiếng Anh"]'` |
