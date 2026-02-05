@@ -17,7 +17,7 @@ Cấu trúc chuẩn: **"Là một [Vai trò], tôi muốn [Hành động], để
 
 ---
 
-## 2. Actor: Candidate (Người tìm việc)
+## 2. Actor: Candidate (Người tìm việc)`
 
 ### 2.1. Quản lý Hồ sơ
 | ID | User Story | Mức độ ưu tiên |
