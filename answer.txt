@@ -1,41 +1,57 @@
-# ĐỀ XUẤT CÔNG NGHỆ CHO DỰ ÁN (TECHNOLOGY STACK)
+# BÁO CÁO PHÂN TÍCH VÀ BỔ SUNG TÀI LIỆU DỰ ÁN
+## Đề tài: Hệ thống Tuyển dụng Việc làm Thời vụ theo GPS
 
-Dựa trên quyết định sử dụng **React Native** cho ứng dụng di động, dưới đây là bảng công nghệ chi tiết được lựa chọn để tối ưu hóa hiệu năng, chi phí và khả năng mở rộng của hệ thống "Tuyển dụng việc làm theo vị trí GPS".
+### 1. Tổng quan Dự án (Hiện trạng)
+Dựa trên các tài liệu trong thư mục `document`, dự án hướng tới việc xây dựng một nền tảng **"Uber cho việc làm"**, kết nối Nhà tuyển dụng và Người tìm việc dựa trên vị trí thực (GPS).
+*   **Đối tượng:** Candidate (Người tìm việc), Employer (Nhà tuyển dụng), Admin.
+*   **Tính năng cốt lõi:** Tìm việc trên bản đồ, Ứng tuyển nhanh, Chat, eKYC (xác thực danh tính), Hệ thống tính điểm uy tín.
+*   **Công nghệ dự kiến:** Flutter/React Native (Mobile), NodeJS (Backend), Firebase (Chat).
 
-## 1. Ứng dụng Di động (Mobile App)
-*   **Công nghệ chính:** **React Native** (sử dụng ngôn ngữ **TypeScript**).
-*   **Lý do lựa chọn:**
-    *   **Đa nền tảng:** Viết code một lần, chạy mượt mà trên cả iOS và Android, giúp tiết kiệm 50% thời gian phát triển so với Native.
-    *   **Hệ sinh thái mạnh:** Cộng đồng React Native cực lớn, sở hữu nhiều thư viện bản đồ (react-native-maps) ổn định và hỗ trợ update OTA (CodePush) để vá lỗi nóng mà không cần chờ duyệt Store.
-    *   **Hiệu năng:** Tuyệt vời cho các ứng dụng nghiệp vụ. Với kiến trúc mới (Fabric/TurboModules), React Native xử lý các tác vụ giao diện và bản đồ ngày càng mượt mà, tiệm cận Native.
-*   **Các thư viện quan trọng kèm theo:**
-    *   *State Management:* **Redux Toolkit** hoặc **Zustand** (để quản lý dữ liệu người dùng, trạng thái ứng dụng).
-    *   *Navigation:* **React Navigation** (điều hướng màn hình chuẩn Native).
-    *   *Maps:* **react-native-maps** (hiển thị bản đồ Google Maps/Apple Maps).
+### 2. Các nội dung bổ sung (Supplementary Content)
+Dưới đây là các tài liệu và kiến thức bổ trợ cho những phần còn thiếu hoặc chưa chi tiết trong dự án:
 
-## 2. Backend (Máy chủ & API)
-*   **Framework:** **Node.js** với **NestJS**.
-*   **Lý do:**
-    *   **Đồng bộ ngôn ngữ:** Cả Mobile (React Native) và Backend đều dùng **TypeScript**. Điều này giúp đội ngũ phát triển dễ dàng chia sẻ các định nghĩa dữ liệu (DTO, Interface), giảm lỗi và tăng tốc độ code.
-    *   **Kiến trúc chuẩn:** NestJS cung cấp cấu trúc code rành mạch (Controller, Service, Module), dễ bảo trì và mở rộng cho dự án lớn.
-    *   **Hiệu năng Real-time:** Node.js xử lý rất tốt các kết nối thời gian thực (như theo dõi vị trí shipper/ứng viên) nhờ cơ chế Non-blocking I/O.
+#### 2.1. Mô hình Kinh doanh & Doanh thu (Business Model)
+Tài liệu hiện tại chỉ nhắc sơ qua về "Gói VIP". Để tối ưu hóa doanh thu cho mô hình Gig Economy, bạn có thể tham khảo các luồng doanh thu sau:
+*   **Phí hoa hồng (Commission Fee):** Thu % trên lương của mỗi ca làm việc thành công (Ví dụ: 5-10%). Đây là mô hình bền vững nhất nhưng khó triển khai nếu trả lương tiền mặt.
+*   **Phí đăng tin ưu tiên (Pay-to-post / Featured Listing):**
+    *   Ghim tin lên đầu danh sách trong 24h.
+    *   Làm nổi bật icon trên bản đồ (To hơn, màu khác).
+*   **Gói thành viên (Subscription):**
+    *   *Employer:* Đăng tin không giới hạn, xem số điện thoại ứng viên không giới hạn.
+    *   *Candidate:* Được ứng tuyển sớm hơn người thường 1 tiếng, có huy hiệu "Pro".
+*   **Bán dữ liệu (Data Monetization):** (Giai đoạn sau) Cung cấp báo cáo thị trường lao động cho các doanh nghiệp lớn (ẩn danh tính người dùng).
 
-## 3. Cơ sở dữ liệu (Database)
-*   **Database chính:** **PostgreSQL** (cài đặt thêm Extension **PostGIS**).
-*   **Lý do:** Đây là *tiêu chuẩn vàng* cho các ứng dụng bản đồ. PostGIS hỗ trợ truy vấn không gian cực mạnh (ví dụ: "Tìm tất cả việc làm trong bán kính 2km từ vị trí của tôi") với tốc độ nhanh và độ chính xác cao hơn hẳn so với MySQL hay MongoDB cơ bản.
-*   **Caching & Queue:** **Redis**. Dùng để lưu trữ tạm thời vị trí GPS (Real-time tracking) để giảm tải cho Database chính và xử lý hàng đợi thông báo.
+#### 2.2. Chiến lược Marketing: Bài toán "Con gà - Quả trứng"
+Làm sao để có User khi chưa có Job, và ngược lại?
+*   **Chiến lược "Tập trung một bên" (Single-side Focus):** Hãy tập trung kiếm **Job (Nguồn cung)** trước. Có việc thì người sẽ tự đến.
+    *   *Hành động:* Tự đi "cào" (crawl) tin tuyển dụng từ các Group Facebook, Website khác về để lấp đầy bản đồ (Cần ghi rõ nguồn để tránh pháp lý).
+*   **Chiến lược "Địa phương hóa" (Hyper-local):** Đừng đánh cả nước ngay. Hãy chọn **1 Quận** hoặc **1 Khu vực trường Đại học** để làm pilot. Mật độ tin đăng dày đặc ở 1 khu vực nhỏ sẽ tạo hiệu ứng tốt hơn là rải rác cả thành phố.
+*   **Trợ giá (Subsidies):** Tặng tiền/thẻ cào cho 100 Employer đầu tiên đăng tin thật và tuyển được người.
 
-## 4. Dịch vụ Bản đồ (Map Services)
-*   **Nền tảng:** **Google Maps Platform**.
-*   **Các API cần thiết:**
-    *   **Maps SDK (Mobile):** Hiển thị bản đồ nền trên ứng dụng.
-    *   **Geocoding API:** Chuyển đổi tọa độ GPS sang địa chỉ nhà và ngược lại.
-    *   **Places API:** Gợi ý địa điểm khi người dùng nhập tìm kiếm.
-    *   **Directions API:** Vẽ đường đi từ Ứng viên đến nơi làm việc.
+#### 2.3. Giải pháp Kỹ thuật chuyên sâu (Technical Supplement)
+Để giải quyết vấn đề hiệu năng bản đồ (khi có hàng nghìn tin đăng):
+*   **Marker Clustering (Gom nhóm):**
+    *   *Vấn đề:* Hiển thị 1000 cái ghim (pin) sẽ làm lag ứng dụng.
+    *   *Giải pháp:* Sử dụng kỹ thuật Clustering. Khi zoom out, các điểm gần nhau gom thành 1 vòng tròn số (VD: "10+"). Khi zoom in mới tách ra.
+    *   *Thư viện Flutter:* `google_maps_cluster_manager` hoặc `fluster`.
+*   **Tối ưu pin cho GPS:**
+    *   Không bật GPS liên tục (Real-time tracking) nếu không cần thiết. Chỉ lấy vị trí khi mở App hoặc khi Check-in.
+    *   Sử dụng `Geofencing` (Hàng rào ảo) để chỉ đánh thức App khi người dùng đi vào khu vực làm việc (Tiết kiệm pin hơn tracking liên tục).
 
-## 5. Hạ tầng & DevOps
-*   **Cloud:** **AWS** hoặc **Google Cloud Platform** (triển khai Docker/Kubernetes).
-*   **CI/CD:** **GitHub Actions** hoặc **GitLab CI** để tự động hóa quy trình kiểm thử và build ứng dụng.
+#### 2.4. Pháp lý & Tuân thủ (Legal)
+Dự án thu thập dữ liệu nhạy cảm (CCCD, Khuôn mặt, Vị trí), cần tuân thủ nghiêm ngặt **Nghị định 13/2023/NĐ-CP** (và Luật Bảo vệ dữ liệu cá nhân mới sắp có hiệu lực).
+*   **Chính sách quyền riêng tư (Privacy Policy):** Cần có văn bản dài, nêu rõ:
+    *   Dữ liệu nào được thu thập? (Vị trí, SĐT, Ảnh CCCD).
+    *   Mục đích là gì? (Xác thực, tìm việc).
+    *   Dữ liệu được chia sẻ cho ai? (Chỉ Employer khi nhận việc).
+    *   Quyền rút lại sự đồng ý (Xóa tài khoản).
+*   **Quyền lãng quên:** Người dùng có quyền yêu cầu xóa sạch dữ liệu khỏi hệ thống khi họ không dùng nữa.
+
+### 3. Tài liệu tham khảo & Từ khóa tìm kiếm
+Bạn có thể tìm kiếm thêm với các từ khóa sau để mở rộng kiến thức:
+*   *Business:* "Hyper-local gig economy business model", "Marketplace liquidity strategies".
+*   *Tech:* "Flutter Google Maps Clustering", "Geofencing battery optimization".
+*   *Legal:* "Mẫu chính sách bảo mật Nghị định 13/2023".
 
 ---
-**Tóm tắt Stack:** React Native (Mobile) + NestJS (Backend) + PostgreSQL/PostGIS (Database). Đây là sự kết hợp hiện đại, hiệu năng cao và cực kỳ phù hợp cho bài toán hệ thống định vị việc làm.
+*Báo cáo được tổng hợp bởi Gemini CLI Agent vào ngày 07/02/2026.*
