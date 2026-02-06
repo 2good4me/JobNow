@@ -86,6 +86,14 @@ Bảng 1: Danh sách bảng trong dữ liệu
 | 5 | **CHAM_CONG** | Thực thể lưu lịch sử điểm danh GPS hàng ngày. Gồm các thuộc tính: check_in_time, check_in_lat, check_in_long, status... | Quan hệ N-1 với DON_UNG_TUYEN. |
 | 6 | **DANH_GIA** | Thực thể lưu đánh giá chất lượng sau khi hoàn thành công việc. Gồm các thuộc tính: rating (1-5 sao), comment, tags... | Quan hệ N-1 với NGUOI_DUNG (Người viết). Quan hệ N-1 với VIEC_LAM (Ngữ cảnh đánh giá). |
 | 7 | **BAO_CAO** | Thực thể lưu báo cáo vi phạm nội dung hoặc hành vi. Gồm các thuộc tính: reason, proof_images, status... | Quan hệ N-1 với NGUOI_DUNG (Người báo cáo và Người bị báo). |
+| 8 | **DANH_MUC** | Danh mục loại hình công việc (VD: F&B, Sự kiện). | Quan hệ 1-N với VIEC_LAM. |
+| 9 | **THONG_BAO** | Lưu trữ thông báo hệ thống gửi đến người dùng. | Quan hệ N-1 với NGUOI_DUNG. |
+| 10 | **TIN_NHAN** | Lưu lịch sử chat giữa 2 người dùng. | Quan hệ N-1 với NGUOI_DUNG (Sender/Receiver). |
+| 11 | **VIEC_DA_LUU** | Lưu tin tuyển dụng (Bookmark). | Quan hệ N-N giữa User và Job. |
+| 12 | **GIAO_DICH** | Lưu lịch sử nạp tiền/thanh toán. | Quan hệ N-1 với NGUOI_DUNG. |
+| 13 | **LOG_HOAT_DONG** | Ghi log hành vi người dùng. | Quan hệ N-1 với NGUOI_DUNG. |
+| 14 | **MA_XAC_THUC** | Mã OTP xác thực. | Quan hệ 1-1 (hoặc N-1) theo SĐT/Email. |
+| 15 | **THEO_DOI** | Lưu danh sách Employer mà Candidate quan tâm (Follow). | Quan hệ N-N giữa User và User. |
 
 ### 3.3. Từ điển dữ liệu (Data Dictionary)
 Danh sách bảng dữ liệu được mô tả chi tiết dưới đây:
@@ -101,6 +109,7 @@ Bảng 3: NGUOI_DUNG - Quản lý tài khoản
 | phone_number | VARCHAR(15) | Unique Index | Số điện thoại đăng nhập (Duy nhất). |
 | email | VARCHAR(100) | Nullable | Email (để nhận tin tức/khôi phục pass). |
 | password_hash | VARCHAR(255) | Not Null | Mật khẩu đã mã hóa (Bcrypt). |
+| balance | DECIMAL(15,2) | Default: 0 | Số dư tài khoản (Ví tiền) để thanh toán dịch vụ. |
 | role | ENUM | Not Null | Vai trò: CANDIDATE, EMPLOYER, ADMIN. |
 | reputation_score | INT | Default: 100 | Điểm uy tín của người dùng. |
 | is_verified | TINYINT(1) | Default: 0 | Trạng thái eKYC (0: Chưa, 1: Đã duyệt, 2: Chờ duyệt). |
@@ -108,6 +117,7 @@ Bảng 3: NGUOI_DUNG - Quản lý tài khoản
 | fcm_token | VARCHAR(255) | Nullable | Token Firebase (Để bắn thông báo đẩy). |
 | last_login_at | DATETIME | Nullable | Thời gian đăng nhập gần nhất. |
 | created_at | DATETIME | Default: NOW() | Ngày tạo tài khoản. |
+| updated_at | DATETIME | Nullable | Ngày cập nhật gần nhất. |
 
 Bảng 4: HO_SO - Thông tin chi tiết (1-1 với NGUOI_DUNG)
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
@@ -121,6 +131,8 @@ Bảng 4: HO_SO - Thông tin chi tiết (1-1 với NGUOI_DUNG)
 | bio | TEXT | Nullable | Giới thiệu bản thân / Mô tả công ty. |
 | skills | JSON | Nullable | Danh sách kỹ năng (VD: ["Bưng bê", "Tiếng Anh"]). |
 | identity_images | JSON | Nullable | Link ảnh CCCD/GPKD (Dữ liệu nhạy cảm). |
+| created_at | DATETIME | Default: NOW() | Ngày tạo hồ sơ. |
+| updated_at | DATETIME | Nullable | Ngày cập nhật hồ sơ. |
 
 Bảng 5: VIEC_LAM - Tin tuyển dụng
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
@@ -138,6 +150,7 @@ Bảng 5: VIEC_LAM - Tin tuyển dụng
 | address_work | VARCHAR(255) | Not Null | Địa chỉ làm việc cụ thể. |
 | status | ENUM | Default: OPEN | Trạng thái: OPEN, FULL, CLOSED, HIDDEN. |
 | created_at | DATETIME | Default: NOW() | Ngày đăng tin. |
+| updated_at | DATETIME | Nullable | Ngày cập nhật tin. |
 
 Bảng 6: DON_UNG_TUYEN - Hồ sơ ứng tuyển (Tấm vé)
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
@@ -150,6 +163,7 @@ Bảng 6: DON_UNG_TUYEN - Hồ sơ ứng tuyển (Tấm vé)
 | payment_status | ENUM | Default: UNPAID | Trạng thái nhận lương: UNPAID, PAID. |
 | applied_at | DATETIME | Default: NOW() | Thời gian nộp đơn. |
 | approved_at | DATETIME | Nullable | Thời gian được nhận việc. |
+| updated_at | DATETIME | Nullable | Thời gian cập nhật trạng thái. |
 
 Bảng 7: CHAM_CONG - Lịch sử điểm danh (Daily Check-in)
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
@@ -161,6 +175,7 @@ Bảng 7: CHAM_CONG - Lịch sử điểm danh (Daily Check-in)
 | check_in_long | DOUBLE | Not Null | Kinh độ lúc check-in. |
 | check_out_time | DATETIME | Nullable | Giờ check-out. |
 | status | ENUM | Default: VALID | Trạng thái: VALID, INVALID (Sai vị trí), PENDING (Chờ duyệt). |
+| updated_at | DATETIME | Nullable | Thời gian cập nhật. |
 
 Bảng 8: DANH_GIA - Review chất lượng
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
@@ -172,6 +187,7 @@ Bảng 8: DANH_GIA - Review chất lượng
 | rating | TINYINT | Check(1-5) | Số sao (1 đến 5). |
 | comment | TEXT | Nullable | Nội dung nhận xét. |
 | created_at | DATETIME | Default: NOW() | Thời gian đánh giá. |
+| updated_at | DATETIME | Nullable | Thời gian chỉnh sửa đánh giá. |
 
 Bảng 9: BAO_CAO - Báo cáo vi phạm
 | Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
@@ -182,3 +198,87 @@ Bảng 9: BAO_CAO - Báo cáo vi phạm
 | reason | VARCHAR(255)| Not Null | Lý do báo cáo. |
 | proof_images | JSON | Nullable | Ảnh bằng chứng kèm theo. |
 | status | ENUM | Default: PENDING | Trạng thái xử lý: PENDING, RESOLVED, DISMISSED. |
+| created_at | DATETIME | Default: NOW() | Thời gian tạo báo cáo. |
+| updated_at | DATETIME | Nullable | Thời gian xử lý/cập nhật. |
+
+Bảng 10: DANH_MUC - Phân loại công việc
+| Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
+| :--- | :--- | :--- | :--- |
+| id | INT | PK, Auto Inc | Khóa chính. |
+| name | VARCHAR(100) | Not Null | Tên danh mục (VD: "Phục vụ", "Bảo vệ"). |
+| icon_url | VARCHAR(255) | Nullable | Icon hiển thị trên App. |
+| parent_id | INT | FK | ID cha (để phân cấp danh mục con). |
+| created_at | DATETIME | Default: NOW() | Ngày tạo. |
+| updated_at | DATETIME | Nullable | Ngày cập nhật. |
+
+Bảng 11: THONG_BAO - Hệ thống Notification
+| Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
+| :--- | :--- | :--- | :--- |
+| id | INT | PK, Auto Inc | Khóa chính. |
+| user_id | INT | FK, Not Null | Người nhận thông báo. |
+| title | VARCHAR(200) | Not Null | Tiêu đề. |
+| content | TEXT | Not Null | Nội dung thông báo. |
+| type | ENUM | Not Null | Loại: `APPLY_UPDATE`, `NEW_JOB`, `SYSTEM_ALERT`. |
+| is_read | TINYINT(1) | Default: 0 | Trạng thái xem (0: Chưa xem, 1: Đã xem). |
+| related_id | INT | Nullable | ID liên quan (VD: JobID) để Deep-link. |
+| created_at | DATETIME | Default: NOW() | Thời gian gửi. |
+| updated_at | DATETIME | Nullable | Thời gian cập nhật (VD: Đã đọc). |
+
+Bảng 12: TIN_NHAN - Chat In-app
+| Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
+| :--- | :--- | :--- | :--- |
+| id | INT | PK, Auto Inc | Khóa chính. |
+| sender_id | INT | FK, Not Null | Người gửi. |
+| receiver_id | INT | FK, Not Null | Người nhận. |
+| job_id | INT | FK, Nullable | Ngữ cảnh chat (Về job nào?). |
+| content | TEXT | Not Null | Nội dung tin nhắn. |
+| image_url | VARCHAR(255) | Nullable | Ảnh đính kèm. |
+| created_at | DATETIME | Default: NOW() | Thời gian gửi (Index để sort). |
+
+Bảng 13: VIEC_DA_LUU - Bookmark
+| Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
+| :--- | :--- | :--- | :--- |
+| id | INT | PK | Khóa chính. |
+| user_id | INT | FK, Not Null | Người lưu. |
+| job_id | INT | FK, Not Null | Công việc được lưu. |
+| created_at | DATETIME | Default: NOW() | Ngày lưu. |
+
+Bảng 14: GIAO_DICH - Nạp tiền & Chi tiêu
+| Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
+| :--- | :--- | :--- | :--- |
+| id | INT | PK, Auto Inc | Mã giao dịch hệ thống. |
+| user_id | INT | FK, Not Null | Người thực hiện. |
+| amount | DECIMAL(15,2)| Not Null | Số tiền (+ Nạp, - Chi). |
+| type | ENUM | Not Null | `DEPOSIT` (Nạp), `PAYMENT` (Chi), `REFUND` (Hoàn). |
+| status | ENUM | Not Null | `PENDING`, `SUCCESS`, `FAILED`. |
+| payment_method| VARCHAR(50) | Not Null | `MOMO`, `ZALOPAY`, `BANK_TRANSFER`. |
+| transaction_ref| VARCHAR(100)| Unique | Mã tham chiếu từ cổng thanh toán. |
+| created_at | DATETIME | Default: NOW() | Thời gian tạo. |
+| updated_at | DATETIME | Nullable | Thời gian hoàn tất/thất bại. |
+
+Bảng 15: LOG_HOAT_DONG - Audit Log
+| Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
+| :--- | :--- | :--- | :--- |
+| id | INT | PK | Khóa chính. |
+| user_id | INT | FK | Người thực hiện (Nếu có). |
+| action | VARCHAR(50) | Not Null | Tên hành động (VD: `VIEW_JOB`, `LOGIN`). |
+| target_id | INT | Nullable | ID đối tượng bị tác động. |
+| ip_address | VARCHAR(45) | Nullable | IP người dùng. |
+| created_at | DATETIME | Default: NOW() | Thời gian ghi log. |
+
+Bảng 16: MA_XAC_THUC - OTP Storage
+| Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
+| :--- | :--- | :--- | :--- |
+| id | INT | PK | Khóa chính. |
+| contact | VARCHAR(100) | Index | SĐT hoặc Email nhận mã. |
+| code | VARCHAR(10) | Not Null | Mã OTP (VD: "123456"). |
+| expired_at | DATETIME | Not Null | Thời gian hết hạn. |
+| is_used | TINYINT(1) | Default: 0 | Đã dùng chưa (Chống Replay attack). |
+
+Bảng 17: THEO_DOI - Follow Employer
+| Tên cột | Kiểu dữ liệu | Ràng buộc | Mô tả |
+| :--- | :--- | :--- | :--- |
+| id | INT | PK | Khóa chính. |
+| follower_id | INT | FK, Not Null | Người theo dõi (Candidate). |
+| following_id | INT | FK, Not Null | Người được theo dõi (Employer). |
+| created_at | DATETIME | Default: NOW() | Thời gian bắt đầu theo dõi. |
