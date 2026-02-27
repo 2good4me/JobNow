@@ -1,0 +1,307 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  CANDIDATE
+  EMPLOYER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  LOCKED
+  BANNED
+}
+
+enum SalaryType {
+  HOURLY
+  DAILY
+  JOB
+}
+
+enum JobStatus {
+  OPEN
+  FULL
+  CLOSED
+  HIDDEN
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+}
+
+enum CheckinStatus {
+  VALID
+  INVALID
+}
+
+enum TransactionType {
+  DEPOSIT
+  PAYMENT
+  REFUND
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+enum NotificationType {
+  JOB_ALERT
+  APPLICATION_UPDATE
+  SYSTEM
+}
+
+model User {
+  id              BigInt     @id @default(autoincrement())
+  phoneNumber     String     @unique @map("phone_number")
+  passwordHash    String     @map("password_hash")
+  role            UserRole
+  balance         Decimal    @default(0.00) @db.Decimal(15, 2)
+  reputationScore Int        @default(100) @map("reputation_score")
+  status          UserStatus @default(ACTIVE)
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  profile            Profile?
+  employerJobs       Job[]              @relation("EmployerJobs")
+  applications       Application[]
+  transactions       Transaction[]
+  logs               ActivityLog[]
+  notifications      Notification[]
+  following          Follow[]           @relation("CandidateFollows")
+  followers          Follow[]           @relation("EmployerFollowers")
+  reviewsGiven       Review[]           @relation("Reviewer")
+  reviewsReceived    Review[]           @relation("Reviewee")
+
+  @@index([phoneNumber])
+  @@map("nguoi_dung")
+}
+
+model Profile {
+  userId         BigInt   @id @map("user_id")
+  fullName       String   @map("full_name")
+  avatarUrl      String?  @map("avatar_url")
+  bio            String?
+  addressText    String?  @map("address_text")
+  skills         Json     @default("[]")
+  identityImages Json     @default("[]") @map("identity_images")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([skills], type: Gin)
+  @@map("ho_so")
+}
+
+model Category {
+  id          BigInt   @id @default(autoincrement())
+  parentId    BigInt?  @map("parent_id")
+  name        String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryHierarchy")
+  jobs     Job[]
+  reports  RevenueReport[]
+
+  @@map("danh_muc")
+}
+
+model Job {
+  id            BigInt     @id @default(autoincrement())
+  employerId    BigInt     @map("employer_id")
+  categoryId    BigInt?    @map("category_id")
+  title         String
+  description   String
+  salary        Decimal    @db.Decimal(15, 2)
+  salaryType    SalaryType @map("salary_type")
+  latitude      Decimal?   @db.Decimal(10, 8)
+  longitude     Decimal?   @db.Decimal(11, 8)
+  isGpsRequired Boolean    @default(true) @map("is_gps_required")
+  status        JobStatus  @default(OPEN)
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  employer      User          @relation("EmployerJobs", fields: [employerId], references: [id], onDelete: Cascade)
+  category      Category?     @relation(fields: [categoryId], references: [id])
+  shifts        Shift[]
+  applications  Application[]
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([employerId])
+  @@index([latitude, longitude])
+  @@map("viec_lam")
+}
+
+model Shift {
+  id        BigInt   @id @default(autoincrement())
+  jobId     BigInt   @map("job_id")
+  name      String
+  startTime DateTime @map("start_time") @db.Time
+  endTime   DateTime @map("end_time") @db.Time
+  quantity  Int
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  job          Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  applications Application[]
+
+  @@index([jobId])
+  @@map("ca_lam_viec")
+}
+
+model Application {
+  id            BigInt            @id @default(autoincrement())
+  jobId         BigInt            @map("job_id")
+  shiftId       BigInt            @map("shift_id")
+  candidateId   BigInt            @map("candidate_id")
+  status        ApplicationStatus @default(PENDING)
+  paymentStatus PaymentStatus     @default(UNPAID) @map("payment_status")
+  coverLetter   String?           @map("cover_letter")
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  job       Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  shift     Shift     @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  candidate User      @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  checkins  Checkin[]
+  review    Review?
+
+  @@unique([shiftId, candidateId])
+  @@index([shiftId, status])
+  @@index([candidateId, status])
+  @@map("don_ung_tuyen")
+}
+
+model Checkin {
+  id            BigInt        @id @default(autoincrement())
+  applicationId BigInt        @map("application_id")
+  checkInTime   DateTime      @default(now()) @map("check_in_time") @db.Timestamptz
+  checkInLat    Decimal       @map("check_in_lat") @db.Decimal(10, 8)
+  checkInLong   Decimal       @map("check_in_long") @db.Decimal(11, 8)
+  status        CheckinStatus
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@map("cham_cong")
+}
+
+model ServicePackage {
+  id           BigInt   @id @default(autoincrement())
+  name         String
+  price        Decimal  @db.Decimal(15, 2)
+  durationDays Int      @map("duration_days")
+  benefits     Json     @default("{}")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("goi_dich_vu")
+}
+
+model Transaction {
+  id            BigInt            @id @default(autoincrement())
+  userId        BigInt            @map("user_id")
+  amount        Decimal           @db.Decimal(15, 2)
+  type          TransactionType
+  status        TransactionStatus @default(PENDING)
+  paymentMethod String?           @map("payment_method")
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("giao_dich")
+}
+
+model RevenueReport {
+  id                BigInt   @id @default(autoincrement())
+  reportDate        DateTime @map("report_date") @db.Date
+  categoryId        BigInt?  @map("category_id")
+  totalRevenue      Decimal? @default(0) @map("total_revenue") @db.Decimal(15, 2)
+  totalJobs         Int?     @default(0) @map("total_jobs")
+  totalApplications Int?     @default(0) @map("total_applications")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  category Category? @relation(fields: [categoryId], references: [id])
+
+  @@unique([reportDate, categoryId])
+  @@map("thong_ke_doanh_thu")
+}
+
+model ActivityLog {
+  id         BigInt   @id @default(autoincrement())
+  userId     BigInt?  @map("user_id")
+  action     String
+  targetId   BigInt?  @map("target_id")
+  ipAddress  String?  @map("ip_address")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("log_hoat_dong")
+}
+
+model Notification {
+  id        BigInt           @id @default(autoincrement())
+  userId    BigInt           @map("user_id")
+  type      NotificationType
+  title     String
+  content   String
+  isRead    Boolean          @default(false) @map("is_read")
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("thong_bao")
+}
+
+model Follow {
+  candidateId BigInt   @map("candidate_id")
+  employerId  BigInt   @map("employer_id")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  candidate User @relation("CandidateFollows", fields: [candidateId], references: [id], onDelete: Cascade)
+  employer  User @relation("EmployerFollowers", fields: [employerId], references: [id], onDelete: Cascade)
+
+  @@id([candidateId, employerId])
+  @@index([employerId])
+  @@map("theo_doi")
+}
+
+model Review {
+  id            BigInt   @id @default(autoincrement())
+  reviewerId    BigInt   @map("reviewer_id")
+  revieweeId    BigInt   @map("reviewee_id")
+  applicationId BigInt   @unique @map("application_id")
+  rating        Int
+  comment       String?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  reviewer    User        @relation("Reviewer", fields: [reviewerId], references: [id])
+  reviewee    User        @relation("Reviewee", fields: [revieweeId], references: [id])
+  application Application @relation(fields: [applicationId], references: [id])
+
+  @@unique([reviewerId, applicationId])
+  @@index([revieweeId, rating])
+  @@map("danh_gia")
+}

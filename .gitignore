@@ -1,0 +1,58 @@
+# dependencies
+node_modules
+/.pnpm-store
+.pnpm-debug.log*
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+/dist
+/apps/*/dist
+/apps/*/build
+/packages/*/dist
+/packages/*/build
+
+# turborepo
+.turbo
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files
+.env*.local
+.env
+.env.development
+.env.test
+.env.production
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# Prisma
+/apps/*/prisma/*.db
+/apps/*/prisma/*.db-journal
+
+# Editor
+.vscode
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# AI Agents & Skills
+.agents/
