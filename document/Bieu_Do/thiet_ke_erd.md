@@ -61,6 +61,19 @@ Dưới đây là các đối tượng chính trong hệ thống và những th�
     *   `Lý do báo cáo`
     *   `Trạng thái xử lý`
 
+*   **THEO_DOI (Follow):**
+    *   `Người theo dõi` (Candidate)
+    *   `Người được theo dõi` (Employer)
+
+*   **CA_LAM_VIEC (Shift):** (Đột phá cốt lõi)
+    *   `Ngày làm`
+    *   `Giờ bắt đầu` / `Giờ kết thúc`
+    *   `Sinh ra từ Tin Tuyển Dụng nào`
+
+*   **THIET_BI_VI_PHAM (Banned Devices):**
+    *   `Mã thiết bị / IP`
+    *   `Lý do cấm`
+
 ### 3.2. Các Mối liên kết (Relationships)
 Mô tả cách các thực thể tương tác với nhau:
 
@@ -70,9 +83,11 @@ Mô tả cách các thực thể tương tác với nhau:
     *   Người dùng với vai trò Employer sẽ tạo ra các Tin tuyển dụng.
 3.  **NGUOI_DUNG (Candidate) --(nộp)--> DON_UNG_TUYEN:**
     *   Người dùng với vai trò Candidate sẽ tạo ra Đơn ứng tuyển.
-4.  **VIEC_LAM --(nhận)--> DON_UNG_TUYEN:**
-    *   Một công việc sẽ chứa nhiều đơn ứng tuyển nộp vào.
-5.  **DON_UNG_TUYEN --(sinh ra)--> CHAM_CONG:**
+4.  **VIEC_LAM --(chia nhỏ)--> CA_LAM_VIEC:**
+    *   Một Job có thể chia làm nhiều ca (Sáng/Chiều) hoặc lặp lại (T2-T6).
+5.  **CA_LAM_VIEC --(nhận)--> DON_UNG_TUYEN:**
+    *   Candidate nộp đơn vào một CA CỤ THỂ, chứ không nộp chung chung vào cả Job. Khi Ca đủ người, Ca đó sẽ Đóng.
+6.  **DON_UNG_TUYEN --(sinh ra)--> CHAM_CONG:**
     *   **Tại sao lại dùng từ "sinh ra"?**
     *   Đơn ứng tuyển giống như **Hợp đồng lao động**.
     *   Chỉ khi có Hợp đồng (Đơn đã duyệt), thì hằng ngày nhân viên đi làm mới **phát sinh** ra các dòng dữ liệu chấm công.
@@ -83,6 +98,8 @@ Mô tả cách các thực thể tương tác với nhau:
     *   Người dùng viết đánh giá cho nhau.
     *   **Quan trọng:** Đánh giá này **BẮT BUỘC** phải gắn với một `VIEC_LAM` cụ thể (thông qua `job_id`).
     *   Hệ thống sẽ kiểm tra: 2 người này có thực sự hoàn thành công việc đó không thì mới cho phép viết đánh giá.
+7.  **NGUOI_DUNG (Candidate) --(theo dõi)--> NGUOI_DUNG (Employer):**
+    *   Ứng viên bấm "Follow" một Nhà tuyển dụng (Cửa hàng) để nhận thông báo (Push Notification) mỗi khi cửa hàng này đăng Job mới. Điều này giải quyết bài toán "Quán quen".
 
 ---
 
@@ -99,8 +116,10 @@ Phần này đặc tả chi tiết kiểu dữ liệu, index, khóa ngoại đ�
 | `password_hash` | VARCHAR(255) | Mật khẩu đã mã hóa (Bcrypt). |
 | `role` | ENUM | `CANDIDATE`, `EMPLOYER`, `ADMIN`. |
 | `reputation_score`| INT | Điểm uy tín (Default: 100). |
-| `is_verified` | TINYINT(1) | Trạng thái eKYC (0: Chưa, 1: Đã duyệt, 2: Chờ duyệt). |
-| `status` | ENUM | `ACTIVE`, `BANNED`, `LOCKED`. |
+| `account_tier` | TINYINT(1) | Cấp độ Account (0: Chưa xác thực, 1: Xác thực SĐT/Tier 1, 2: Đã eKYC/Tier 2). |
+| `wallet_balance` | DECIMAL(15,2)| Số dư ví (Dùng để mua VIP, mua Boost hoặc bị trừ nợ 5K). |
+| `status` | ENUM | `ACTIVE`, `BANNED`, `SHADOW_BANNED` (Sổ đen), `LOCKED`. |
+| `device_id` | VARCHAR(255) | Nhận dạng thiết bị (Chống tài khoản ảo lách luật). |
 | `fcm_token` | VARCHAR(255) | Token Firebase (Để bắn thông báo đẩy). |
 | `last_login_at` | DATETIME | Thời gian đăng nhập gần nhất. |
 | `created_at` | DATETIME | Ngày tạo tài khoản. |
@@ -132,6 +151,7 @@ Phần này đặc tả chi tiết kiểu dữ liệu, index, khóa ngoại đ�
 | `salary_type` | ENUM | `HOURLY` (Giờ), `DAILY` (Ngày), `JOB` (Khoán). |
 | `quantity` | INT | Số lượng cần tuyển (VD: 5 người). |
 | `gender_require`| ENUM | Yêu cầu giới tính (`ANY`, `MALE`, `FEMALE`). |
+| `is_boosted` | TINYINT(1) | Bài đăng có mua nhãn dán "Pro-Hunter" (Lên Top) không? |
 | `latitude` | DOUBLE | **Index (Geospatial)**. Vĩ độ quán. |
 | `longitude` | DOUBLE | **Index (Geospatial)**. Kinh độ quán. |
 | `address_work` | VARCHAR(255) | Địa chỉ làm việc cụ thể. |
@@ -141,11 +161,22 @@ Phần này đặc tả chi tiết kiểu dữ liệu, index, khóa ngoại đ�
 | `created_at` | DATETIME | Ngày đăng tin. |
 | `updated_at` | DATETIME | Ngày sửa lần cuối. |
 
-### 4.4. Bảng DON_UNG_TUYEN (Hồ sơ ứng tuyển)
+### 4.3.B Bảng CA_LAM_VIEC (Shift - Ca làm chi tiết)
 | Tên cột | Kiểu dữ liệu | Ý nghĩa |
 | :--- | :--- | :--- |
 | `id` | INT | **PK**. |
 | `job_id` | INT | **FK** -> VIEC_LAM. |
+| `work_date` | DATE | Ngày làm việc cụ thể. |
+| `start_time` | TIME | Giờ bắt đầu (VD: 08:00). |
+| `end_time` | TIME | Giờ kết thúc (VD: 12:00). |
+| `needed_quantity`| INT | Số lượng cần cho ca này. |
+| `status` | ENUM | `OPEN`, `FULL`, `COMPLETED`, `CANCELLED`. |
+
+### 4.4. Bảng DON_UNG_TUYEN (Hồ sơ ứng tuyển)
+| Tên cột | Kiểu dữ liệu | Ý nghĩa |
+| :--- | :--- | :--- |
+| `id` | INT | **PK**. |
+| `shift_id` | INT | **FK** -> CA_LAM_VIEC (Nộp vào ca nào). |
 | `candidate_id` | INT | **FK** -> NGUOI_DUNG. |
 | `cover_letter` | TEXT | Lời nhắn gửi chủ quán lúc nộp đơn. |
 | `status` | ENUM | `PENDING`, `APPROVED`, `REJECTED`, `CANCELLED` (Ứng viên hủy), `COMPLETED` (Xong việc). |
@@ -164,10 +195,21 @@ Phần này đặc tả chi tiết kiểu dữ liệu, index, khóa ngoại đ�
 | `check_out_time`| DATETIME | Giờ check-out. |
 | `check_out_lat` | DOUBLE | Vĩ độ lúc check-out. |
 | `check_out_long`| DOUBLE | Kinh độ lúc check-out. |
+| `check_in_method`| ENUM | Phương thức Check-in (`GPS`, `QR_CODE`). |
 | `image_evidence`| VARCHAR | Ảnh selfie tại nơi làm (nếu cần). |
 | `status` | ENUM | `VALID`, `INVALID` (Sai vị trí), `PENDING` (Chờ duyệt thủ công). |
 
-### 4.6. Bảng DANH_GIA (Đánh giá)
+### 4.6. Bảng LICH_SU_GIAO_DICH (Transaction_History)
+| Tên cột | Kiểu dữ liệu | Ý nghĩa |
+| :--- | :--- | :--- |
+| `id` | INT | **PK**. |
+| `user_id` | INT | **FK**. |
+| `amount` | DECIMAL(15,2)| Số tiền (+ là nạp/nhận, - là mua/trừ). |
+| `type` | ENUM | `DEPOSIT`, `BOOST_JOB`, `VIP_SUB`, `PLATFORM_FEE` (Phí 5K/Job), `TRUST_DEPOSIT` (Mua điểm uy tín). |
+| `reference_id` | INT | ID kham chiếu (Nếu trừ phí thì trỏ tới Application_ID). |
+| `created_at` | DATETIME | Thời gian giao dịch. |
+
+### 4.7. Bảng DANH_GIA (Đánh giá)
 | Tên cột | Kiểu dữ liệu | Ý nghĩa |
 | :--- | :--- | :--- |
 | `id` | INT | **PK**. |
@@ -188,5 +230,23 @@ Phần này đặc tả chi tiết kiểu dữ liệu, index, khóa ngoại đ�
 | `reason` | VARCHAR | Lý do (Chọn từ danh sách 1, 2, 3...). |
 | `proof_images` | JSON | Danh sách ảnh bằng chứng. |
 | `status` | ENUM | `PENDING`, `RESOLVED`, `DISMISSED`. |
+
+### 4.8. Bảng THEO_DOI (Followers)
+| Tên cột | Kiểu dữ liệu | Ý nghĩa |
+| :--- | :--- | :--- |
+| `follower_id` | INT | **PK, FK** -> NGUOI_DUNG (Ứng viên đi follow). |
+| `following_id` | INT | **PK, FK** -> NGUOI_DUNG (Chủ quán được follow). |
+| `created_at` | DATETIME | Quen nhau từ bao giờ (Ngày bấm nút Follow). |
+
+### 4.9. Các Bảng Bổ Trợ (Hệ Thống, Cấu Hình, Thống Kê)
+| Tên Bảng | Ý nghĩa | Các cột quan trọng |
+| :--- | :--- | :--- |
+| **DANH_MUC** | Loại hình công việc (F&B, Sự kiện) | `id`, `name`, `icon_url` |
+| **VIEC_DA_LUU** | Bookmark lưu trữ tin | `user_id`, `job_id`, `created_at` |
+| **THONG_BAO** | Push Notification in-app | `user_id`, `title`, `content`, `is_read`, `type` |
+| **TIN_NHAN** | Lịch sử Chat 1-1 | `sender_id`, `receiver_id`, `content`, `job_id` |
+| **THIET_BI_VI_PHAM** | Lưu mã máy/IP bị Ban (Chống tài khoản ảo) | `device_id`, `ip_address`, `banned_at`, `reason` |
+| **THONG_KE_DOANH_THU**| Data Warehouse (Gom Data lúc nửa đêm) | `date`, `total_revenue`, `new_jobs`, `active_users` |
+| **MA_XAC_THUC** | Kho chứa mã OTP | `phone`, `otp_code`, `expired_at`, `is_used` |
 
 

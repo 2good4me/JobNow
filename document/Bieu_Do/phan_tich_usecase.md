@@ -52,13 +52,14 @@ Phần này đặc tả việc bóc tách tỷ mỉ từng Use Case và quan h�
 
 | **Tác nhân** | **Quan hệ** | **Use Case** | **Mô tả / Quan hệ phụ (Include/Extend)** |
 | :--- | :---: | :--- | :--- |
-| **Candidate** | Association | **Cập nhật Hồ sơ (CV)** | Lưu kỹ năng, năm sinh, hình ảnh bản thân. |
+| **Candidate** | Association | **Cập nhật Hồ sơ (CV)** | Lưu kỹ năng, năm sinh, hình ảnh bản thân. Khởi tạo Trust Score = 100. |
 | **Candidate** | Association | **Xác thực Căn cước (eKYC)** | Nộp giấy CMND/CCCD.<br>-> **`<<include>>`**: Quét Tự động AI (System ép chạy so khớp chữ). |
 | **Candidate** | Association | **Tìm việc làm** | Nhập từ khóa để tra cứu quán cafe/sự kiện. |
 | **Candidate** | Association | **Ứng tuyển theo Ca (Apply)** | Chọn đúng Ca Sáng/Tối để gửi đơn.<br>-> **`<<include>>`**: Quét lịch trùng (System cưỡng chế check DB). |
 | **Candidate** | Association | **Lưu Việc làm (Bookmark)** | Lưu lại tin đăng vào danh sách Yêu thích. |
 | **Candidate** | Association | **Theo dõi (Follow) Quán** | Bấm Theo dõi Employer để nhận thông báo. |
-| **Candidate** | Association | **Chấm công (Check-in)** | Bấm Bắt đầu Đi làm.<br>-> **`<<extend>>`**: Dò tọa độ định vị GPS (Chỉ kích hoạt nếu Employer cấu hình Job là bắt buộc Check-in tại chỗ). |
+| **Candidate** | Association | **Chấm công (Check-in)** | Bấm Bắt đầu Đi làm bằng Nút Bấm Thủ Công.<br>-> **`<<include>>`**: Dò tọa độ định vị GPS 1 lần (<100m).<br>-> **`<<extend>>`**: Fallback Quét mã QR (Nếu GPS hỏng). |
+| **Candidate** | Association | **Hủy Ca Định Làm** | Bấm nút hủy ca trước giờ G.<br>-> **`<<extend>>`**: Trừ Điểm Uy Tín (Nếu sát giờ hoặc vô lý). |
 | **Candidate** | Association | **Chat với Employer** | Nhắn tin trao đổi nội dung công việc. |
 | **Candidate** | Association | **Báo cáo (Report)** | Báo cáo các sự cố (Lừa môi giới, thu phí vô lý). |
 | **Candidate** | Association | **Đánh giá Quán (Review)** | Rate sao cho Employer (Sau khi xong việc). |
@@ -67,16 +68,16 @@ Phần này đặc tả việc bóc tách tỷ mỉ từng Use Case và quan h�
 
 | **Tác nhân** | **Quan hệ** | **Use Case** | **Mô tả / Quan hệ phụ (Include/Extend)** |
 | :--- | :---: | :--- | :--- |
-| **Employer** | Association | **Cập nhật Hồ sơ Doanh nghiệp** | Chỉnh sửa tên Cửa hàng, Ảnh Avatar, Bio. |
-| **Employer** | Association | **Xác thực Kinh doanh (eKYC)** | Nộp GPKD hoặc Giấy tờ thuê nhà.<br>-> **`<<include>>`**: Quét Tự động AI (System bóc tách chữ). |
-| **Employer** | Association | **Nạp Tiền vào Ví** | Bơm số dư cho tài khoản `balance` thông qua Cổng thanh toán. |
-| **Employer** | Association | **Mua Gói Dịch Vụ (Subscription)** | Mua gói VIP tháng (Unlimit Bài đăng).<br>-> **`<<include>>`**: Trừ Lượt Đăng / Trừ Số Dư (Hệ thống tính lại tiền). |
-| **Employer** | Association | **Mua Ghim Đẩy Top (Boost)** | Mua nhãn dán cho 1 bài viết để ngoi lên đầu. |
-| **Employer** | Association | **Đăng tin Tuyển dụng** | Điền thông tin tiêu đề, kỹ năng, lương...<br>-> **`<<extend>>`**: Cấu hình Yêu cầu GPS Check-in (Nếu cần ứng viên đến quán).<br>-> **`<<include>>`**: Chia Ca Làm Việc (Sáng/Chiều). |
+| **Employer** | Association | **Cập nhật Hồ sơ Doanh nghiệp** | Chỉnh sửa tên Cửa hàng, Ảnh Avatar, Bio. (Thành User Tier 1). |
+| **Employer** | Association | **Xác thực Kinh doanh (eKYC)** | Nộp GPKD hoặc Giấy tờ thuê nhà (Nâng cấp lên Tier 2 unlimit).<br>-> **`<<include>>`**: Quét Tự động AI. |
+| **Employer** | Association | **Mua Gói Chống Cháy (Boost Push Noti)** | Mua gói hú còi 100 ứng viên xung quanh để tìm người gấp. |
+| **Employer** | Association | **Mua Ghim Đẩy Top** | Mua nhãn dán cho 1 bài viết để ngoi lên đầu. |
+| **Employer** | Association | **Đăng tin Tuyển dụng** | Điền thông tin tiêu đề, kỹ năng, lương...<br>-> **`<<extend>>`**: Check Quota Tier 1 (Tối đa 1 Ca Active/Ngày).<br>-> **`<<extend>>`**: Tạo Ca Lặp Lại (T2-T6). |
 | **Employer** | Association | **Quản lý Ứng viên (Manage Applicants)** | Mở Dashboard danh sách người nộp đơn.<br>-> **`<<extend>>`**: Duyệt Đơn (Chấp nhận).<br>-> **`<<extend>>`**: Từ Chối Đơn (Reject). |
-| **Employer** | Association | **Xác nhận kết thúc & Trả Lương (Payment Output)** | Chốt giờ làm, đổi Status thành `PAID`. |
+| **Employer** | Association | **Xác nhận kết thúc & Trả Lương** | Chốt giờ làm, đổi Status thành `PAID` (Trả lương Tiền mặt/Chuyển khoản). |
+| **Employer** | Association | **Nạp Tiền Đóng Trễ Phí (Trust Deposit)** | Nạp tiền cứu lại điểm Uy Tín nếu lỡ hủy ca vô cớ quá nhiều. |
 | **Employer** | Association | **Chat với Candidate** | Nhắn tin phỏng vấn ứng viên. |
-| **Employer** | Association | **Báo cáo Ứng viên (Report)** | Cắm cờ "Bùng kèo" nếu Candidate biệt tăm. |
+| **Employer** | Association | **Báo cáo Ứng viên (Report)** | Cắm cờ "Bùng kèo" (No show) nếu Candidate biệt tăm. |
 | **Employer** | Association | **Đánh giá Ứng viên (Review)** | Rate sao cho người đi làm. |
 
 ### 3.4. Phân hệ Admin (Quản trị viên)

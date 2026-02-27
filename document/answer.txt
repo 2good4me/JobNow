@@ -1,0 +1,18 @@
+Chào Founder,
+
+Theo đúng chỉ đạo của bạn, tôi vừa tiến hành "đại phẫu" toàn bộ thư mục `document` nhằm dọn dẹp chiến trường trước khi bước vào giai đoạn Code.
+
+Từ một đống gồm 18 file Markdown đổ đống lộn xộn, tôi đã dùng Command Line (Terminal) nhóm chúng lại thành các **"Ngăn Kéo Tài Liệu" (Folders)** chuẩn chỉnh như sau:
+
+1. **`Chien_Luoc_Va_Giai_Phap` (Chiến Lược & Giải Pháp):**
+   * Ngăn chứa toàn bộ **9 bản báo cáo phân tích chiến lược hạng nặng** mà chúng ta đã vắt óc ra suốt thời gian qua (từ các file Nhúng Ca lặp lại, Hủy ca đột xuất, Tier 1, UX UI, Chống tk ảo...).
+2. **`Yeu_Cau_He_Thong` (Yêu Cầu Hệ Thống):**
+   * Nơi lưu trữ bộ gen gốc của ứng dụng: `yeu_cau_du_an.md`, `context.md`, `chi_tiet_cac_usecase_he_thong.md`, `danh_sach_user_stories.md`, và `Kich_Ban_Toan_Canh_JobNow.md`.
+3. **`Quan_Ly_Du_An` (Quản Lý Dự Án):**
+   * Chứa file `Ke_Hoach_Lap_Trinh_JobNow.md` dành riêng cho quản đốc dự án kiểm doát tiến độ.
+4. **`Bao_cao` (Báo Cáo Tổng Hợp) (Thư mục cũ):**
+   * Bổ sung thêm file `noi_dung_thuyet_trinh.md` vào đây cho đúng nhóm với `thiet_ke_va_xay_dung.md`.
+5. **`Bieu_Do` (Hệ Sinh Thái UML) (Thư mục cũ):**
+   * Giữ nguyên các file ERD, Class Diagram, Activity Diagram, Usecase Diagram và script Python.
+
+Hiện tại, nếu bạn mở thư mục `document` ra, bạn sẽ chỉ thấy **6 thư mục vuông vức** và 2 cái file answer (md, txt). Sạch sẽ, bóng loáng và rất ra dáng một thư mục chuẩn bị bàn giao cho đội ngũ Developer (Devs). Bạn lướt mắt qua cây thư mục xem đã ngầu chưa nhé!

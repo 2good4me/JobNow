@@ -26,16 +26,17 @@ Tài liệu này mô tả luồng công việc (Workflow) và các điểm ra qu
 
 *   **Bước 1: Bắt đầu ca làm**
     *   Candidate đến địa điểm làm việc.
-    *   Candidate bấm nút "Check-in".
+    *   Candidate bấm nút "Check-in" bằng tay.
     *   **Hệ thống kiểm tra vị trí (Decision):**
-        *   *Nếu sai vị trí (>200m):* Báo lỗi, yêu cầu thử lại.
-        *   *Nếu đúng vị trí:* Ghi nhận Check-in thành công -> Bắt đầu tính giờ làm.
+        *   *Hợp lệ (<100m):* Ghi nhận Check-in thành công.
+        *   *Không hợp lệ (>100m) hoặc Không bật GPS:* Yêu cầu Quét Mã QR của Chủ Quán để Backup.
+        *   *Nếu Quét QR thành công:* Ghi nhận Check-in thành công -> Bắt đầu tính giờ làm.
+        *   *Nếu thất bại:* Báo lỗi, không cho bắt đầu.
 
 *   **Bước 2: Kết thúc ca làm**
     *   Candidate hoàn thành công việc.
     *   Candidate bấm nút "Check-out".
     *   Hệ thống ghi nhận giờ về.
-    *   Candidate (Tùy chọn): Chụp ảnh báo cáo kết quả công việc.
 
 ---
 
@@ -44,9 +45,9 @@ Tài liệu này mô tả luồng công việc (Workflow) và các điểm ra qu
 
 *   **Bước 1: Xác nhận hoàn thành**
     *   Sau khi ca làm kết thúc, Employer bấm nút "Xác nhận hoàn thành".
-    *   **Quyết định thanh toán (Nếu có):**
-        *   Hệ thống kiểm tra trạng thái thanh toán lương.
-        *   Nếu chưa trả -> Nhắc Employer thanh toán.
+    *   **Xác nhận Lương Tiền Mặt:**
+        *   Hệ thống hỏi Employer: "Đã thanh toán tiền lương cho ứng viên chưa?".
+        *   Nếu Chọn Xong -> Đóng Job lại. (Hệ thống tính nợ 5.000đ/Job cho Quán).
 
 *   **Bước 2: Đánh giá chéo (Review)**
     *   Hệ thống mở khóa chức năng đánh giá cho cả 2 bên.
