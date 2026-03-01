@@ -1,10 +1,12 @@
 import express from 'express';
 import cors from 'cors';
 import * as Sentry from '@sentry/node';
+import { env } from './config/env';
+import './config/firebase';
 
 // Initialize Express app
 const app = express();
-const port = process.env.PORT || 3001;
+const port = env.PORT || 3001;
 
 // Middleware
 app.use(cors());
