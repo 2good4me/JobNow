@@ -4,6 +4,7 @@ import * as Sentry from '@sentry/node';
 import { env } from './config/env';
 import './config/firebase';
 import authRoutes from './routes/auth';
+import jobRoutes from './routes/jobs';
 
 // Initialize Express app
 const app = express();
@@ -15,6 +16,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/jobs', jobRoutes);
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'OK', service: 'JobNow API' });
 });
