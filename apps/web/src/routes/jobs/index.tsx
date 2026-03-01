@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
 import React from 'react';
-import { JobSearchFilter } from '../features/jobs/components/JobSearchFilter';
-import { JobList } from '../features/jobs/components/JobList';
-import { JobCardProps } from '../features/jobs/components/JobCard';
+import { JobSearchFilter } from '../../features/jobs/components/JobSearchFilter';
+import { JobList } from '../../features/jobs/components/JobList';
+import { JobCardProps } from '../../features/jobs/components/JobCard';
 
 export const Route = createFileRoute('/jobs/')({
   component: JobsPage,

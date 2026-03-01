@@ -1,6 +1,5 @@
 import { createRootRoute, Outlet, Link } from '@tanstack/react-router';
-import React from 'react';
-import { BriefcaseBusiness, LogIn, Menu, Search, User, MapPin } from 'lucide-react';
+import { BriefcaseBusiness, Menu, Search } from 'lucide-react';
 import { useAuth } from '../features/auth/context/AuthContext';
 
 export const Route = createRootRoute({
@@ -8,7 +7,7 @@ export const Route = createRootRoute({
 });
 
 function RootLayout() {
-    const { user, logout } = useAuth();
+    const { user, signOut } = useAuth();
 
     return (
         <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
@@ -61,7 +60,7 @@ function RootLayout() {
                                 </div>
                                 <div className="h-4 w-px bg-slate-200 mx-2" />
                                 <button
-                                    onClick={() => logout()}
+                                    onClick={() => signOut()}
                                     className="text-xs font-semibold text-slate-500 hover:text-red-600 transition-colors"
                                 >
                                     Đăng xuất

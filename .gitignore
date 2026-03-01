@@ -54,6 +54,6 @@ next-env.d.ts
 *.sln
 *.sw?
 
-# AI Agents & Skills
-.agents/
-.agent/
+# # AI Agents & Skills
+# .agents/
+# .agent/
