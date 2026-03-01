@@ -7,7 +7,13 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import { auth } from '@/config/firebase';
-import { UserPlus, Eye, EyeOff, Mail, Lock, Loader2, BriefcaseBusiness, User } from 'lucide-react';
+import { createUserDocument } from '@/lib/firestore';
+import { useAuth } from '@/features/auth/context/AuthContext';
+import type { UserRole } from '@/features/auth/types/user';
+import {
+  UserPlus, Eye, EyeOff, Mail, Lock, Loader2,
+  BriefcaseBusiness, User, Search, Building2, ArrowLeft,
+} from 'lucide-react';
 
 export const Route = createFileRoute('/register')({
   component: RegisterPage,
@@ -27,7 +33,94 @@ function getFirebaseErrorVi(code: string): string {
   return map[code] ?? 'Đăng ký thất bại. Vui lòng thử lại.';
 }
 
-function RegisterPage() {
+/* ──────────────────────────────────────────────
+   Step 1: Role Selection
+   ────────────────────────────────────────────── */
+function RoleSelector({
+  onSelect,
+}: {
+  onSelect: (role: UserRole) => void;
+}) {
+  return (
+    <div className="min-h-[85vh] flex items-center justify-center py-12 px-4">
+      <div className="w-full max-w-[540px]">
+        <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100 p-8 sm:p-10">
+
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-lg shadow-primary-500/25 mb-5">
+              <BriefcaseBusiness className="w-7 h-7 text-white" />
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 font-heading">
+              Bạn muốn sử dụng JobNow để...
+            </h1>
+            <p className="mt-1.5 text-slate-500 text-sm">
+              Chọn vai trò phù hợp với bạn
+            </p>
+          </div>
+
+          {/* Role Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Candidate */}
+            <button
+              type="button"
+              onClick={() => onSelect('CANDIDATE')}
+              className="group relative flex flex-col items-center gap-3 p-6 rounded-2xl border-2 border-slate-200 bg-white hover:border-primary-500 hover:bg-primary-50/50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all duration-200 cursor-pointer"
+            >
+              <div className="w-14 h-14 rounded-2xl bg-blue-100 group-hover:bg-blue-200 flex items-center justify-center transition-colors">
+                <Search className="w-7 h-7 text-blue-600" />
+              </div>
+              <div className="text-center">
+                <h3 className="font-bold text-slate-900 text-lg">Tìm việc</h3>
+                <p className="text-sm text-slate-500 mt-1">
+                  Tìm việc thời vụ gần bạn, ứng tuyển nhanh chóng
+                </p>
+              </div>
+              <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-primary-500 transition-colors pointer-events-none" />
+            </button>
+
+            {/* Employer */}
+            <button
+              type="button"
+              onClick={() => onSelect('EMPLOYER')}
+              className="group relative flex flex-col items-center gap-3 p-6 rounded-2xl border-2 border-slate-200 bg-white hover:border-emerald-500 hover:bg-emerald-50/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all duration-200 cursor-pointer"
+            >
+              <div className="w-14 h-14 rounded-2xl bg-emerald-100 group-hover:bg-emerald-200 flex items-center justify-center transition-colors">
+                <Building2 className="w-7 h-7 text-emerald-600" />
+              </div>
+              <div className="text-center">
+                <h3 className="font-bold text-slate-900 text-lg">Tuyển dụng</h3>
+                <p className="text-sm text-slate-500 mt-1">
+                  Đăng tin & tìm ứng viên phù hợp cho cửa hàng
+                </p>
+              </div>
+              <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-emerald-500 transition-colors pointer-events-none" />
+            </button>
+          </div>
+
+          {/* Footer */}
+          <p className="mt-7 text-center text-sm text-slate-500">
+            Đã có tài khoản?{' '}
+            <Link to="/login" className="font-semibold text-primary-600 hover:text-primary-500 transition-colors">
+              Đăng nhập
+            </Link>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────
+   Step 2: Registration Form
+   ────────────────────────────────────────────── */
+function RegisterForm({
+  selectedRole,
+  onBack,
+}: {
+  selectedRole: UserRole;
+  onBack: () => void;
+}) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -37,8 +130,15 @@ function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const navigate = useNavigate();
+  const { refreshProfile } = useAuth();
 
   const busy = loading || googleLoading;
+
+  const isCandidate = selectedRole === 'CANDIDATE';
+  const roleLabel = isCandidate ? 'Tìm việc' : 'Tuyển dụng';
+  const roleBadgeColor = isCandidate
+    ? 'bg-blue-100 text-blue-700'
+    : 'bg-emerald-100 text-emerald-700';
 
   const validate = (): string | null => {
     if (name.trim().length < 2) return 'Vui lòng nhập họ tên (tối thiểu 2 ký tự).';
@@ -58,6 +158,16 @@ function RegisterPage() {
     try {
       const userCred = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(userCred.user, { displayName: name.trim() });
+
+      // Create Firestore user document with selected role
+      await createUserDocument(userCred.user.uid, {
+        email: email,
+        full_name: name.trim(),
+        role: selectedRole,
+        avatar_url: userCred.user.photoURL,
+      });
+
+      await refreshProfile();
       navigate({ to: '/' });
     } catch (err: any) {
       setError(getFirebaseErrorVi(err.code));
@@ -70,7 +180,17 @@ function RegisterPage() {
     setError('');
     setGoogleLoading(true);
     try {
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+
+      // Create Firestore user document immediately with selected role
+      await createUserDocument(result.user.uid, {
+        email: result.user.email || '',
+        full_name: result.user.displayName || '',
+        role: selectedRole,
+        avatar_url: result.user.photoURL,
+      });
+
+      await refreshProfile();
       navigate({ to: '/' });
     } catch (err: any) {
       setError(getFirebaseErrorVi(err.code));
@@ -99,6 +219,22 @@ function RegisterPage() {
       <div className="w-full max-w-[440px]">
         <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100 p-8 sm:p-10">
 
+          {/* Back + Role Badge */}
+          <div className="flex items-center justify-between mb-6">
+            <button
+              type="button"
+              onClick={onBack}
+              className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-700 transition-colors cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Quay lại
+            </button>
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${roleBadgeColor}`}>
+              {isCandidate ? <Search className="w-3 h-3" /> : <Building2 className="w-3 h-3" />}
+              {roleLabel}
+            </span>
+          </div>
+
           {/* Logo + Title */}
           <div className="text-center mb-8">
             <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-lg shadow-primary-500/25 mb-5">
@@ -107,7 +243,11 @@ function RegisterPage() {
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 font-heading">
               Tạo tài khoản
             </h1>
-            <p className="mt-1.5 text-slate-500 text-sm">Bắt đầu tìm việc thời vụ ngay hôm nay</p>
+            <p className="mt-1.5 text-slate-500 text-sm">
+              {isCandidate
+                ? 'Bắt đầu tìm việc thời vụ ngay hôm nay'
+                : 'Đăng tin tuyển dụng và tìm ứng viên nhanh chóng'}
+            </p>
           </div>
 
           {/* Error */}
@@ -152,7 +292,7 @@ function RegisterPage() {
             {/* Full Name */}
             <div>
               <label htmlFor="reg-name" className="block text-sm font-semibold text-slate-700 mb-1.5">
-                Họ và tên
+                {isCandidate ? 'Họ và tên' : 'Tên người đại diện'}
               </label>
               <div className="relative">
                 <User className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-slate-400" />
@@ -162,7 +302,7 @@ function RegisterPage() {
                   autoComplete="name"
                   required
                   disabled={busy}
-                  placeholder="Nguyễn Văn A"
+                  placeholder={isCandidate ? 'Nguyễn Văn A' : 'Nguyễn Văn A'}
                   value={name}
                   onChange={e => setName(e.target.value)}
                   className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all disabled:opacity-50"
@@ -291,5 +431,23 @@ function RegisterPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/* ──────────────────────────────────────────────
+   Main: 2-step registration orchestrator
+   ────────────────────────────────────────────── */
+function RegisterPage() {
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+
+  if (!selectedRole) {
+    return <RoleSelector onSelect={setSelectedRole} />;
+  }
+
+  return (
+    <RegisterForm
+      selectedRole={selectedRole}
+      onBack={() => setSelectedRole(null)}
+    />
   );
 }

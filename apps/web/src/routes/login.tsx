@@ -6,6 +6,7 @@ import {
   signInWithPopup,
 } from 'firebase/auth';
 import { auth } from '@/config/firebase';
+import { useAuth } from '@/features/auth/context/AuthContext';
 import { LogIn, Eye, EyeOff, Mail, Lock, Loader2, BriefcaseBusiness } from 'lucide-react';
 
 export const Route = createFileRoute('/login')({
@@ -36,6 +37,7 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const navigate = useNavigate();
+  const { refreshProfile } = useAuth();
 
   const busy = loading || googleLoading;
 
@@ -45,6 +47,7 @@ function LoginPage() {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      await refreshProfile();
       navigate({ to: '/' });
     } catch (err: any) {
       setError(getFirebaseErrorVi(err.code));
@@ -58,6 +61,7 @@ function LoginPage() {
     setGoogleLoading(true);
     try {
       await signInWithPopup(auth, googleProvider);
+      await refreshProfile();
       navigate({ to: '/' });
     } catch (err: any) {
       setError(getFirebaseErrorVi(err.code));

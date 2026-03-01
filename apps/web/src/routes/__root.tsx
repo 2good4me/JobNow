@@ -1,13 +1,27 @@
-import { createRootRoute, Outlet, Link } from '@tanstack/react-router';
-import { BriefcaseBusiness, Menu, Search } from 'lucide-react';
+import { createRootRoute, Outlet, Link, useNavigate } from '@tanstack/react-router';
+import { BriefcaseBusiness, Menu, Search, Building2 } from 'lucide-react';
 import { useAuth } from '../features/auth/context/AuthContext';
+import { useEffect } from 'react';
 
 export const Route = createRootRoute({
     component: RootLayout,
 });
 
 function RootLayout() {
-    const { user, signOut } = useAuth();
+    const { user, userProfile, role, needsOnboarding, signOut } = useAuth();
+    const navigate = useNavigate();
+
+    // Redirect to onboarding if user is logged in but has no profile
+    useEffect(() => {
+        if (needsOnboarding) {
+            navigate({ to: '/onboarding' });
+        }
+    }, [needsOnboarding, navigate]);
+
+    const roleLabel = role === 'EMPLOYER' ? 'Nhà tuyển dụng' : 'Ứng viên';
+    const roleBadgeColor = role === 'EMPLOYER'
+        ? 'text-emerald-600'
+        : 'text-primary-600';
 
     return (
         <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
@@ -26,12 +40,25 @@ function RootLayout() {
 
                         {/* Desktop Navigation */}
                         <nav className="hidden md:flex gap-6">
-                            <Link to="/jobs" className="text-sm font-semibold text-slate-600 hover:text-primary-600 transition-colors [&.active]:text-primary-600 [&.active]:after:absolute [&.active]:after:-bottom-4 [&.active]:after:left-0 [&.active]:after:w-full [&.active]:after:h-1 [&.active]:after:bg-primary-600 [&.active]:after:rounded-t-full relative">
-                                Tìm việc quanh đây
-                            </Link>
-                            <Link to="/" className="text-sm font-semibold text-slate-600 hover:text-primary-600 transition-colors">
-                                Nhà tuyển dụng
-                            </Link>
+                            {role === 'EMPLOYER' ? (
+                                <>
+                                    <Link to="/" className="text-sm font-semibold text-slate-600 hover:text-primary-600 transition-colors [&.active]:text-primary-600 relative">
+                                        Dashboard
+                                    </Link>
+                                    <Link to="/jobs" className="text-sm font-semibold text-slate-600 hover:text-primary-600 transition-colors [&.active]:text-primary-600 [&.active]:after:absolute [&.active]:after:-bottom-4 [&.active]:after:left-0 [&.active]:after:w-full [&.active]:after:h-1 [&.active]:after:bg-primary-600 [&.active]:after:rounded-t-full relative">
+                                        Tin tuyển dụng
+                                    </Link>
+                                </>
+                            ) : (
+                                <>
+                                    <Link to="/jobs" className="text-sm font-semibold text-slate-600 hover:text-primary-600 transition-colors [&.active]:text-primary-600 [&.active]:after:absolute [&.active]:after:-bottom-4 [&.active]:after:left-0 [&.active]:after:w-full [&.active]:after:h-1 [&.active]:after:bg-primary-600 [&.active]:after:rounded-t-full relative">
+                                        Tìm việc quanh đây
+                                    </Link>
+                                    <Link to="/" className="text-sm font-semibold text-slate-600 hover:text-primary-600 transition-colors">
+                                        Nhà tuyển dụng
+                                    </Link>
+                                </>
+                            )}
                         </nav>
                     </div>
 
@@ -52,16 +79,23 @@ function RootLayout() {
                         ) : (
                             <div className="hidden md:flex items-center gap-4 bg-white/80 pl-2 pr-4 py-1.5 rounded-full border border-slate-200 shadow-sm">
                                 <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold">
-                                    {user.email?.[0].toUpperCase() || 'U'}
+                                    {(userProfile?.full_name?.[0] || user.email?.[0] || 'U').toUpperCase()}
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-xs font-bold text-slate-800 leading-none">{user.email?.split('@')[0]}</span>
-                                    <span className="text-[10px] text-primary-600 font-semibold uppercase mt-0.5">Ứng viên</span>
+                                    <span className="text-xs font-bold text-slate-800 leading-none">
+                                        {userProfile?.full_name || user.email?.split('@')[0]}
+                                    </span>
+                                    <span className={`text-[10px] font-semibold uppercase mt-0.5 flex items-center gap-0.5 ${roleBadgeColor}`}>
+                                        {role === 'EMPLOYER'
+                                            ? <><Building2 className="w-2.5 h-2.5" /> {roleLabel}</>
+                                            : <><Search className="w-2.5 h-2.5" /> {roleLabel}</>
+                                        }
+                                    </span>
                                 </div>
                                 <div className="h-4 w-px bg-slate-200 mx-2" />
                                 <button
                                     onClick={() => signOut()}
-                                    className="text-xs font-semibold text-slate-500 hover:text-red-600 transition-colors"
+                                    className="text-xs font-semibold text-slate-500 hover:text-red-600 transition-colors cursor-pointer"
                                 >
                                     Đăng xuất
                                 </button>
