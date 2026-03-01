@@ -3,6 +3,7 @@ import cors from 'cors';
 import * as Sentry from '@sentry/node';
 import { env } from './config/env';
 import './config/firebase';
+import authRoutes from './routes/auth';
 
 // Initialize Express app
 const app = express();
@@ -13,6 +14,7 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
+app.use('/api/auth', authRoutes);
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'OK', service: 'JobNow API' });
 });

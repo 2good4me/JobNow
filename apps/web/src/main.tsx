@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider, createRouter } from '@tanstack/react-router';
 import { routeTree } from './routeTree.gen.tsx';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AuthProvider } from '@/features/auth/context/AuthContext';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import './index.css';
 
@@ -29,7 +30,9 @@ createRoot(document.getElementById('root')!).render(
         <ThemeProvider theme={theme}>
             <CssBaseline />
             <QueryClientProvider client={queryClient}>
-                <RouterProvider router={router} />
+                <AuthProvider>
+                    <RouterProvider router={router} />
+                </AuthProvider>
             </QueryClientProvider>
         </ThemeProvider>
     </StrictMode>
