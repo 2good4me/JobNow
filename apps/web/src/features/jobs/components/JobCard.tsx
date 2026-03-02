@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Clock, DollarSign, ChevronRight } from 'lucide-react';
+import { MapPin, Clock, DollarSign, ChevronRight, Briefcase } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from '@tanstack/react-router';
 
@@ -13,6 +13,9 @@ export interface JobCardProps {
     postedAt: Date;
     isHot?: boolean;
     className?: string;
+    address?: string;
+    category?: string;
+    shifts?: { id: string; name: string; start_time: string; end_time: string; quantity: number }[];
 }
 
 export function JobCard({
@@ -24,7 +27,10 @@ export function JobCard({
     distance,
     postedAt,
     isHot,
-    className
+    className,
+    address,
+    category,
+    shifts,
 }: JobCardProps) {
 
     const formatSalaryAmount = (amount: number) => {
@@ -56,6 +62,13 @@ export function JobCard({
         return rtf.format(daysDifference, 'day');
     };
 
+    // Get the first shift info for display
+    const firstShift = shifts?.[0];
+    const shiftDisplay = firstShift
+        ? `${firstShift.name}: ${firstShift.start_time} - ${firstShift.end_time}`
+        : 'Linh hoạt';
+    const totalSlots = shifts?.reduce((sum, s) => sum + s.quantity, 0) || 0;
+
     return (
         <Link to={`/jobs`} className="block w-full">
             <div className={cn(
@@ -67,12 +80,14 @@ export function JobCard({
                     <div className="flex gap-2 flex-wrap">
                         {isHot && (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-accent-50 text-accent-600 border border-accent-100">
-                                Lương cao
+                                🔥 Lương cao
                             </span>
                         )}
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-50 text-primary-600 border border-primary-100">
-                            Part-time
-                        </span>
+                        {category && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-50 text-primary-600 border border-primary-100">
+                                {category}
+                            </span>
+                        )}
                     </div>
 
                     <span className="text-xs text-slate-400 font-medium whitespace-nowrap">
@@ -100,27 +115,23 @@ export function JobCard({
                     <div className="flex items-center text-slate-600 text-sm">
                         <MapPin className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
                         <span className="truncate">
-                            Khách sạn Mường Thanh {distance !== undefined && <span className="font-medium text-primary-600 ml-1">({formatDistance(distance)})</span>}
+                            {address || 'Chưa có địa chỉ'} {distance !== undefined && <span className="font-medium text-primary-600 ml-1">({formatDistance(distance)})</span>}
                         </span>
                     </div>
 
                     <div className="flex items-center text-slate-600 text-sm">
                         <Clock className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
-                        <span className="truncate">Sáng: 08:00 - 12:00</span>
+                        <span className="truncate">{shiftDisplay}</span>
                     </div>
                 </div>
 
                 {/* Footer Action */}
                 <div className="pt-4 border-t border-slate-100 flex items-center justify-between mt-auto">
-                    <div className="flex -space-x-2">
-                        {[1, 2, 3].map((i) => (
-                            <div key={i} className="w-7 h-7 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-500">
-                                U
-                            </div>
-                        ))}
-                        <div className="w-7 h-7 rounded-full bg-slate-50 border-2 border-white flex items-center justify-center text-[10px] font-medium text-slate-500">
-                            +5
-                        </div>
+                    <div className="flex items-center gap-2">
+                        <Briefcase className="w-4 h-4 text-slate-400" />
+                        <span className="text-xs text-slate-500 font-medium">
+                            Cần {totalSlots} người {shifts && shifts.length > 1 && `• ${shifts.length} ca`}
+                        </span>
                     </div>
                     <div className="flex items-center text-sm font-semibold text-primary-600 group-hover:translate-x-1 transition-transform">
                         Chi tiết <ChevronRight className="w-4 h-4 ml-0.5" />

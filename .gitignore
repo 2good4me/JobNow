@@ -57,3 +57,6 @@ next-env.d.ts
 # # AI Agents & Skills
 # .agents/
 # .agent/
+
+
+serviceAccountKey.json

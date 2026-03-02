@@ -891,6 +891,11 @@
       "sourceType": "github",
       "computedHash": "a1a0b5952537df776e2d8f311e30074561709e7fd0a49a691a45f4ffdf12df22"
     },
+    "database-migrations": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "c27f9b1edf5bfecabb5a5a345f476a46566ce29e29e4b9d4c80d336ef5ca784f"
+    },
     "database-schema-designer": {
       "source": "davila7/claude-code-templates",
       "sourceType": "github",
@@ -1025,6 +1030,11 @@
       "source": "davila7/claude-code-templates",
       "sourceType": "github",
       "computedHash": "c7e06231f1504944dff0e5ba1f52b90977cc14d11c244886d80117a2ab7271bb"
+    },
+    "docs-writer": {
+      "source": "google-gemini/gemini-cli",
+      "sourceType": "github",
+      "computedHash": "057ca87855e723550a666d1afda4b42b90aeb972372e5877029b3ce1a8f8e488"
     },
     "documentation-templates": {
       "source": "davila7/claude-code-templates",
@@ -1164,7 +1174,7 @@
     "figma": {
       "source": "davila7/claude-code-templates",
       "sourceType": "github",
-      "computedHash": "c27f3511082159406fd0aeab40d37c124448cb91734b083decdd31f97dd8bbe1"
+      "computedHash": "36a18d074be50ee2f9329946ead9c0c4b3fddc543108aedbd23bd098b0b58ddb"
     },
     "figma-implement-design": {
       "source": "davila7/claude-code-templates",
@@ -2156,6 +2166,11 @@
       "sourceType": "github",
       "computedHash": "143ccfb54bfe019553665335c71ebb9ecc682c5f9fd295712e7adde8695f37d2"
     },
+    "postgres-patterns": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "computedHash": "b3c8d800185133f468636d3728bc9662348ee95d77e939259f8c86eb01bfb13a"
+    },
     "postgres-schema-design": {
       "source": "davila7/claude-code-templates",
       "sourceType": "github",
@@ -2464,7 +2479,7 @@
     "react-best-practices": {
       "source": "davila7/claude-code-templates",
       "sourceType": "github",
-      "computedHash": "6c9fa18c51cb00c74e9eb6241d3d39e9b1624f09583505cdc2aff397d6082107"
+      "computedHash": "11ca78c0f5ac7585286331df5ba0ba6a9f3014b0844abea7fb01de5f7933f21e"
     },
     "react-dev": {
       "source": "davila7/claude-code-templates",
@@ -3320,21 +3335,6 @@
       "source": "davila7/claude-code-templates",
       "sourceType": "github",
       "computedHash": "567c9148687bbdfb8f81fc5837e5a589e568cdaeb3fc105d61123ee94c0f09ca"
-    },
-    "database-migrations": {
-      "source": "affaan-m/everything-claude-code",
-      "sourceType": "github",
-      "computedHash": "c27f9b1edf5bfecabb5a5a345f476a46566ce29e29e4b9d4c80d336ef5ca784f"
-    },
-    "docs-writer": {
-      "source": "google-gemini/gemini-cli",
-      "sourceType": "github",
-      "computedHash": "057ca87855e723550a666d1afda4b42b90aeb972372e5877029b3ce1a8f8e488"
-    },
-    "postgres-patterns": {
-      "source": "affaan-m/everything-claude-code",
-      "sourceType": "github",
-      "computedHash": "b3c8d800185133f468636d3728bc9662348ee95d77e939259f8c86eb01bfb13a"
     }
   }
 }

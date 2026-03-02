@@ -11,11 +11,13 @@ export interface ShiftData {
 
 export interface JobData {
     employer_id: string;
-    category_id?: string;
+    employer_name: string;
+    category?: string;
     title: string;
     description: string;
     salary: number;
     salary_type: 'HOURLY' | 'DAILY' | 'JOB';
+    address: string;
     location: { latitude: number; longitude: number };
     is_gps_required: boolean;
     status: 'OPEN' | 'FULL' | 'CLOSED' | 'HIDDEN';
@@ -53,49 +55,65 @@ export class JobService {
     }
 
     async getNearbyJobs(lat: number, lng: number, radiusInMeters: number) {
-        const center = [lat, lng] as geofire.Geopoint;
-        // Each item in 'bounds' represents a startAt/endAt pair. We have to execute
-        // a separate query for each pair.
-        const bounds = geofire.geohashQueryBounds(center, radiusInMeters);
-        const promises = [];
+        try {
+            console.log(`Searching nearby jobs: Lat=${lat}, Lng=${lng}, Radius=${radiusInMeters}m`);
+            const center = [lat, lng] as geofire.Geopoint;
+            const bounds = geofire.geohashQueryBounds(center, radiusInMeters);
+            const promises = [];
 
-        for (const b of bounds) {
-            const q = this.collection
-                .where('status', '==', 'OPEN')
-                .orderBy('geohash')
-                .startAt(b[0])
-                .endAt(b[1]);
+            for (const b of bounds) {
+                const q = this.collection
+                    .orderBy('geohash')
+                    .startAt(b[0])
+                    .endAt(b[1]);
+                promises.push(q.get());
+            }
 
-            promises.push(q.get());
-        }
+            const snapshots = await Promise.all(promises);
+            const matchingDocs: any[] = [];
 
-        const snapshots = await Promise.all(promises);
-        const matchingDocs: any[] = [];
+            for (const snap of snapshots) {
+                for (const doc of snap.docs) {
+                    const data = doc.data();
 
-        for (const snap of snapshots) {
-            for (const doc of snap.docs) {
-                const job = doc.data() as JobData;
-                const location = job.location;
-                const jobLat = location.latitude;
-                const jobLng = location.longitude;
+                    // Safter data access
+                    if (!data || !data.location || typeof data.location.latitude !== 'number' || typeof data.location.longitude !== 'number') {
+                        console.warn(`Skipping invalid job document: ${doc.id}`);
+                        continue;
+                    }
 
-                // We have to filter out a few false positives due to GeoHash accuracy
-                const distanceInKm = geofire.distanceBetween([jobLat, jobLng], center);
-                const distanceInM = distanceInKm * 1000;
+                    const jobLat = data.location.latitude;
+                    const jobLng = data.location.longitude;
 
-                if (distanceInM <= radiusInMeters) {
-                    matchingDocs.push({
-                        id: doc.id,
-                        distance: distanceInM,
-                        ...job
-                    });
+                    const distanceInKm = geofire.distanceBetween([jobLat, jobLng], center);
+                    const distanceInM = distanceInKm * 1000;
+
+                    if (distanceInM <= radiusInMeters && data.status === 'OPEN') {
+                        // Format dates for JSON serialization
+                        const formattedJob = { ...data };
+                        if (formattedJob.created_at && typeof (formattedJob.created_at as any).toDate === 'function') {
+                            formattedJob.created_at = (formattedJob.created_at as any).toDate().toISOString();
+                        }
+                        if (formattedJob.updated_at && typeof (formattedJob.updated_at as any).toDate === 'function') {
+                            formattedJob.updated_at = (formattedJob.updated_at as any).toDate().toISOString();
+                        }
+
+                        matchingDocs.push({
+                            id: doc.id,
+                            distance: Math.round(distanceInM),
+                            ...formattedJob
+                        });
+                    }
                 }
             }
-        }
 
-        // Sort by distance ascending
-        matchingDocs.sort((a, b) => a.distance - b.distance);
-        return matchingDocs;
+            matchingDocs.sort((a, b) => a.distance - b.distance);
+            console.log(`Found ${matchingDocs.length} nearby jobs`);
+            return matchingDocs;
+        } catch (error) {
+            console.error('Error in jobService.getNearbyJobs:', error);
+            throw error; // Rethrow to be caught by controller
+        }
     }
 }
 
