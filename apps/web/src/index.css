@@ -152,3 +152,57 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ── Chatbot popup animation ─────────────────── */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ── Guide prose content styling ─────────────── */
+.guide-prose h3 {
+  @apply text-lg font-heading font-bold text-slate-800 mt-6 mb-3;
+}
+
+.guide-prose p {
+  @apply text-[15px] text-slate-600 leading-relaxed mb-4;
+}
+
+.guide-prose ol {
+  @apply list-decimal list-inside space-y-2 mb-4 pl-1;
+}
+
+.guide-prose ul {
+  @apply list-disc list-inside space-y-2 mb-4 pl-1;
+}
+
+.guide-prose li {
+  @apply text-[15px] text-slate-600 leading-relaxed;
+}
+
+.guide-prose strong {
+  @apply font-semibold text-slate-800;
+}
+
+.guide-prose .step-box {
+  @apply bg-primary-50/60 border border-primary-100 rounded-xl p-4 mb-4;
+}
+
+.guide-prose .tip-box {
+  @apply bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 text-amber-800;
+}
+
+.guide-prose .warning-box {
+  @apply bg-red-50 border border-red-200 rounded-xl p-4 mb-4 text-red-700;
+}

@@ -9,6 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SupportCenterDataRouteImport } from './routes/support-center-data'
+import { Route as SupportCenterRouteImport } from './routes/support-center'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
@@ -25,6 +27,16 @@ import { Route as CandidateShiftsRouteImport } from './routes/candidate/shifts'
 import { Route as CandidateProfileRouteImport } from './routes/candidate/profile'
 import { Route as CandidateChatRouteImport } from './routes/candidate/chat'
 
+const SupportCenterDataRoute = SupportCenterDataRouteImport.update({
+  id: '/support-center-data',
+  path: '/support-center-data',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SupportCenterRoute = SupportCenterRouteImport.update({
+  id: '/support-center',
+  path: '/support-center',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
@@ -107,6 +119,8 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/register': typeof RegisterRoute
+  '/support-center': typeof SupportCenterRoute
+  '/support-center-data': typeof SupportCenterDataRoute
   '/candidate/chat': typeof CandidateChatRoute
   '/candidate/profile': typeof CandidateProfileRoute
   '/candidate/shifts': typeof CandidateShiftsRoute
@@ -124,6 +138,8 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/register': typeof RegisterRoute
+  '/support-center': typeof SupportCenterRoute
+  '/support-center-data': typeof SupportCenterDataRoute
   '/candidate/chat': typeof CandidateChatRoute
   '/candidate/profile': typeof CandidateProfileRoute
   '/candidate/shifts': typeof CandidateShiftsRoute
@@ -142,6 +158,8 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/register': typeof RegisterRoute
+  '/support-center': typeof SupportCenterRoute
+  '/support-center-data': typeof SupportCenterDataRoute
   '/candidate/chat': typeof CandidateChatRoute
   '/candidate/profile': typeof CandidateProfileRoute
   '/candidate/shifts': typeof CandidateShiftsRoute
@@ -161,6 +179,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/register'
+    | '/support-center'
+    | '/support-center-data'
     | '/candidate/chat'
     | '/candidate/profile'
     | '/candidate/shifts'
@@ -178,6 +198,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/register'
+    | '/support-center'
+    | '/support-center-data'
     | '/candidate/chat'
     | '/candidate/profile'
     | '/candidate/shifts'
@@ -195,6 +217,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/register'
+    | '/support-center'
+    | '/support-center-data'
     | '/candidate/chat'
     | '/candidate/profile'
     | '/candidate/shifts'
@@ -213,6 +237,8 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
   RegisterRoute: typeof RegisterRoute
+  SupportCenterRoute: typeof SupportCenterRoute
+  SupportCenterDataRoute: typeof SupportCenterDataRoute
   CandidateChatRoute: typeof CandidateChatRoute
   CandidateProfileRoute: typeof CandidateProfileRoute
   CandidateShiftsRoute: typeof CandidateShiftsRoute
@@ -227,6 +253,20 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/support-center-data': {
+      id: '/support-center-data'
+      path: '/support-center-data'
+      fullPath: '/support-center-data'
+      preLoaderRoute: typeof SupportCenterDataRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/support-center': {
+      id: '/support-center'
+      path: '/support-center'
+      fullPath: '/support-center'
+      preLoaderRoute: typeof SupportCenterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/register': {
       id: '/register'
       path: '/register'
@@ -341,6 +381,8 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
   RegisterRoute: RegisterRoute,
+  SupportCenterRoute: SupportCenterRoute,
+  SupportCenterDataRoute: SupportCenterDataRoute,
   CandidateChatRoute: CandidateChatRoute,
   CandidateProfileRoute: CandidateProfileRoute,
   CandidateShiftsRoute: CandidateShiftsRoute,
