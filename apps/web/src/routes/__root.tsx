@@ -149,11 +149,15 @@ function RootLayout() {
                             <BriefcaseBusiness className="w-5 h-5 text-slate-400" />
                             <span className="font-heading font-bold text-lg text-slate-400">JobNow</span>
                         </div>
-                        <p className="text-sm text-slate-500">© 2026 JobNow Application. All rights reserved.</p>
+                        <div className="flex items-center gap-6">
+                            <Link to="/support-center" className="text-sm text-slate-500 hover:text-primary-600 transition-colors">
+                                Hỗ trợ
+                            </Link>
+                            <p className="text-sm text-slate-500">© 2026 JobNow Application. All rights reserved.</p>
+                        </div>
                     </div>
                 </footer>
             )}
         </div>
     );
 }
-
