@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import {
   User, ShieldCheck, ChevronRight, Settings,
@@ -37,6 +37,7 @@ function MenuItem({ icon: Icon, title, subtitle, onClick, variant = 'default' }:
 
 function CandidateProfilePage() {
   const { userProfile, signOut } = useAuth();
+  const navigate = useNavigate();
 
   // Example stats
   const trustScore = userProfile?.reputation_score || 85;
@@ -150,6 +151,7 @@ function CandidateProfilePage() {
           <MenuItem
             icon={HelpCircle}
             title="Trung tâm hỗ trợ"
+            onClick={() => navigate({ to: '/support-center' })}
           />
         </div>
 

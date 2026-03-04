@@ -378,6 +378,11 @@ function SupportCenter() {
     const [searchTerm, setSearchTerm] = useState('');
     const [activeCategory, setActiveCategory] = useState<string | null>(null);
     const [chatOpen, setChatOpen] = useState(false);
+
+    // Scroll to top on mount
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, []);
     const chatSectionRef = useRef<HTMLDivElement>(null);
 
     // No page scroll — chat panel stays in place
