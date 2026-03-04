@@ -15,6 +15,15 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as JobsIndexRouteImport } from './routes/jobs/index'
+import { Route as EmployerIndexRouteImport } from './routes/employer/index'
+import { Route as CandidateIndexRouteImport } from './routes/candidate/index'
+import { Route as EmployerProfileRouteImport } from './routes/employer/profile'
+import { Route as EmployerPostJobRouteImport } from './routes/employer/post-job'
+import { Route as EmployerChatRouteImport } from './routes/employer/chat'
+import { Route as EmployerApplicantsRouteImport } from './routes/employer/applicants'
+import { Route as CandidateShiftsRouteImport } from './routes/candidate/shifts'
+import { Route as CandidateProfileRouteImport } from './routes/candidate/profile'
+import { Route as CandidateChatRouteImport } from './routes/candidate/chat'
 
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
@@ -46,6 +55,51 @@ const JobsIndexRoute = JobsIndexRouteImport.update({
   path: '/jobs/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EmployerIndexRoute = EmployerIndexRouteImport.update({
+  id: '/employer/',
+  path: '/employer/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CandidateIndexRoute = CandidateIndexRouteImport.update({
+  id: '/candidate/',
+  path: '/candidate/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmployerProfileRoute = EmployerProfileRouteImport.update({
+  id: '/employer/profile',
+  path: '/employer/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmployerPostJobRoute = EmployerPostJobRouteImport.update({
+  id: '/employer/post-job',
+  path: '/employer/post-job',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmployerChatRoute = EmployerChatRouteImport.update({
+  id: '/employer/chat',
+  path: '/employer/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmployerApplicantsRoute = EmployerApplicantsRouteImport.update({
+  id: '/employer/applicants',
+  path: '/employer/applicants',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CandidateShiftsRoute = CandidateShiftsRouteImport.update({
+  id: '/candidate/shifts',
+  path: '/candidate/shifts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CandidateProfileRoute = CandidateProfileRouteImport.update({
+  id: '/candidate/profile',
+  path: '/candidate/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CandidateChatRoute = CandidateChatRouteImport.update({
+  id: '/candidate/chat',
+  path: '/candidate/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -53,6 +107,15 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/register': typeof RegisterRoute
+  '/candidate/chat': typeof CandidateChatRoute
+  '/candidate/profile': typeof CandidateProfileRoute
+  '/candidate/shifts': typeof CandidateShiftsRoute
+  '/employer/applicants': typeof EmployerApplicantsRoute
+  '/employer/chat': typeof EmployerChatRoute
+  '/employer/post-job': typeof EmployerPostJobRoute
+  '/employer/profile': typeof EmployerProfileRoute
+  '/candidate/': typeof CandidateIndexRoute
+  '/employer/': typeof EmployerIndexRoute
   '/jobs/': typeof JobsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -61,6 +124,15 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/register': typeof RegisterRoute
+  '/candidate/chat': typeof CandidateChatRoute
+  '/candidate/profile': typeof CandidateProfileRoute
+  '/candidate/shifts': typeof CandidateShiftsRoute
+  '/employer/applicants': typeof EmployerApplicantsRoute
+  '/employer/chat': typeof EmployerChatRoute
+  '/employer/post-job': typeof EmployerPostJobRoute
+  '/employer/profile': typeof EmployerProfileRoute
+  '/candidate': typeof CandidateIndexRoute
+  '/employer': typeof EmployerIndexRoute
   '/jobs': typeof JobsIndexRoute
 }
 export interface FileRoutesById {
@@ -70,6 +142,15 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/register': typeof RegisterRoute
+  '/candidate/chat': typeof CandidateChatRoute
+  '/candidate/profile': typeof CandidateProfileRoute
+  '/candidate/shifts': typeof CandidateShiftsRoute
+  '/employer/applicants': typeof EmployerApplicantsRoute
+  '/employer/chat': typeof EmployerChatRoute
+  '/employer/post-job': typeof EmployerPostJobRoute
+  '/employer/profile': typeof EmployerProfileRoute
+  '/candidate/': typeof CandidateIndexRoute
+  '/employer/': typeof EmployerIndexRoute
   '/jobs/': typeof JobsIndexRoute
 }
 export interface FileRouteTypes {
@@ -80,6 +161,15 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/register'
+    | '/candidate/chat'
+    | '/candidate/profile'
+    | '/candidate/shifts'
+    | '/employer/applicants'
+    | '/employer/chat'
+    | '/employer/post-job'
+    | '/employer/profile'
+    | '/candidate/'
+    | '/employer/'
     | '/jobs/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -88,6 +178,15 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/register'
+    | '/candidate/chat'
+    | '/candidate/profile'
+    | '/candidate/shifts'
+    | '/employer/applicants'
+    | '/employer/chat'
+    | '/employer/post-job'
+    | '/employer/profile'
+    | '/candidate'
+    | '/employer'
     | '/jobs'
   id:
     | '__root__'
@@ -96,6 +195,15 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/register'
+    | '/candidate/chat'
+    | '/candidate/profile'
+    | '/candidate/shifts'
+    | '/employer/applicants'
+    | '/employer/chat'
+    | '/employer/post-job'
+    | '/employer/profile'
+    | '/candidate/'
+    | '/employer/'
     | '/jobs/'
   fileRoutesById: FileRoutesById
 }
@@ -105,6 +213,15 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
   RegisterRoute: typeof RegisterRoute
+  CandidateChatRoute: typeof CandidateChatRoute
+  CandidateProfileRoute: typeof CandidateProfileRoute
+  CandidateShiftsRoute: typeof CandidateShiftsRoute
+  EmployerApplicantsRoute: typeof EmployerApplicantsRoute
+  EmployerChatRoute: typeof EmployerChatRoute
+  EmployerPostJobRoute: typeof EmployerPostJobRoute
+  EmployerProfileRoute: typeof EmployerProfileRoute
+  CandidateIndexRoute: typeof CandidateIndexRoute
+  EmployerIndexRoute: typeof EmployerIndexRoute
   JobsIndexRoute: typeof JobsIndexRoute
 }
 
@@ -152,6 +269,69 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof JobsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/employer/': {
+      id: '/employer/'
+      path: '/employer'
+      fullPath: '/employer/'
+      preLoaderRoute: typeof EmployerIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/candidate/': {
+      id: '/candidate/'
+      path: '/candidate'
+      fullPath: '/candidate/'
+      preLoaderRoute: typeof CandidateIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/employer/profile': {
+      id: '/employer/profile'
+      path: '/employer/profile'
+      fullPath: '/employer/profile'
+      preLoaderRoute: typeof EmployerProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/employer/post-job': {
+      id: '/employer/post-job'
+      path: '/employer/post-job'
+      fullPath: '/employer/post-job'
+      preLoaderRoute: typeof EmployerPostJobRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/employer/chat': {
+      id: '/employer/chat'
+      path: '/employer/chat'
+      fullPath: '/employer/chat'
+      preLoaderRoute: typeof EmployerChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/employer/applicants': {
+      id: '/employer/applicants'
+      path: '/employer/applicants'
+      fullPath: '/employer/applicants'
+      preLoaderRoute: typeof EmployerApplicantsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/candidate/shifts': {
+      id: '/candidate/shifts'
+      path: '/candidate/shifts'
+      fullPath: '/candidate/shifts'
+      preLoaderRoute: typeof CandidateShiftsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/candidate/profile': {
+      id: '/candidate/profile'
+      path: '/candidate/profile'
+      fullPath: '/candidate/profile'
+      preLoaderRoute: typeof CandidateProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/candidate/chat': {
+      id: '/candidate/chat'
+      path: '/candidate/chat'
+      fullPath: '/candidate/chat'
+      preLoaderRoute: typeof CandidateChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -161,6 +341,15 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
   RegisterRoute: RegisterRoute,
+  CandidateChatRoute: CandidateChatRoute,
+  CandidateProfileRoute: CandidateProfileRoute,
+  CandidateShiftsRoute: CandidateShiftsRoute,
+  EmployerApplicantsRoute: EmployerApplicantsRoute,
+  EmployerChatRoute: EmployerChatRoute,
+  EmployerPostJobRoute: EmployerPostJobRoute,
+  EmployerProfileRoute: EmployerProfileRoute,
+  CandidateIndexRoute: CandidateIndexRoute,
+  EmployerIndexRoute: EmployerIndexRoute,
   JobsIndexRoute: JobsIndexRoute,
 }
 export const routeTree = rootRouteImport

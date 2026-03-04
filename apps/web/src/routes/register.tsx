@@ -41,40 +41,67 @@ function getFirebaseErrorVi(code: string): string {
   return map[code] ?? 'Đăng ký thất bại. Vui lòng thử lại.';
 }
 
-/* ── Decorative Brand Panel ── */
-function BrandPanel({ role }: { role: UserRole }) {
-  const isCandidate = role === 'CANDIDATE';
-  const gradient = isCandidate
-    ? 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 40%, #7c3aed 70%, #a855f7 100%)'
-    : 'linear-gradient(135deg, #064e3b 0%, #059669 40%, #0d9488 70%, #06b6d4 100%)';
-
+/* ──────────────────────────────────────────────
+   Step 1: Role Selection (Mobile)
+   ────────────────────────────────────────────── */
+function RoleSelector({ onSelect }: { onSelect: (role: UserRole) => void }) {
   return (
-    <div className="hidden lg:flex relative w-[48%] min-h-screen items-center justify-center overflow-hidden"
-      style={{ background: gradient }}>
-      <div className="absolute top-16 left-16 w-72 h-72 rounded-full bg-white/5 animate-float-slow" />
-      <div className="absolute bottom-24 right-12 w-56 h-56 rounded-full bg-white/8 animate-float-slow delay-200" />
-      <div className="absolute top-1/3 right-24 w-20 h-20 rounded-full bg-white/10 animate-float-slow delay-400" />
-      <div className="absolute bottom-1/4 left-20 w-14 h-14 rounded-2xl rotate-45 bg-white/8 animate-float-slow delay-300" />
-      <div className="absolute inset-0 opacity-[0.03]"
-        style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
-      <div className="relative z-10 px-12 text-center max-w-md">
-        <div className="mx-auto w-20 h-20 rounded-3xl bg-white/15 backdrop-blur-sm flex items-center justify-center mb-8 shadow-2xl shadow-black/20 animate-fade-in-up">
-          {isCandidate
-            ? <Search className="w-10 h-10 text-white" />
-            : <Building2 className="w-10 h-10 text-white" />
-          }
+    <div className="min-h-[100dvh] bg-white flex flex-col">
+      {/* Gradient Header */}
+      <div className="relative bg-gradient-to-br from-primary-600 via-primary-700 to-purple-700 px-6 pt-12 pb-10 rounded-b-[32px] overflow-hidden">
+        <div className="absolute top-6 right-6 w-20 h-20 rounded-full bg-white/5" />
+        <div className="absolute -bottom-4 -left-4 w-28 h-28 rounded-full bg-white/5" />
+
+        <Link to="/login" className="absolute top-4 left-4 p-2 bg-white/10 rounded-full backdrop-blur-sm">
+          <ArrowLeft className="w-5 h-5 text-white" />
+        </Link>
+
+        <div className="text-center mt-4">
+          <div className="mx-auto w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center mb-4 shadow-lg">
+            <BriefcaseBusiness className="w-7 h-7 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-white font-heading">Tạo tài khoản</h1>
+          <p className="text-sm text-white/60 mt-1">Bạn muốn sử dụng JobNow để...</p>
         </div>
-        <h2 className="text-4xl font-extrabold text-white mb-4 font-heading leading-tight animate-fade-in-up delay-100">
-          {isCandidate ? (
-            <>Khởi đầu<br /><span className="text-white/80">sự nghiệp mới</span></>
-          ) : (
-            <>Tìm nhân sự<br /><span className="text-white/80">phù hợp ngay</span></>
-          )}
-        </h2>
-        <p className="text-white/60 text-base leading-relaxed animate-fade-in-up delay-200">
-          {isCandidate
-            ? 'Hàng ngàn cơ hội việc làm thời vụ đang chờ bạn. Đăng ký và ứng tuyển chỉ trong 30 giây.'
-            : 'Đăng tin tuyển dụng miễn phí, tiếp cận hàng ngàn ứng viên phù hợp trong khu vực.'}
+      </div>
+
+      {/* Cards */}
+      <div className="flex-1 px-6 -mt-4">
+        <div className="space-y-3 animate-fade-in-up">
+          {/* Candidate */}
+          <button
+            type="button"
+            onClick={() => onSelect('CANDIDATE')}
+            className="w-full flex items-center gap-4 p-5 bg-white rounded-2xl border-2 border-slate-200 shadow-sm hover:border-primary-400 hover:shadow-md active:scale-[0.98] transition-all cursor-pointer"
+          >
+            <div className="w-14 h-14 rounded-xl bg-primary-50 flex items-center justify-center shrink-0">
+              <Search className="w-7 h-7 text-primary-600" />
+            </div>
+            <div className="text-left">
+              <h3 className="font-bold text-slate-900">Tìm việc</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Tìm việc thời vụ gần bạn, ứng tuyển nhanh chóng</p>
+            </div>
+          </button>
+
+          {/* Employer */}
+          <button
+            type="button"
+            onClick={() => onSelect('EMPLOYER')}
+            className="w-full flex items-center gap-4 p-5 bg-white rounded-2xl border-2 border-slate-200 shadow-sm hover:border-emerald-400 hover:shadow-md active:scale-[0.98] transition-all cursor-pointer"
+          >
+            <div className="w-14 h-14 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+              <Building2 className="w-7 h-7 text-emerald-600" />
+            </div>
+            <div className="text-left">
+              <h3 className="font-bold text-slate-900">Tuyển dụng</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Đăng tin & tìm ứng viên phù hợp cho cửa hàng</p>
+            </div>
+          </button>
+        </div>
+
+        <p className="text-center text-sm text-slate-500 mt-6 mb-8">
+          Đã có tài khoản?{' '}
+          <Link to="/login" className="font-semibold text-primary-600">Đăng nhập</Link>
         </p>
       </div>
     </div>
@@ -82,79 +109,7 @@ function BrandPanel({ role }: { role: UserRole }) {
 }
 
 /* ──────────────────────────────────────────────
-   Step 1: Role Selection
-   ────────────────────────────────────────────── */
-function RoleSelector({ onSelect }: { onSelect: (role: UserRole) => void }) {
-  return (
-    <div className="min-h-[100dvh] flex items-center justify-center px-5 py-12 bg-slate-50">
-      <div className="w-full max-w-[560px]">
-        <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100/80 p-8 sm:p-10 animate-fade-in-up">
-
-          {/* Header */}
-          <div className="text-center mb-8">
-            <div className="mx-auto w-16 h-16 rounded-3xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-lg shadow-primary-500/25 mb-5">
-              <BriefcaseBusiness className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight text-slate-900">
-              Bạn muốn sử dụng JobNow để...
-            </h1>
-            <p className="mt-1.5 text-slate-500 text-sm">
-              Chọn vai trò phù hợp với bạn
-            </p>
-          </div>
-
-          {/* Role Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Candidate */}
-            <button
-              type="button"
-              onClick={() => onSelect('CANDIDATE')}
-              className="group relative flex flex-col items-center gap-4 p-7 rounded-2xl border-2 border-slate-200 bg-white hover:border-primary-500 hover:bg-primary-50/40 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all duration-300 cursor-pointer animate-fade-in-up delay-100"
-            >
-              <div className="w-16 h-16 rounded-2xl bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center transition-all duration-300 group-hover:scale-110">
-                <Search className="w-8 h-8 text-blue-600" />
-              </div>
-              <div className="text-center">
-                <h3 className="font-bold text-slate-900 text-lg">Tìm việc</h3>
-                <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">
-                  Tìm việc thời vụ gần bạn, ứng tuyển nhanh chóng
-                </p>
-              </div>
-            </button>
-
-            {/* Employer */}
-            <button
-              type="button"
-              onClick={() => onSelect('EMPLOYER')}
-              className="group relative flex flex-col items-center gap-4 p-7 rounded-2xl border-2 border-slate-200 bg-white hover:border-emerald-500 hover:bg-emerald-50/40 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all duration-300 cursor-pointer animate-fade-in-up delay-200"
-            >
-              <div className="w-16 h-16 rounded-2xl bg-emerald-50 group-hover:bg-emerald-100 flex items-center justify-center transition-all duration-300 group-hover:scale-110">
-                <Building2 className="w-8 h-8 text-emerald-600" />
-              </div>
-              <div className="text-center">
-                <h3 className="font-bold text-slate-900 text-lg">Tuyển dụng</h3>
-                <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">
-                  Đăng tin & tìm ứng viên phù hợp cho cửa hàng
-                </p>
-              </div>
-            </button>
-          </div>
-
-          {/* Footer */}
-          <p className="mt-8 text-center text-sm text-slate-500">
-            Đã có tài khoản?{' '}
-            <Link to="/login" className="font-semibold text-primary-600 hover:text-primary-500 transition-colors">
-              Đăng nhập
-            </Link>
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ──────────────────────────────────────────────
-   Step 2: Registration Form
+   Step 2: Registration Form (Mobile)
    ────────────────────────────────────────────── */
 function RegisterForm({ selectedRole, onBack }: { selectedRole: UserRole; onBack: () => void }) {
   const [tab, setTab] = useState<'email' | 'phone'>('email');
@@ -175,8 +130,6 @@ function RegisterForm({ selectedRole, onBack }: { selectedRole: UserRole; onBack
 
   const busy = loading || googleLoading;
   const isCandidate = selectedRole === 'CANDIDATE';
-  const roleLabel = isCandidate ? 'Tìm việc' : 'Tuyển dụng';
-  const roleBadgeColor = isCandidate ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700';
 
   /* reCAPTCHA */
   useEffect(() => {
@@ -194,15 +147,12 @@ function RegisterForm({ selectedRole, onBack }: { selectedRole: UserRole; onBack
     }
     return () => {
       if ((window as any).recaptchaVerifier) {
-        try {
-          (window as any).recaptchaVerifier.clear();
-        } catch (e) { }
+        try { (window as any).recaptchaVerifier.clear(); } catch (e) { }
         (window as any).recaptchaVerifier = null;
       }
     };
   }, [tab]);
 
-  /* Validate email form */
   const validate = (): string | null => {
     if (name.trim().length < 2) return 'Vui lòng nhập họ tên (tối thiểu 2 ký tự).';
     if (password.length < 6) return 'Mật khẩu cần tối thiểu 6 ký tự.';
@@ -214,7 +164,6 @@ function RegisterForm({ selectedRole, onBack }: { selectedRole: UserRole; onBack
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
     const validationError = validate();
     if (validationError) { setError(validationError); return; }
 
@@ -331,345 +280,214 @@ function RegisterForm({ selectedRole, onBack }: { selectedRole: UserRole; onBack
     return { level: score, label: 'Mạnh', color: 'bg-emerald-400' };
   })();
 
+  const gradientColor = isCandidate
+    ? 'from-primary-600 via-primary-700 to-purple-700'
+    : 'from-emerald-600 via-emerald-700 to-teal-700';
+
   return (
-    <div className="flex min-h-[100dvh]">
-      <BrandPanel role={selectedRole} />
+    <div className="min-h-[100dvh] bg-white flex flex-col">
+      {/* Gradient Header */}
+      <div className={`relative bg-gradient-to-br ${gradientColor} px-6 pt-12 pb-10 rounded-b-[32px] overflow-hidden`}>
+        <div className="absolute top-6 right-6 w-20 h-20 rounded-full bg-white/5" />
+        <div className="absolute -bottom-4 -left-4 w-28 h-28 rounded-full bg-white/5" />
 
-      {/* Right: Form */}
-      <div className="flex-1 flex items-center justify-center bg-slate-50 px-5 py-12 lg:px-12">
-        <div className="w-full max-w-[440px]">
+        <button onClick={onBack} className="absolute top-4 left-4 p-2 bg-white/10 rounded-full backdrop-blur-sm" type="button">
+          <ArrowLeft className="w-5 h-5 text-white" />
+        </button>
 
-          {/* Logo (mobile only) */}
-          <div className="lg:hidden text-center mb-8 animate-fade-in-up">
-            <Link to="/" className="inline-flex items-center gap-2.5">
-              <div className="bg-primary-600 p-2.5 rounded-2xl text-white shadow-lg shadow-primary-500/20">
-                <BriefcaseBusiness className="w-6 h-6" />
-              </div>
-              <span className="font-heading font-extrabold text-2xl tracking-tight text-slate-900">
-                Job<span className="text-primary-600">Now</span>
-              </span>
-            </Link>
-          </div>
-
-          {/* Card */}
-          <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100/80 p-8 sm:p-10 animate-fade-in-up delay-100">
-
-            {/* Back + Role Badge */}
-            <div className="flex items-center justify-between mb-6">
-              <button
-                type="button"
-                onClick={onBack}
-                className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-700 transition-colors cursor-pointer"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Quay lại
-              </button>
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${roleBadgeColor}`}>
-                {isCandidate ? <Search className="w-3 h-3" /> : <Building2 className="w-3 h-3" />}
-                {roleLabel}
-              </span>
-            </div>
-
-            {/* Header */}
-            <div className="text-center mb-8">
-              <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight text-slate-900">
-                Tạo tài khoản
-              </h1>
-              <p className="mt-1.5 text-slate-500 text-sm">
-                {isCandidate
-                  ? 'Bắt đầu tìm việc thời vụ ngay hôm nay'
-                  : 'Đăng tin tuyển dụng và tìm ứng viên nhanh chóng'}
-              </p>
-            </div>
-
-            {/* Error */}
-            {error && (
-              <div className="flex items-start gap-2.5 bg-red-50 text-red-700 text-sm p-3.5 rounded-2xl border border-red-100 mb-6 animate-fade-in-up" role="alert">
-                <svg className="w-4 h-4 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
-                <span>{error}</span>
-              </div>
-            )}
-
-            {/* Google */}
-            <button
-              type="button"
-              onClick={handleGoogle}
-              disabled={busy}
-              className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white border border-slate-200 rounded-2xl text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer shadow-sm"
-            >
-              {googleLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                </svg>
-              )}
-              Tiếp tục với Google
-            </button>
-
-            {/* Divider */}
-            <div className="relative my-7">
-              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200" /></div>
-              <div className="relative flex justify-center text-xs">
-                <span className="bg-white px-3 text-slate-400 uppercase tracking-wider font-medium">hoặc</span>
-              </div>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex bg-slate-100 rounded-2xl p-1 mb-6">
-              <button
-                type="button"
-                onClick={() => { setTab('email'); setError(''); }}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer ${tab === 'email' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                  }`}
-              >
-                <Mail className="w-4 h-4" /> Email
-              </button>
-              <button
-                type="button"
-                onClick={() => { setTab('phone'); setError(''); setOtpSent(false); setOtp(''); }}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer ${tab === 'phone' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                  }`}
-              >
-                <Phone className="w-4 h-4" /> Số điện thoại
-              </button>
-            </div>
-
-            {/* ── Tab: Email ── */}
-            {tab === 'email' && (
-              <form className="space-y-4 animate-fade-in-up" onSubmit={handleRegister} noValidate>
-                {/* Full Name */}
-                <div>
-                  <label htmlFor="reg-name" className="block text-sm font-semibold text-slate-700 mb-1.5">
-                    {isCandidate ? 'Họ và tên' : 'Tên người đại diện'}
-                  </label>
-                  <div className="relative">
-                    <User className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-slate-400" />
-                    <input
-                      id="reg-name"
-                      type="text"
-                      autoComplete="name"
-                      required
-                      disabled={busy}
-                      placeholder="Nguyễn Văn A"
-                      value={name}
-                      onChange={e => setName(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all disabled:opacity-50"
-                    />
-                  </div>
-                </div>
-
-                {/* Email */}
-                <div>
-                  <label htmlFor="reg-email" className="block text-sm font-semibold text-slate-700 mb-1.5">Email</label>
-                  <div className="relative">
-                    <Mail className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-slate-400" />
-                    <input
-                      id="reg-email"
-                      type="email"
-                      autoComplete="email"
-                      required
-                      disabled={busy}
-                      placeholder="you@example.com"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all disabled:opacity-50"
-                    />
-                  </div>
-                </div>
-
-                {/* Password */}
-                <div>
-                  <label htmlFor="reg-pw" className="block text-sm font-semibold text-slate-700 mb-1.5">Mật khẩu</label>
-                  <div className="relative">
-                    <Lock className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-slate-400" />
-                    <input
-                      id="reg-pw"
-                      type={showPw ? 'text' : 'password'}
-                      autoComplete="new-password"
-                      required
-                      disabled={busy}
-                      placeholder="Tối thiểu 6 ký tự"
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      className="w-full pl-11 pr-11 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all disabled:opacity-50"
-                    />
-                    <button
-                      type="button"
-                      tabIndex={-1}
-                      onClick={() => setShowPw(v => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-                      aria-label={showPw ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-                    >
-                      {showPw ? <EyeOff className="w-[18px] h-[18px]" /> : <Eye className="w-[18px] h-[18px]" />}
-                    </button>
-                  </div>
-                  {password && (
-                    <div className="mt-2 flex items-center gap-2">
-                      <div className="flex gap-1 flex-1">
-                        {[1, 2, 3, 4, 5].map(i => (
-                          <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${i <= pwStrength.level ? pwStrength.color : 'bg-slate-200'}`} />
-                        ))}
-                      </div>
-                      <span className="text-xs font-medium text-slate-500">{pwStrength.label}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Confirm Password */}
-                <div>
-                  <label htmlFor="reg-confirm" className="block text-sm font-semibold text-slate-700 mb-1.5">Xác nhận mật khẩu</label>
-                  <div className="relative">
-                    <Lock className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-slate-400" />
-                    <input
-                      id="reg-confirm"
-                      type={showPw ? 'text' : 'password'}
-                      autoComplete="new-password"
-                      required
-                      disabled={busy}
-                      placeholder="Nhập lại mật khẩu"
-                      value={confirmPw}
-                      onChange={e => setConfirmPw(e.target.value)}
-                      className={`w-full pl-11 pr-4 py-3 bg-slate-50 border rounded-2xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all disabled:opacity-50 ${confirmPw && confirmPw !== password ? 'border-red-300' : 'border-slate-200'}`}
-                    />
-                  </div>
-                  {confirmPw && confirmPw !== password && (
-                    <p className="mt-1 text-xs text-red-500">Mật khẩu không khớp</p>
-                  )}
-                </div>
-
-                {/* Submit */}
-                <button
-                  type="submit"
-                  disabled={busy}
-                  className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl text-sm font-bold text-white bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-500 hover:to-primary-400 shadow-lg shadow-primary-500/25 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
-                >
-                  {loading ? (
-                    <><Loader2 className="w-4 h-4 animate-spin" /> Đang tạo tài khoản…</>
-                  ) : (
-                    <><UserPlus className="w-4 h-4" /> Tạo tài khoản</>
-                  )}
-                </button>
-              </form>
-            )}
-
-            {/* ── Tab: Phone — Enter number ── */}
-            {tab === 'phone' && !otpSent && (
-              <form className="space-y-4 animate-fade-in-up" onSubmit={handleSendOtp} noValidate>
-                {/* Name */}
-                <div>
-                  <label htmlFor="reg-phone-name" className="block text-sm font-semibold text-slate-700 mb-1.5">
-                    {isCandidate ? 'Họ và tên' : 'Tên người đại diện'}
-                  </label>
-                  <div className="relative">
-                    <User className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-slate-400" />
-                    <input
-                      id="reg-phone-name"
-                      type="text"
-                      autoComplete="name"
-                      required
-                      disabled={busy}
-                      placeholder="Nguyễn Văn A"
-                      value={name}
-                      onChange={e => setName(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all disabled:opacity-50"
-                    />
-                  </div>
-                </div>
-
-                {/* Phone */}
-                <div>
-                  <label htmlFor="reg-phone" className="block text-sm font-semibold text-slate-700 mb-1.5">Số điện thoại</label>
-                  <div className="relative">
-                    <Phone className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-slate-400" />
-                    <input
-                      id="reg-phone"
-                      type="tel"
-                      autoComplete="tel"
-                      required
-                      disabled={busy}
-                      placeholder="0912 345 678"
-                      value={phone}
-                      onChange={e => setPhone(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all disabled:opacity-50"
-                    />
-                  </div>
-                  <p className="mt-1.5 text-xs text-slate-400">Chúng tôi sẽ gửi mã xác thực 6 số qua SMS</p>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={busy}
-                  className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl text-sm font-bold text-white bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-500 hover:to-primary-400 shadow-lg shadow-primary-500/25 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
-                >
-                  {loading ? (
-                    <><Loader2 className="w-4 h-4 animate-spin" /> Đang gửi mã…</>
-                  ) : (
-                    <><ArrowRight className="w-4 h-4" /> Gửi mã OTP</>
-                  )}
-                </button>
-              </form>
-            )}
-
-            {/* ── Tab: Phone — OTP Verify ── */}
-            {tab === 'phone' && otpSent && (
-              <form className="space-y-4 animate-fade-in-up" onSubmit={handleVerifyOtp} noValidate>
-                <div className="text-center mb-2">
-                  <div className="mx-auto w-14 h-14 rounded-2xl bg-emerald-100 flex items-center justify-center mb-3">
-                    <ShieldCheck className="w-7 h-7 text-emerald-600" />
-                  </div>
-                  <p className="text-sm text-slate-600">
-                    Nhập mã 6 số đã gửi đến <strong className="text-slate-800">{phone}</strong>
-                  </p>
-                </div>
-                <div>
-                  <input
-                    id="reg-otp"
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    autoComplete="one-time-code"
-                    required
-                    disabled={busy}
-                    placeholder="000000"
-                    value={otp}
-                    onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
-                    className="w-full text-center text-2xl font-bold tracking-[0.4em] py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 placeholder:text-slate-300 focus:bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all disabled:opacity-50"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={busy || otp.length < 6}
-                  className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl text-sm font-bold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 shadow-lg shadow-emerald-500/25 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
-                >
-                  {loading ? (
-                    <><Loader2 className="w-4 h-4 animate-spin" /> Đang xác thực…</>
-                  ) : (
-                    <><ShieldCheck className="w-4 h-4" /> Xác thực & Tạo tài khoản</>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setOtpSent(false); setOtp(''); setError(''); (window as any).recaptchaVerifier = null; }}
-                  className="w-full text-center text-sm font-semibold text-slate-500 hover:text-slate-700 transition-colors cursor-pointer py-1"
-                >
-                  ← Nhập lại số điện thoại
-                </button>
-              </form>
-            )}
-
-            {/* Footer */}
-            <p className="mt-7 text-center text-sm text-slate-500">
-              Đã có tài khoản?{' '}
-              <Link to="/login" className="font-semibold text-primary-600 hover:text-primary-500 transition-colors">
-                Đăng nhập
-              </Link>
-            </p>
-          </div>
+        {/* Role badge */}
+        <div className="absolute top-4 right-4">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white/15 rounded-full text-[11px] font-bold text-white backdrop-blur-sm">
+            {isCandidate ? <><Search className="w-3 h-3" /> Tìm việc</> : <><Building2 className="w-3 h-3" /> Tuyển dụng</>}
+          </span>
         </div>
+
+        <div className="text-center mt-4">
+          <div className="mx-auto w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center mb-4 shadow-lg">
+            <UserPlus className="w-7 h-7 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-white font-heading">Đăng ký</h1>
+          <p className="text-sm text-white/60 mt-1">
+            {isCandidate ? 'Bắt đầu tìm việc ngay hôm nay' : 'Tìm ứng viên phù hợp nhanh chóng'}
+          </p>
+        </div>
+      </div>
+
+      {/* Form Area */}
+      <div className="flex-1 px-6 -mt-4 pb-8 overflow-y-auto">
+        <div className="bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 p-6 animate-fade-in-up">
+          {/* Error */}
+          {error && (
+            <div className="flex items-start gap-2 bg-red-50 text-red-700 text-sm p-3 rounded-xl border border-red-100 mb-4" role="alert">
+              <svg className="w-4 h-4 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Google */}
+          <button type="button" onClick={handleGoogle} disabled={busy}
+            className="w-full flex items-center justify-center gap-3 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition-all cursor-pointer shadow-sm">
+            {googleLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+              </svg>
+            )}
+            Tiếp tục với Google
+          </button>
+
+          {/* Divider */}
+          <div className="relative my-5">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200" /></div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-white px-3 text-slate-400 uppercase tracking-wider font-medium">hoặc</span>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex bg-slate-100 rounded-xl p-1 mb-5">
+            <button type="button" onClick={() => { setTab('email'); setError(''); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${tab === 'email' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>
+              <Mail className="w-4 h-4" /> Email
+            </button>
+            <button type="button" onClick={() => { setTab('phone'); setError(''); setOtpSent(false); setOtp(''); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${tab === 'phone' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>
+              <Phone className="w-4 h-4" /> Điện thoại
+            </button>
+          </div>
+
+          {/* ── Email Form ─── */}
+          {tab === 'email' && (
+            <form className="space-y-3 animate-fade-in-up" onSubmit={handleRegister} noValidate>
+              <div>
+                <label htmlFor="reg-name" className="block text-xs font-semibold text-slate-600 mb-1">
+                  {isCandidate ? 'Họ và tên' : 'Tên người đại diện'}
+                </label>
+                <div className="relative">
+                  <User className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input id="reg-name" type="text" autoComplete="name" required disabled={busy}
+                    placeholder="Nguyễn Văn A" value={name} onChange={e => setName(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all disabled:opacity-50" />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="reg-email" className="block text-xs font-semibold text-slate-600 mb-1">Email</label>
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input id="reg-email" type="email" autoComplete="email" required disabled={busy}
+                    placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all disabled:opacity-50" />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="reg-pw" className="block text-xs font-semibold text-slate-600 mb-1">Mật khẩu</label>
+                <div className="relative">
+                  <Lock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input id="reg-pw" type={showPw ? 'text' : 'password'} autoComplete="new-password" required disabled={busy}
+                    placeholder="Tối thiểu 6 ký tự" value={password} onChange={e => setPassword(e.target.value)}
+                    className="w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all disabled:opacity-50" />
+                  <button type="button" tabIndex={-1} onClick={() => setShowPw(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer">
+                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {password && (
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <div className="flex gap-1 flex-1">
+                      {[1, 2, 3, 4, 5].map(i => (
+                        <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${i <= pwStrength.level ? pwStrength.color : 'bg-slate-200'}`} />
+                      ))}
+                    </div>
+                    <span className="text-[10px] font-medium text-slate-500">{pwStrength.label}</span>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="reg-confirm" className="block text-xs font-semibold text-slate-600 mb-1">Xác nhận mật khẩu</label>
+                <div className="relative">
+                  <Lock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input id="reg-confirm" type={showPw ? 'text' : 'password'} autoComplete="new-password" required disabled={busy}
+                    placeholder="Nhập lại mật khẩu" value={confirmPw} onChange={e => setConfirmPw(e.target.value)}
+                    className={`w-full pl-10 pr-4 py-3 bg-slate-50 border rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all disabled:opacity-50 ${confirmPw && confirmPw !== password ? 'border-red-300' : 'border-slate-200'}`} />
+                </div>
+                {confirmPw && confirmPw !== password && <p className="mt-1 text-[11px] text-red-500">Mật khẩu không khớp</p>}
+              </div>
+
+              <button type="submit" disabled={busy}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-primary-600 to-primary-500 shadow-lg shadow-primary-500/25 disabled:opacity-50 transition-all cursor-pointer mt-1">
+                {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Đang tạo tài khoản…</> : <><UserPlus className="w-4 h-4" /> Tạo tài khoản</>}
+              </button>
+            </form>
+          )}
+
+          {/* ── Phone Form ─── */}
+          {tab === 'phone' && !otpSent && (
+            <form className="space-y-3 animate-fade-in-up" onSubmit={handleSendOtp} noValidate>
+              <div>
+                <label htmlFor="reg-phone-name" className="block text-xs font-semibold text-slate-600 mb-1">
+                  {isCandidate ? 'Họ và tên' : 'Tên người đại diện'}
+                </label>
+                <div className="relative">
+                  <User className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input id="reg-phone-name" type="text" autoComplete="name" required disabled={busy}
+                    placeholder="Nguyễn Văn A" value={name} onChange={e => setName(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all disabled:opacity-50" />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="reg-phone" className="block text-xs font-semibold text-slate-600 mb-1">Số điện thoại</label>
+                <div className="relative">
+                  <Phone className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input id="reg-phone" type="tel" autoComplete="tel" required disabled={busy}
+                    placeholder="0912 345 678" value={phone} onChange={e => setPhone(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all disabled:opacity-50" />
+                </div>
+                <p className="mt-1 text-[11px] text-slate-400">Mã xác thực 6 số sẽ được gửi qua SMS</p>
+              </div>
+              <button type="submit" disabled={busy}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-primary-600 to-primary-500 shadow-lg shadow-primary-500/25 disabled:opacity-50 transition-all cursor-pointer">
+                {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Đang gửi mã…</> : <><ArrowRight className="w-4 h-4" /> Gửi mã OTP</>}
+              </button>
+            </form>
+          )}
+
+          {/* ── OTP Verify ─── */}
+          {tab === 'phone' && otpSent && (
+            <form className="space-y-3 animate-fade-in-up" onSubmit={handleVerifyOtp} noValidate>
+              <div className="text-center mb-2">
+                <div className="mx-auto w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center mb-2">
+                  <ShieldCheck className="w-6 h-6 text-emerald-600" />
+                </div>
+                <p className="text-sm text-slate-600">
+                  Nhập mã 6 số đã gửi đến <strong className="text-slate-800">{phone}</strong>
+                </p>
+              </div>
+              <input id="reg-otp" type="text" inputMode="numeric" maxLength={6} autoComplete="one-time-code"
+                required disabled={busy} placeholder="000000" value={otp}
+                onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
+                className="w-full text-center text-2xl font-bold tracking-[0.4em] py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-300 focus:bg-white focus:ring-2 focus:ring-primary-500 outline-none transition-all disabled:opacity-50" />
+              <button type="submit" disabled={busy || otp.length < 6}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 shadow-lg shadow-emerald-500/25 disabled:opacity-50 transition-all cursor-pointer">
+                {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Đang xác thực…</> : <><ShieldCheck className="w-4 h-4" /> Xác thực & Tạo tài khoản</>}
+              </button>
+              <button type="button"
+                onClick={() => { setOtpSent(false); setOtp(''); setError(''); (window as any).recaptchaVerifier = null; }}
+                className="w-full text-center text-sm font-semibold text-slate-500 hover:text-slate-700 cursor-pointer py-1">
+                ← Nhập lại số điện thoại
+              </button>
+            </form>
+          )}
+        </div>
+
+        <p className="text-center text-sm text-slate-500 mt-5">
+          Đã có tài khoản?{' '}
+          <Link to="/login" className="font-semibold text-primary-600">Đăng nhập</Link>
+        </p>
       </div>
 
       <div id="recaptcha-container-reg" />
@@ -677,9 +495,7 @@ function RegisterForm({ selectedRole, onBack }: { selectedRole: UserRole; onBack
   );
 }
 
-/* ──────────────────────────────────────────────
-   Main: 2-step registration orchestrator
-   ────────────────────────────────────────────── */
+/* ── Main Orchestrator ─── */
 function RegisterPage() {
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
 

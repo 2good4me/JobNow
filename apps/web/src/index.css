@@ -85,6 +85,18 @@
   }
 }
 
+@keyframes slideInBottom {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 .animate-fade-in-up {
   animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -100,6 +112,10 @@
 
 .animate-pulse-ring {
   animation: pulse-ring 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-slide-in-bottom {
+  animation: slideInBottom 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* stagger delays */
@@ -125,4 +141,14 @@
 
 .delay-600 {
   animation-delay: 0.6s;
+}
+
+/* ── Hide scrollbar for filter chips ─────────── */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
