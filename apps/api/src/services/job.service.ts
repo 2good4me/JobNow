@@ -11,35 +11,114 @@ export interface ShiftData {
 
 export interface JobData {
     employer_id: string;
-    employer_name: string;
+    employer_name?: string;
+    category_id?: string;
     category?: string;
     title: string;
     description: string;
     salary: number;
-    salary_type: 'HOURLY' | 'DAILY' | 'JOB';
+    salary_type: 'HOURLY' | 'DAILY' | 'JOB' | 'PER_SHIFT' | 'MONTHLY';
     address: string;
     location: { latitude: number; longitude: number };
     is_gps_required: boolean;
-    status: 'OPEN' | 'FULL' | 'CLOSED' | 'HIDDEN';
+    status: 'OPEN' | 'ACTIVE' | 'FULL' | 'CLOSED' | 'HIDDEN';
     shifts: ShiftData[];
     geohash?: string;
     created_at?: admin.firestore.FieldValue;
     updated_at?: admin.firestore.FieldValue;
 }
 
+export interface NearbySearchOptions {
+    lat: number;
+    lng: number;
+    radiusInMeters: number;
+    salaryMin?: number;
+    salaryMax?: number;
+    categoryIds?: string[];
+    shiftTime?: 'MORNING' | 'AFTERNOON' | 'EVENING' | 'NIGHT';
+    keyword?: string;
+    limit: number;
+    offset: number;
+}
+
+export interface NearbySearchResult {
+    items: Array<Record<string, unknown>>;
+    nextOffset?: number;
+}
+
+function normalizeStatus(status: unknown): string {
+    const s = String(status ?? 'OPEN').toUpperCase();
+    if (s === 'ACTIVE') return 'OPEN';
+    return s;
+}
+
+function getShiftStartTime(shift: Record<string, unknown>): string {
+    return String(shift.start_time ?? shift.startTime ?? '00:00');
+}
+
+function shiftToBucket(startTime: string): NearbySearchOptions['shiftTime'] {
+    const hour = Number(startTime.split(':')[0] ?? 0);
+    if (hour >= 5 && hour < 12) return 'MORNING';
+    if (hour >= 12 && hour < 17) return 'AFTERNOON';
+    if (hour >= 17 && hour < 22) return 'EVENING';
+    return 'NIGHT';
+}
+
+function getTimestampMillis(value: unknown): number {
+    if (!value) return 0;
+    const ts = value as { toMillis?: () => number; toDate?: () => Date };
+    if (typeof ts.toMillis === 'function') return ts.toMillis();
+    if (typeof ts.toDate === 'function') return ts.toDate().getTime();
+
+    const date = new Date(String(value));
+    return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
+function includesKeyword(job: Record<string, unknown>, keyword?: string): boolean {
+    if (!keyword) return true;
+    const target = keyword.trim().toLowerCase();
+    if (!target) return true;
+
+    const haystack = [
+        String(job.title ?? ''),
+        String(job.description ?? ''),
+        String(job.category ?? ''),
+        String(job.category_id ?? ''),
+        String(job.address ?? ''),
+    ].join(' ').toLowerCase();
+
+    return haystack.includes(target);
+}
+
+function matchCategory(job: Record<string, unknown>, categoryIds?: string[]): boolean {
+    if (!categoryIds?.length) return true;
+    const normalized = categoryIds.map((item) => item.toLowerCase());
+    const category = String(job.category ?? '').toLowerCase();
+    const categoryId = String(job.category_id ?? '').toLowerCase();
+    return normalized.includes(category) || normalized.includes(categoryId);
+}
+
+function matchShift(shiftTime: NearbySearchOptions['shiftTime'], shiftsRaw: unknown): boolean {
+    if (!shiftTime) return true;
+    if (!Array.isArray(shiftsRaw)) return false;
+
+    return shiftsRaw.some((shift) => {
+        if (!shift || typeof shift !== 'object') return false;
+        const startTime = getShiftStartTime(shift as Record<string, unknown>);
+        return shiftToBucket(startTime) === shiftTime;
+    });
+}
+
 export class JobService {
     private collection = db.collection('jobs');
 
     async createJob(data: JobData) {
-        // Generate geohash
         const geohash = geofire.geohashForLocation([data.location.latitude, data.location.longitude]);
-
         const newJobRef = this.collection.doc();
 
-        // Convert shifts to include generated IDs if they don't have one
-        const shiftsWithIds = data.shifts.map(shift => ({
+        const shiftsWithIds = data.shifts.map((shift) => ({
             ...shift,
-            id: shift.id || db.collection('dummy').doc().id // Generate a unique ID for the shift
+            id: shift.id || db.collection('dummy').doc().id,
         }));
 
         const jobPayload = {
@@ -47,73 +126,79 @@ export class JobService {
             shifts: shiftsWithIds,
             geohash,
             created_at: admin.firestore.FieldValue.serverTimestamp(),
-            updated_at: admin.firestore.FieldValue.serverTimestamp()
+            updated_at: admin.firestore.FieldValue.serverTimestamp(),
         };
 
         await newJobRef.set(jobPayload);
         return { id: newJobRef.id, ...jobPayload };
     }
 
-    async getNearbyJobs(lat: number, lng: number, radiusInMeters: number) {
-        try {
-            console.log(`Searching nearby jobs: Lat=${lat}, Lng=${lng}, Radius=${radiusInMeters}m`);
-            const center = [lat, lng] as geofire.Geopoint;
-            const bounds = geofire.geohashQueryBounds(center, radiusInMeters);
-            const promises = [];
+    async getNearbyJobs(options: NearbySearchOptions): Promise<NearbySearchResult> {
+        const {
+            lat,
+            lng,
+            radiusInMeters,
+            salaryMin,
+            salaryMax,
+            categoryIds,
+            shiftTime,
+            keyword,
+            limit,
+            offset,
+        } = options;
 
-            for (const b of bounds) {
-                const q = this.collection
-                    .orderBy('geohash')
-                    .startAt(b[0])
-                    .endAt(b[1]);
-                promises.push(q.get());
+        const center = [lat, lng] as geofire.Geopoint;
+        const bounds = geofire.geohashQueryBounds(center, radiusInMeters);
+        const queries = bounds.map((bound) => this.collection.orderBy('geohash').startAt(bound[0]).endAt(bound[1]).get());
+
+        const snapshots = await Promise.all(queries);
+        const deduped = new Map<string, Record<string, unknown>>();
+
+        for (const snap of snapshots) {
+            for (const doc of snap.docs) {
+                const raw = doc.data() as Record<string, unknown>;
+                const location = raw.location as { latitude?: number; longitude?: number } | undefined;
+                const jobLat = Number(location?.latitude ?? 0);
+                const jobLng = Number(location?.longitude ?? 0);
+
+                if (!jobLat || !jobLng) continue;
+
+                const distanceInM = geofire.distanceBetween([jobLat, jobLng], center) * 1000;
+                if (distanceInM > radiusInMeters) continue;
+
+                const status = normalizeStatus(raw.status);
+                if (status !== 'OPEN') continue;
+
+                const salary = Number(raw.salary ?? 0);
+                if (salaryMin !== undefined && salary < salaryMin) continue;
+                if (salaryMax !== undefined && salary > salaryMax) continue;
+
+                if (!matchCategory(raw, categoryIds)) continue;
+                if (!matchShift(shiftTime, raw.shifts)) continue;
+                if (!includesKeyword(raw, keyword)) continue;
+
+                deduped.set(doc.id, {
+                    ...raw,
+                    id: doc.id,
+                    status,
+                    distance: Math.round(distanceInM),
+                });
             }
-
-            const snapshots = await Promise.all(promises);
-            const matchingDocs: any[] = [];
-
-            for (const snap of snapshots) {
-                for (const doc of snap.docs) {
-                    const data = doc.data();
-
-                    // Safter data access
-                    if (!data || !data.location || typeof data.location.latitude !== 'number' || typeof data.location.longitude !== 'number') {
-                        console.warn(`Skipping invalid job document: ${doc.id}`);
-                        continue;
-                    }
-
-                    const jobLat = data.location.latitude;
-                    const jobLng = data.location.longitude;
-
-                    const distanceInKm = geofire.distanceBetween([jobLat, jobLng], center);
-                    const distanceInM = distanceInKm * 1000;
-
-                    if (distanceInM <= radiusInMeters && data.status === 'OPEN') {
-                        // Format dates for JSON serialization
-                        const formattedJob = { ...data };
-                        if (formattedJob.created_at && typeof (formattedJob.created_at as any).toDate === 'function') {
-                            formattedJob.created_at = (formattedJob.created_at as any).toDate().toISOString();
-                        }
-                        if (formattedJob.updated_at && typeof (formattedJob.updated_at as any).toDate === 'function') {
-                            formattedJob.updated_at = (formattedJob.updated_at as any).toDate().toISOString();
-                        }
-
-                        matchingDocs.push({
-                            id: doc.id,
-                            distance: Math.round(distanceInM),
-                            ...formattedJob
-                        });
-                    }
-                }
-            }
-
-            matchingDocs.sort((a, b) => a.distance - b.distance);
-            console.log(`Found ${matchingDocs.length} nearby jobs`);
-            return matchingDocs;
-        } catch (error) {
-            console.error('Error in jobService.getNearbyJobs:', error);
-            throw error; // Rethrow to be caught by controller
         }
+
+        const sorted = Array.from(deduped.values()).sort((a, b) => {
+            const distanceDiff = Number(a.distance ?? 0) - Number(b.distance ?? 0);
+            if (distanceDiff !== 0) return distanceDiff;
+            return getTimestampMillis(b.created_at) - getTimestampMillis(a.created_at);
+        });
+
+        const sliced = sorted.slice(offset, offset + limit);
+        const nextOffset = offset + limit < sorted.length ? offset + limit : undefined;
+
+        return {
+            items: sliced,
+            nextOffset,
+        };
     }
 }
 

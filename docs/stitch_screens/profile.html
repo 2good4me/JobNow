@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>JobNow - Employer Profile</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark min-h-screen font-display text-slate-900 dark:text-slate-100 antialiased overflow-x-hidden">
+<div class="relative flex flex-col w-full max-w-md mx-auto min-h-screen bg-white dark:bg-slate-900 shadow-xl overflow-hidden">
+<!-- Top App Bar -->
+<div class="sticky top-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-slate-100 dark:border-slate-800 p-4 pb-2 flex items-center justify-between">
+<button class="flex items-center justify-center p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined text-slate-900 dark:text-white">arrow_back</span>
+</button>
+<h2 class="text-lg font-bold text-slate-900 dark:text-white flex-1 text-center">Hồ sơ nhà tuyển dụng</h2>
+<button class="flex items-center justify-center p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined text-slate-900 dark:text-white">share</span>
+</button>
+</div>
+<!-- Header Profile Section -->
+<div class="relative">
+<!-- Cover Photo -->
+<div class="w-full h-32 bg-slate-200 dark:bg-slate-800 bg-cover bg-center" data-alt="Modern cozy cafe interior with warm lighting" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCl4C4S9X2YNleaInOrnI1kgdBYYwzwbIK3lvEj0iX4Y38mH_Yu6i4pyQRgOx414C9rUydg8mKd1vaBQuDpiF-6i_bPxJ4I3xwA9Uwj0ZeGDpLfA0HWA8hR0tIKMRQKT4yXpPWfwqP5-chxzls-U5yxlGKNSXBXBxbvi7GmDtbYHOhpY2hMoRyvB67vrQ6XMbX7uY9K8E1sJW5ZBFTkH_JYHjH2RgZABT9NTp0T7drtX29kKmE-GH1-3hEIyo-CtfPMbg7oCunEqe4');">
+<div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+</div>
+<div class="px-4 -mt-12 mb-4 flex flex-col items-center relative z-10">
+<!-- Avatar -->
+<div class="w-24 h-24 rounded-full border-4 border-white dark:border-slate-900 overflow-hidden bg-white shadow-md">
+<img alt="Cafe Logo" class="w-full h-full object-cover" data-alt="Minimalist cafe logo design on paper" src="https://lh3.googleusercontent.com/aida-public/AB6AXuADzSp_UobsoHVi5OKCxsiVaA8BX2s_F1nh2T9DWv45UIFUwnJGlF1iLjBRB8d3EgIYCI9EuCg8wYU06CuwqXML7zvB6duqVVoG1ego7Q4NtsSklcAeTSTGMgU2_vih23_ANApYaNKXjbYlvBP01_bT94dsnDvzyciKWb0ORrz020X-wGCfK2ScXvfBVM_QFCn1bIiQl-RnV_Nd8ChOneyL9u9bvRGPB17QUS8ANgjRnRPODvYA7poKJaOb1KhRIkYAUG--0vOcdUQ"/>
+</div>
+<!-- Name & Badges -->
+<div class="mt-3 flex flex-col items-center text-center">
+<div class="flex items-center gap-2">
+<h1 class="text-xl font-bold text-slate-900 dark:text-white">Quán Mộc Cafe</h1>
+<span class="material-symbols-outlined text-blue-500 text-[20px] fill-1">verified</span>
+</div>
+<div class="flex items-center gap-2 mt-1 text-sm">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-semibold border border-amber-200 dark:border-amber-800">
+<span class="material-symbols-outlined text-[14px]">workspace_premium</span>
+                            VIP Tier
+                        </span>
+<span class="text-slate-500 dark:text-slate-400">•</span>
+<span class="text-slate-600 dark:text-slate-300 font-medium">1.2k người theo dõi</span>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="flex w-full gap-3 mt-5">
+<button class="flex-1 h-10 rounded-xl bg-primary hover:bg-blue-700 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm shadow-blue-200 dark:shadow-none transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                        Theo dõi
+                    </button>
+<button class="flex-1 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-bold text-sm flex items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined text-[18px]">chat_bubble</span>
+                        Nhắn tin
+                    </button>
+</div>
+</div>
+</div>
+<!-- Trust Section -->
+<div class="px-4 py-2">
+<div class="grid grid-cols-2 gap-3">
+<div class="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex flex-col items-center justify-center gap-1">
+<span class="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wide">Điểm tin cậy</span>
+<div class="flex items-end gap-1">
+<span class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">92</span>
+<span class="text-sm font-medium text-slate-400 mb-1">/100</span>
+</div>
+</div>
+<div class="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex flex-col items-center justify-center gap-1">
+<span class="text-slate-500 dark:text-slate-400 text-xs font-medium uppercase tracking-wide">Đánh giá</span>
+<div class="flex items-center gap-1">
+<span class="text-2xl font-bold text-amber-500">4.6</span>
+<span class="material-symbols-outlined text-amber-500 fill-1">star</span>
+</div>
+</div>
+</div>
+<div class="flex gap-2 mt-3 overflow-x-auto no-scrollbar pb-1">
+<div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 shrink-0">
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+<span class="text-xs font-bold">Đã xác minh GPKD</span>
+</div>
+<div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 shrink-0">
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+<span class="text-xs font-bold">eKYC</span>
+</div>
+</div>
+</div>
+<!-- Info List -->
+<div class="px-4 py-2">
+<div class="flex flex-col gap-4 py-4 border-t border-slate-100 dark:border-slate-800">
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-slate-500 dark:text-slate-400">
+<span class="material-symbols-outlined text-[18px]">location_on</span>
+</div>
+<div>
+<p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Địa chỉ</p>
+<p class="text-sm text-slate-900 dark:text-white mt-0.5">123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM</p>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-slate-500 dark:text-slate-400">
+<span class="material-symbols-outlined text-[18px]">call</span>
+</div>
+<div>
+<p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Hotline</p>
+<p class="text-sm text-slate-900 dark:text-white mt-0.5">0909 123 456</p>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-slate-500 dark:text-slate-400">
+<span class="material-symbols-outlined text-[18px]">restaurant</span>
+</div>
+<div>
+<p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Lĩnh vực</p>
+<p class="text-sm text-slate-900 dark:text-white mt-0.5">F&amp;B, Nhà hàng, Khách sạn</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Active Jobs Section -->
+<div class="px-4 py-4 border-t border-b-8 border-slate-100 dark:border-slate-800 dark:border-b-black/20">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-bold text-slate-900 dark:text-white text-base">Đang tuyển <span class="text-primary">(3)</span></h3>
+<button class="text-xs font-semibold text-primary">Xem tất cả</button>
+</div>
+<div class="flex flex-col gap-3">
+<!-- Job Card 1 -->
+<div class="p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-900/50 bg-white dark:bg-slate-800/30 transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<div class="flex-1">
+<h4 class="font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors">Nhân viên phục vụ bàn</h4>
+<p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Full-time • Ca sáng/chiều</p>
+</div>
+<span class="px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-bold">
+                            25k - 30k/h
+                        </span>
+</div>
+<div class="flex items-center gap-2 mt-2">
+<span class="flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700/50 px-1.5 py-0.5 rounded">
+<span class="material-symbols-outlined text-[12px]">schedule</span> 2 ngày trước
+                        </span>
+<span class="flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700/50 px-1.5 py-0.5 rounded">
+<span class="material-symbols-outlined text-[12px]">group</span> 5 slot
+                        </span>
+</div>
+</div>
+<!-- Job Card 2 -->
+<div class="p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-900/50 bg-white dark:bg-slate-800/30 transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<div class="flex-1">
+<h4 class="font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors">Pha chế (Barista)</h4>
+<p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Part-time • Ca tối</p>
+</div>
+<span class="px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-bold">
+                            30k - 35k/h
+                        </span>
+</div>
+<div class="flex items-center gap-2 mt-2">
+<span class="flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700/50 px-1.5 py-0.5 rounded">
+<span class="material-symbols-outlined text-[12px]">schedule</span> 5 giờ trước
+                        </span>
+<span class="flex items-center gap-1 text-[10px] text-rose-500 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 px-1.5 py-0.5 rounded font-medium">
+<span class="material-symbols-outlined text-[12px]">local_fire_department</span> Gấp
+                        </span>
+</div>
+</div>
+</div>
+</div>
+<!-- Reviews Section -->
+<div class="px-4 py-4">
+<div class="flex items-center justify-between mb-4">
+<h3 class="font-bold text-slate-900 dark:text-white text-base">Đánh giá từ nhân viên</h3>
+<div class="flex items-center gap-1">
+<span class="text-sm font-bold text-slate-900 dark:text-white">4.6</span>
+<span class="material-symbols-outlined text-amber-500 text-[16px] fill-1">star</span>
+<span class="text-xs text-slate-500 dark:text-slate-400">(84 đánh giá)</span>
+</div>
+</div>
+<!-- Review Card -->
+<div class="flex flex-col gap-3">
+<div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800">
+<div class="flex items-center gap-3 mb-2">
+<div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="Portrait of a young man" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCKxTtJXpuFdyCt_HvEAa7jTdDXkvTthJdlQxtJgpqHH8TfeIlXjFOP0J5I_gK0G8049pHW-OvZ4VjuF6VFJKUsK_RogAaOozrc-CKcQ-smU_ACJRlU6gvZlrwtHs5Sv5SKuJSrQN2CgGPB_mAKp5rkIfdOjkUBjp6rLRZCiNm4FbbHMB4ZRylJeGZnGBVFiVkdhvw9yr4ix5sgBeqbCcdpAzhtz083x8ySx13sRh-QWViYCwzuAdbE49MqIr3HOblk8cjNdnwwptA"/>
+</div>
+<div class="flex-1">
+<p class="text-sm font-bold text-slate-900 dark:text-white">Minh Tuấn</p>
+<p class="text-[10px] text-slate-500 dark:text-slate-400">Đã làm việc: 2 tháng trước</p>
+</div>
+<div class="flex text-amber-400">
+<span class="material-symbols-outlined text-[14px] fill-1">star</span>
+<span class="material-symbols-outlined text-[14px] fill-1">star</span>
+<span class="material-symbols-outlined text-[14px] fill-1">star</span>
+<span class="material-symbols-outlined text-[14px] fill-1">star</span>
+<span class="material-symbols-outlined text-[14px] fill-1">star</span>
+</div>
+</div>
+<p class="text-sm text-slate-700 dark:text-slate-300 mb-3">
+                        Quán chuyên nghiệp, quản lý thân thiện. Lương nhận đúng ngày không delay. Môi trường làm việc thoải mái.
+                    </p>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] font-medium text-slate-600 dark:text-slate-300">
+                            👍 Trả lương đúng hẹn
+                        </span>
+<span class="px-2 py-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] font-medium text-slate-600 dark:text-slate-300">
+                            🌱 Môi trường tốt
+                        </span>
+</div>
+</div>
+</div>
+<button class="w-full mt-3 py-2 text-sm text-slate-500 dark:text-slate-400 font-medium hover:text-primary transition-colors">
+                Xem thêm 83 đánh giá
+            </button>
+</div>
+<!-- Footer Stats -->
+<div class="mt-auto px-4 py-6 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
+<div class="flex justify-center">
+<div class="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
+<span class="material-symbols-outlined text-primary text-[20px]">task_alt</span>
+<span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Đã hoàn thành <span class="text-slate-900 dark:text-white font-bold">156</span> ca làm việc</span>
+</div>
+</div>
+<p class="text-center text-[10px] text-slate-400 dark:text-slate-600 mt-4">
+                 JobNow © 2023. Thông tin được xác thực.
+             </p>
+</div>
+</div>
+</body></html>

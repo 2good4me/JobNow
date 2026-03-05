@@ -10,6 +10,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '@/config/firebase';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import type { UserProfile } from '@/features/auth/types/user';
 import {
   Eye, EyeOff, Mail, Lock, Loader2,
   BriefcaseBusiness, Phone, ArrowRight, ShieldCheck, ArrowLeft,
@@ -78,15 +79,23 @@ function LoginPage() {
     };
   }, [tab]);
 
+  const navigateAfterLogin = async (profile: UserProfile | null) => {
+    if (!profile?.role) {
+      await navigate({ to: '/onboarding', replace: true });
+      return;
+    }
+    await navigate({ to: profile.role === 'EMPLOYER' ? '/employer' : '/candidate', replace: true });
+  };
+
   /* Email login */
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      await refreshProfile();
-      navigate({ to: '/' });
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const profile = await refreshProfile(userCredential.user);
+      await navigateAfterLogin(profile);
     } catch (err: any) {
       setError(getFirebaseErrorVi(err.code));
     } finally {
@@ -136,9 +145,9 @@ function LoginPage() {
 
     setLoading(true);
     try {
-      await confirmResult.confirm(otp);
-      await refreshProfile();
-      navigate({ to: '/' });
+      const credential = await confirmResult.confirm(otp);
+      const profile = await refreshProfile(credential.user);
+      await navigateAfterLogin(profile);
     } catch (err: any) {
       setError(getFirebaseErrorVi(err.code));
     } finally {
@@ -151,9 +160,9 @@ function LoginPage() {
     setError('');
     setGoogleLoading(true);
     try {
-      await signInWithPopup(auth, googleProvider);
-      await refreshProfile();
-      navigate({ to: '/' });
+      const result = await signInWithPopup(auth, googleProvider);
+      const profile = await refreshProfile(result.user);
+      await navigateAfterLogin(profile);
     } catch (err: any) {
       setError(getFirebaseErrorVi(err.code));
     } finally {

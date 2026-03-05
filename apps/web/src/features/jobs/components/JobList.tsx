@@ -1,4 +1,3 @@
-import React from 'react';
 import { JobCard, JobCardProps } from './JobCard';
 
 interface JobListProps {

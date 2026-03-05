@@ -1,8 +1,143 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && getUserRole() == 'ADMIN';
+    }
+
+    // --- USERS (public profile only) ---
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId);
+
+      // Wishlist is owner-only
+      match /wishlist_jobs/{jobId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId)
+                              && request.resource.data.user_id == request.auth.uid
+                              && request.resource.data.job_id == jobId;
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    // --- USERS PRIVATE (PII/eKYC) ---
+    match /users_private/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    // --- JOBS ---
+    match /jobs/{jobId} {
+      allow read: if isSignedIn();
+
+      function isValidJobCreate() {
+        let d = request.resource.data;
+        return d.employer_id == request.auth.uid
+          && d.title is string && d.title.size() > 0 && d.title.size() <= 200
+          && d.salary is number && d.salary > 0
+          && d.salary_type in ['HOURLY', 'DAILY', 'JOB', 'PER_SHIFT', 'MONTHLY']
+          && d.status in ['OPEN', 'ACTIVE', 'DRAFT', 'HIDDEN', 'FULL', 'CLOSED']
+          && d.description is string;
+      }
+
+      allow create: if isSignedIn() && getUserRole() == 'EMPLOYER' && isValidJobCreate();
+      allow update, delete: if isSignedIn()
+                            && getUserRole() == 'EMPLOYER'
+                            && resource.data.employer_id == request.auth.uid;
+    }
+
+    // --- APPLICATIONS (writes via Cloud Functions only) ---
+    match /applications/{applicationId} {
+      allow read: if isSignedIn() && (
+        resource.data.candidate_id == request.auth.uid ||
+        resource.data.employer_id == request.auth.uid ||
+        resource.data.candidateId == request.auth.uid ||
+        resource.data.employerId == request.auth.uid
+      );
+
+      allow create, update, delete: if false;
+
+      match /checkins/{checkinId} {
+        allow read: if isSignedIn() && (
+          get(/databases/$(database)/documents/applications/$(applicationId)).data.candidate_id == request.auth.uid ||
+          get(/databases/$(database)/documents/applications/$(applicationId)).data.employer_id == request.auth.uid ||
+          get(/databases/$(database)/documents/applications/$(applicationId)).data.candidateId == request.auth.uid ||
+          get(/databases/$(database)/documents/applications/$(applicationId)).data.employerId == request.auth.uid
+        );
+
+        allow create, update, delete: if false;
+      }
+    }
+
+    // --- CONVERSATIONS / MESSAGES (writes via Cloud Functions only) ---
+    match /conversations/{conversationId} {
+      allow read: if isSignedIn() && (
+        resource.data.candidate_id == request.auth.uid ||
+        resource.data.employer_id == request.auth.uid ||
+        resource.data.candidateId == request.auth.uid ||
+        resource.data.employerId == request.auth.uid
+      );
+      allow create, update, delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn() && (
+          get(/databases/$(database)/documents/conversations/$(conversationId)).data.candidate_id == request.auth.uid ||
+          get(/databases/$(database)/documents/conversations/$(conversationId)).data.employer_id == request.auth.uid ||
+          get(/databases/$(database)/documents/conversations/$(conversationId)).data.candidateId == request.auth.uid ||
+          get(/databases/$(database)/documents/conversations/$(conversationId)).data.employerId == request.auth.uid
+        );
+        allow create, update, delete: if false;
+      }
+    }
+
+    // --- TRANSACTIONS ---
+    match /transactions/{transactionId} {
+      allow read: if isSignedIn() && resource.data.user_id == request.auth.uid;
+      allow write: if false;
+    }
+
+    // --- REVIEWS (writes via Cloud Functions only) ---
+    match /reviews/{reviewId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if false;
+    }
+
+    // --- CATEGORIES ---
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- NOTIFICATIONS ---
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && resource.data.user_id == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.user_id == request.auth.uid;
+      allow create, delete: if false;
+    }
+
+    // --- FOLLOWS ---
+    match /follows/{followId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.follower_id == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.follower_id == request.auth.uid;
+      allow update: if false;
+    }
+
+    // --- ANALYTICS ---
+    match /analytics/{analyticId} {
+      allow read: if isAdmin();
+      allow write: if false;
     }
   }
 }

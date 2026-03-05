@@ -1,4 +1,10 @@
 {
+  "functions": [
+    {
+      "source": "apps/functions",
+      "runtime": "nodejs20"
+    }
+  ],
   "firestore": {
     "database": "(default)",
     "location": "nam5",

@@ -12,6 +12,13 @@ export interface NearbyJobsParams {
     lat: number;
     lng: number;
     radius?: number; // in meters, default 5000
+    salary_min?: number;
+    salary_max?: number;
+    category_ids?: string[];
+    shift_time?: 'MORNING' | 'AFTERNOON' | 'EVENING' | 'NIGHT';
+    keyword?: string;
+    limit?: number;
+    cursor?: string;
 }
 
 export interface NearbyJobResponse {
@@ -35,14 +42,46 @@ export interface NearbyJobResponse {
         quantity: number;
     }[];
     distance: number; // in meters
+    created_at?: string;
+    updated_at?: string;
 }
 
-export async function fetchNearbyJobs(params: NearbyJobsParams): Promise<NearbyJobResponse[]> {
+export interface NearbyJobsPageResponse {
+    message: string;
+    count: number;
+    center: { lat: number; lng: number };
+    radius: number;
+    next_cursor?: string;
+    data: NearbyJobResponse[];
+}
+
+export async function fetchNearbyJobsPage(params: NearbyJobsParams): Promise<NearbyJobsPageResponse> {
     const searchParams = new URLSearchParams();
     searchParams.set('lat', params.lat.toString());
     searchParams.set('lng', params.lng.toString());
     if (params.radius) {
         searchParams.set('radius', params.radius.toString());
+    }
+    if (params.salary_min !== undefined) {
+        searchParams.set('salary_min', String(params.salary_min));
+    }
+    if (params.salary_max !== undefined) {
+        searchParams.set('salary_max', String(params.salary_max));
+    }
+    if (params.category_ids?.length) {
+        searchParams.set('category_ids', params.category_ids.join(','));
+    }
+    if (params.shift_time) {
+        searchParams.set('shift_time', params.shift_time);
+    }
+    if (params.keyword) {
+        searchParams.set('keyword', params.keyword);
+    }
+    if (params.limit !== undefined) {
+        searchParams.set('limit', String(params.limit));
+    }
+    if (params.cursor) {
+        searchParams.set('cursor', params.cursor);
     }
     const url = `${API_BASE}/jobs/nearby?${searchParams.toString()}`;
 
@@ -51,7 +90,11 @@ export async function fetchNearbyJobs(params: NearbyJobsParams): Promise<NearbyJ
         throw new Error(`API Error: ${response.status} ${response.statusText}`);
     }
 
-    const result = await response.json();
+    return response.json();
+}
+
+export async function fetchNearbyJobs(params: NearbyJobsParams): Promise<NearbyJobResponse[]> {
+    const result = await fetchNearbyJobsPage(params);
     return result.data;
 }
 

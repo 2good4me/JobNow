@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>JobNow - Post Job Step 3</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2463eb",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#111621",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen flex justify-center">
+<!-- Mobile Container -->
+<div class="w-full max-w-md bg-white dark:bg-slate-900 shadow-xl min-h-screen flex flex-col relative overflow-hidden">
+<!-- Top App Bar -->
+<div class="flex items-center px-4 py-3 justify-between bg-white dark:bg-slate-900 z-10 sticky top-0">
+<button class="text-slate-900 dark:text-white flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined text-[24px]">arrow_back</span>
+</button>
+<h2 class="text-slate-900 dark:text-white text-lg font-bold leading-tight flex-1 text-center">Đăng tin tuyển dụng</h2>
+<button class="flex items-center justify-end px-2 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+<p class="text-slate-500 dark:text-slate-400 text-base font-bold leading-normal shrink-0">Hủy</p>
+</button>
+</div>
+<!-- Progress Indicator -->
+<div class="flex w-full flex-row items-center justify-center gap-2 px-6 py-4">
+<div class="h-1.5 flex-1 rounded-full bg-primary/30"></div>
+<div class="h-1.5 flex-1 rounded-full bg-primary/30"></div>
+<div class="h-1.5 flex-1 rounded-full bg-primary"></div>
+<div class="h-1.5 flex-1 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+</div>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto pb-24"> <!-- Padding bottom for fixed footer buttons -->
+<h2 class="text-slate-900 dark:text-white text-2xl font-bold leading-tight px-4 text-left pb-2 pt-2">Chọn ca làm việc</h2>
+<p class="text-slate-500 dark:text-slate-400 text-sm font-normal leading-normal pb-6 px-4">Thêm các ca làm việc cho công việc này.</p>
+<!-- Tabs -->
+<div class="px-4 pb-6">
+<div class="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+<button class="flex-1 py-2 px-4 rounded-lg bg-white dark:bg-slate-700 shadow-sm text-primary font-bold text-sm text-center transition-all">
+                        Thời vụ
+                    </button>
+<button class="flex-1 py-2 px-4 rounded-lg text-slate-500 dark:text-slate-400 font-medium text-sm text-center hover:text-slate-700 dark:hover:text-slate-200 transition-all">
+                        Cố định
+                    </button>
+</div>
+</div>
+<!-- Shift List -->
+<div class="space-y-4 px-4">
+<!-- Shift Item 1 -->
+<div class="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-2">
+<div class="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[18px]">calendar_today</span>
+</div>
+<span class="font-bold text-slate-900 dark:text-white">Ca làm việc 1</span>
+</div>
+<button class="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-full transition-colors">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-4">
+<!-- Date Picker -->
+<div class="col-span-2">
+<label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Ngày làm việc</label>
+<div class="relative">
+<input class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5" type="date" value="2023-11-15"/>
+</div>
+</div>
+<!-- Time Start -->
+<div>
+<label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Bắt đầu</label>
+<div class="relative">
+<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+<span class="material-symbols-outlined text-[18px]">schedule</span>
+</div>
+<input class="w-full pl-9 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5" type="time" value="08:00"/>
+</div>
+</div>
+<!-- Time End -->
+<div>
+<label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Kết thúc</label>
+<div class="relative">
+<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+<span class="material-symbols-outlined text-[18px]">schedule</span>
+</div>
+<input class="w-full pl-9 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5" type="time" value="12:00"/>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700">
+<div class="flex items-center gap-3">
+<label class="text-sm font-medium text-slate-700 dark:text-slate-300">Số lượng:</label>
+<div class="flex items-center border border-slate-200 dark:border-slate-600 rounded-lg">
+<button class="px-2 py-1 text-slate-500 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-700 rounded-l-lg transition-colors">-</button>
+<input class="w-10 text-center border-none bg-transparent text-sm p-0 text-slate-900 dark:text-white focus:ring-0" type="text" value="5"/>
+<button class="px-2 py-1 text-slate-500 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-700 rounded-r-lg transition-colors">+</button>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<label class="inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="relative w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+<span class="ms-2 text-sm font-medium text-slate-600 dark:text-slate-400">Lặp lại</span>
+</label>
+</div>
+</div>
+</div>
+<!-- Shift Item 2 (Collapsed/Summary view example or just another expanded item) -->
+<div class="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm opacity-60 hover:opacity-100 transition-opacity">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-2">
+<div class="h-8 w-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500">
+<span class="material-symbols-outlined text-[18px]">calendar_today</span>
+</div>
+<span class="font-bold text-slate-900 dark:text-white">Ca làm việc 2</span>
+</div>
+<button class="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-full transition-colors">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-4">
+<div class="col-span-2">
+<label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Ngày làm việc</label>
+<input class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5" type="date" value="2023-11-16"/>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Bắt đầu</label>
+<input class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm rounded-lg p-2.5" type="time" value="13:00"/>
+</div>
+<div>
+<label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">Kết thúc</label>
+<input class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm rounded-lg p-2.5" type="time" value="17:00"/>
+</div>
+</div>
+</div>
+<!-- Add Button -->
+<button class="w-full py-3 border-2 border-dashed border-primary/30 rounded-xl flex items-center justify-center gap-2 text-primary hover:bg-primary/5 transition-colors group">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">add_circle</span>
+<span class="font-bold text-sm">Thêm ca làm việc</span>
+</button>
+</div>
+</div>
+<!-- Footer Actions -->
+<div class="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 absolute bottom-0 w-full">
+<div class="flex gap-3">
+<button class="flex-1 py-3.5 px-6 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                    Quay lại
+                </button>
+<button class="flex-[2] py-3.5 px-6 rounded-xl bg-primary text-white font-bold text-sm shadow-lg shadow-primary/30 hover:bg-blue-600 transition-colors flex items-center justify-center gap-2">
+                    Tiếp theo
+                    <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</body></html>

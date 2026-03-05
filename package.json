@@ -1,15 +1,21 @@
 {
   "name": "jobnow",
   "private": true,
-  "scripts": {
-    "build": "turbo run build",
-    "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
-  },
+    "scripts": {
+        "build": "turbo run build",
+        "dev": "turbo run dev",
+        "lint": "turbo run lint",
+        "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+        "seed": "npx tsx apps/web/scripts/seed-firestore.ts",
+        "backfill:snake-case": "npx tsx scripts/backfill-snake-case.ts"
+    },
   "devDependencies": {
+    "@types/node": "^25.3.3",
+    "dotenv": "^17.3.1",
+    "firebase-admin": "^13.7.0",
     "pnpm": "^10.30.3",
     "prettier": "^3.2.5",
+    "tsx": "^4.21.0",
     "turbo": "^2.0.0",
     "typescript": "^5.4.0"
   },

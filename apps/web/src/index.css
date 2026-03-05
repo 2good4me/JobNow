@@ -152,3 +152,34 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ── Confetti burst (ApplicantCard approve) ──── */
+@keyframes confetti-burst {
+  0% {
+    transform: scale(0) translateY(0);
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1.2) translateY(-60px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.animate-confetti-burst {
+  animation: confetti-burst 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── Hide scrollbar (stat pills) ──────────────── */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

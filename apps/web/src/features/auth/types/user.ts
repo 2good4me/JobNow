@@ -1,4 +1,5 @@
 export type UserRole = 'CANDIDATE' | 'EMPLOYER' | 'ADMIN';
+export type VerificationStatus = 'UNVERIFIED' | 'PENDING' | 'VERIFIED';
 
 export interface UserProfile {
     uid: string;
@@ -16,4 +17,16 @@ export interface UserProfile {
     identity_images: string[];
     created_at: Date;
     updated_at: Date;
+
+    // Employer-specific fields
+    company_name?: string;
+    company_tax_id?: string;
+    industry?: string;
+    company_logo_url?: string | null;
+    company_description?: string;
+    company_website?: string;
+    business_license_url?: string | null;
+    verification_status?: VerificationStatus;
+    notification_push?: boolean;
+    notification_email?: boolean;
 }

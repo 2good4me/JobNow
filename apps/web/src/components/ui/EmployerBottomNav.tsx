@@ -1,21 +1,36 @@
 import { Link, useLocation } from '@tanstack/react-router';
-import { LayoutDashboard, Users, PlusCircle, MessageCircle, UserCircle } from 'lucide-react';
+import { LayoutDashboard, Users, PlusCircle, Bell, UserCircle, MessageCircle } from 'lucide-react';
+import { useAuth } from '@/features/auth/context/AuthContext';
+import { useUnreadCount } from '@/features/notifications/hooks/useNotifications';
+import { useChatUnreadCount } from '@/features/chat/hooks/useChatUnreadCount';
 
-const navItems = [
+const navItemsDef = [
     { to: '/employer', icon: LayoutDashboard, label: 'Tổng quan' },
-    { to: '/employer/applicants', icon: Users, label: 'Quản lý' },
+    { to: '/employer/applicants', icon: Users, label: 'Ứng viên' },
+    { to: '/employer/chat', icon: MessageCircle, label: 'Chat', badgeType: 'chat' as const },
     { to: '/employer/post-job', icon: PlusCircle, label: 'Đăng tin' },
-    { to: '/employer/chat', icon: MessageCircle, label: 'Chat' },
+    { to: '/employer/notifications', icon: Bell, label: 'Thông báo', badgeType: 'notifications' as const },
     { to: '/employer/profile', icon: UserCircle, label: 'Tài khoản' },
 ] as const;
 
 export function EmployerBottomNav() {
     const location = useLocation();
+    const { userProfile } = useAuth();
+    const notificationUnreadCount = useUnreadCount(userProfile?.uid);
+    const chatUnreadCount = useChatUnreadCount(userProfile?.uid, 'EMPLOYER');
 
     return (
         <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-lg border-t border-slate-200/60 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] animate-slide-in-bottom">
             <div className="flex items-center justify-around max-w-lg mx-auto h-16 px-2">
-                {navItems.map(({ to, icon: Icon, label }) => {
+                {navItemsDef.map(({ to, icon: Icon, label, ...rest }) => {
+                    const badgeType = 'badgeType' in rest ? rest.badgeType : undefined;
+                    const badgeValue =
+                        badgeType === 'notifications'
+                            ? notificationUnreadCount
+                            : badgeType === 'chat'
+                                ? chatUnreadCount
+                                : 0;
+                    const hasBadge = Boolean(badgeType);
                     const isActive =
                         to === '/employer'
                             ? location.pathname === '/employer' || location.pathname === '/employer/'
@@ -26,7 +41,7 @@ export function EmployerBottomNav() {
                             key={to}
                             to={to}
                             className={`
-                                flex flex-col items-center justify-center gap-0.5 min-w-[60px] py-1.5 rounded-xl transition-all duration-200
+                                flex flex-col items-center justify-center gap-0.5 min-w-[52px] py-1.5 rounded-xl transition-all duration-200
                                 ${isActive
                                     ? 'text-primary-600'
                                     : 'text-slate-400 hover:text-slate-600'
@@ -35,7 +50,12 @@ export function EmployerBottomNav() {
                         >
                             <div className={`relative p-1 rounded-lg transition-all duration-200 ${isActive ? 'bg-primary-50' : ''}`}>
                                 <Icon className={`w-5 h-5 transition-transform duration-200 ${isActive ? 'scale-110' : ''}`} strokeWidth={isActive ? 2.5 : 1.8} />
-                                {isActive && (
+                                {hasBadge && badgeValue > 0 && (
+                                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 flex items-center justify-center bg-red-500 text-white text-[9px] font-bold rounded-full px-1">
+                                        {badgeValue > 99 ? '99+' : badgeValue}
+                                    </span>
+                                )}
+                                {isActive && !hasBadge && (
                                     <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-primary-500 rounded-full" />
                                 )}
                             </div>

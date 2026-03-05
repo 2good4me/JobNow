@@ -10,10 +10,10 @@ interface AuthContextType {
     role: UserRole | null;
     loading: boolean;
     /** True when Firebase Auth user exists but no Firestore profile yet */
-    needsOnboarding: boolean;
+    needsProfileSetup: boolean;
     signOut: () => Promise<void>;
     /** Re-fetch the Firestore profile (call after onboarding completes) */
-    refreshProfile: () => Promise<void>;
+    refreshProfile: (firebaseUserOverride?: User) => Promise<UserProfile | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,28 +23,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const fetchProfile = useCallback(async (firebaseUser: User) => {
+    const fetchProfile = useCallback(async (firebaseUser: User): Promise<UserProfile | null> => {
         try {
             const profile = await getUserDocument(firebaseUser.uid);
             setUserProfile(profile);
+            return profile;
         } catch (err) {
             console.error('Failed to fetch user profile:', err);
             setUserProfile(null);
+            return null;
         }
     }, []);
 
     useEffect(() => {
+        let isMounted = true;
+
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+            if (!isMounted) return;
+
             setUser(currentUser);
+
             if (currentUser) {
                 await fetchProfile(currentUser);
-            } else {
+            } else if (isMounted) {
                 setUserProfile(null);
             }
-            setLoading(false);
+
+            if (isMounted) {
+                setLoading(false);
+            }
         });
 
-        return () => unsubscribe();
+        return () => {
+            isMounted = false;
+            unsubscribe();
+        };
     }, [fetchProfile]);
 
     const signOut = async () => {
@@ -52,20 +65,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUserProfile(null);
     };
 
-    const refreshProfile = useCallback(async () => {
-        if (user) {
-            await fetchProfile(user);
+    const refreshProfile = useCallback(async (firebaseUserOverride?: User) => {
+        const targetUser = firebaseUserOverride ?? user;
+        if (targetUser) {
+            return await fetchProfile(targetUser);
         }
+        return null;
     }, [user, fetchProfile]);
 
     const role = userProfile?.role ?? null;
-    const needsOnboarding = !!user && !userProfile;
+    const needsProfileSetup = !!user && !userProfile;
 
     return (
         <AuthContext.Provider
-            value={{ user, userProfile, role, loading, needsOnboarding, signOut, refreshProfile }}
+            value={{ user, userProfile, role, loading, needsProfileSetup, signOut, refreshProfile }}
         >
-            {!loading && children}
+            {children}
         </AuthContext.Provider>
     );
 }

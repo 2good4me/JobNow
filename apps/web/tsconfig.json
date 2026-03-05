@@ -22,9 +22,13 @@
         "noUnusedParameters": true,
         "noFallthroughCasesInSwitch": true,
         "baseUrl": ".",
+        "types": ["vite/client"],
         "paths": {
             "@/*": [
                 "./src/*"
+            ],
+            "@jobnow/types": [
+                "../../packages/types/src/index.ts"
             ],
             "~types/*": [
                 "./src/types/*"

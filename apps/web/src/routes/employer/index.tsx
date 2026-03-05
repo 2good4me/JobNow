@@ -1,138 +1,207 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { useAuth } from '@/features/auth/context/AuthContext';
-import { Bell, Briefcase, ChevronRight, TrendingUp, Users, Wallet } from 'lucide-react';
-import React from 'react';
+import { Bell, Briefcase, ChevronRight, Users, Wallet, QrCode, TrendingUp, Clock, Calendar, AlertCircle } from 'lucide-react';
+import { useDashboardMetrics } from '@/features/dashboard/hooks/useDashboardMetrics';
 
 export const Route = createFileRoute('/employer/')({
   component: EmployerDashboard,
 });
 
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Chào buổi sáng';
+  if (hour < 18) return 'Chào buổi chiều';
+  return 'Chào buổi tối';
+}
+
 function EmployerDashboard() {
   const { userProfile } = useAuth();
+  const employerId = userProfile?.uid;
 
-  return (
-    <div className="min-h-screen bg-slate-50 pb-6">
-      {/* Header section with curve */}
-      <div className="relative pt-12 pb-24 px-4 bg-gradient-to-br from-emerald-600 to-emerald-800 rounded-b-[40px] overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
-        <div className="relative z-10 flex items-center justify-between">
-          <div>
-            <p className="text-emerald-100 text-sm font-medium mb-1">Xin chào,</p>
-            <h1 className="text-white text-2xl font-bold font-heading">
-              {userProfile?.business_name || userProfile?.full_name || 'Nhà tuyển dụng'}
-            </h1>
+  const { metrics, isLoading, isError } = useDashboardMetrics(employerId);
+  const greeting = getGreeting();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 pb-24 px-4 pt-12">
+        <div className="animate-pulse space-y-6">
+          <div className="h-32 bg-slate-200 rounded-3xl w-full"></div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="h-32 bg-slate-200 rounded-2xl w-full"></div>
+            <div className="h-32 bg-slate-200 rounded-2xl w-full"></div>
           </div>
-          <button className="relative p-2 bg-white/20 rounded-full backdrop-blur-md">
-            <Bell className="w-6 h-6 text-white" />
-            <span className="absolute top-1.5 right-2 w-2 h-2 bg-rose-500 rounded-full border border-emerald-600"></span>
-          </button>
+          <div className="h-24 bg-slate-200 rounded-2xl w-full"></div>
+          <div className="space-y-3">
+            <div className="h-8 bg-slate-200 rounded w-1/3"></div>
+            <div className="h-20 bg-slate-200 rounded-2xl w-full"></div>
+            <div className="h-20 bg-slate-200 rounded-2xl w-full"></div>
+          </div>
         </div>
       </div>
+    );
+  }
 
-      {/* Main Stats Cards - overlaying the header curve */}
-      <div className="px-4 -mt-16 relative z-20 space-y-4">
+  if (isError) {
+    return (
+      <div className="min-h-screen bg-slate-50 p-6 flex items-center justify-center text-rose-500">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 mx-auto mb-3 opacity-80" />
+          <p className="font-medium">Đã xảy ra lỗi khi tải dữ liệu.</p>
+          <p className="text-sm opacity-80">Vui lòng thử lại sau.</p>
+        </div>
+      </div>
+    );
+  }
 
-        {/* Stats row */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center">
-                <Briefcase className="w-4 h-4 text-emerald-600" />
-              </div>
-              <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">+2</span>
-            </div>
-            <h3 className="text-2xl font-bold text-slate-800 mb-1">12</h3>
-            <p className="text-xs text-slate-500 font-medium">Tin đang đăng</p>
+  return (
+    <div className="min-h-screen bg-[#F8FAFC] pb-24">
+      {/* 1. Header Section - Glassmorphism & Gradient */}
+      <div className="relative pt-12 pb-24 px-5 bg-gradient-to-br from-indigo-900 via-slate-900 to-emerald-900 rounded-b-[40px] overflow-hidden shadow-lg shadow-indigo-900/20">
+        {/* Decorative blobs */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 mix-blend-screen"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3 mix-blend-screen"></div>
+
+        <div className="relative z-10 flex items-center justify-between">
+          <div>
+            <p className="text-slate-300 text-sm font-medium mb-1 tracking-wide">{greeting},</p>
+            <h1 className="text-white text-2xl font-bold font-heading tracking-tight drop-shadow-sm line-clamp-1">
+              {userProfile?.company_name || userProfile?.full_name || 'Nhà tuyển dụng'}
+            </h1>
           </div>
-
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center">
-                <Users className="w-4 h-4 text-blue-600" />
-              </div>
-              <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">15 mới</span>
-            </div>
-            <h3 className="text-2xl font-bold text-slate-800 mb-1">48</h3>
-            <p className="text-xs text-slate-500 font-medium">Ứng viên chờ duyệt</p>
-          </div>
+          <Link to="/employer/notifications" className="relative p-2.5 bg-white/10 border border-white/20 rounded-2xl backdrop-blur-md shrink-0 transition-transform active:scale-95 hover:bg-white/20">
+            <Bell className="w-5 h-5 text-white" />
+            <span className="absolute top-2 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-slate-900 animate-pulse"></span>
+          </Link>
         </div>
 
-        {/* Primary Action Card */}
-        <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-2xl p-5 text-white shadow-md relative overflow-hidden">
-          <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
-          <div className="relative z-10 flex items-center justify-between">
+        {metrics.shiftsToday > 0 && (
+          <div className="relative z-10 mt-5 inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500/20 border border-emerald-500/30 rounded-full backdrop-blur-sm">
+            <Clock className="w-3.5 h-3.5 text-emerald-300" />
+            <span className="text-emerald-50 text-xs font-medium">Bạn có {metrics.shiftsToday} ca làm việc hôm nay</span>
+          </div>
+        )}
+      </div>
+
+      {/* Main Content Area */}
+      <div className="px-5 -mt-14 relative z-20 space-y-5">
+
+        {/* 2. Key Metrics Cards */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100/60 flex flex-col justify-between transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center">
+                <Briefcase className="w-5 h-5 text-indigo-600" />
+              </div>
+              <div className="flex items-center text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
+                <TrendingUp className="w-3 h-3 mr-1" /> {metrics.conversionRate.toFixed(1)}% CR
+              </div>
+            </div>
             <div>
-              <h3 className="font-bold text-lg mb-1">Tuyển thêm nhân sự?</h3>
-              <p className="text-slate-300 text-sm">Đăng tin nhanh chỉ trong 2 phút.</p>
-            </div>
-            <div className="w-12 h-12 bg-white text-slate-900 rounded-full flex items-center justify-center font-bold shadow-sm cursor-pointer">
-              <ChevronRight className="w-6 h-6" />
+              <h3 className="text-3xl font-bold text-slate-800 tracking-tight">{metrics.activeJobs}</h3>
+              <p className="text-sm text-slate-500 font-medium mt-0.5">Tin đang hoạt động</p>
             </div>
           </div>
-        </div>
 
-        {/* Performance Chart Placeholder */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold text-slate-800">Hiệu quả tuyển dụng</h2>
-            <select className="text-xs font-medium text-slate-500 bg-slate-50 border-none outline-none rounded-lg py-1 px-2 cursor-pointer">
-              <option>Tuần này</option>
-              <option>Tháng này</option>
-            </select>
-          </div>
-          {/* Simulated chart */}
-          <div className="h-40 flex items-end justify-between gap-2 pt-4">
-            {[40, 70, 45, 90, 65, 30, 80].map((h, i) => (
-              <div key={i} className="w-full bg-emerald-50 rounded-t-sm relative group">
-                <div
-                  className="absolute bottom-0 w-full bg-emerald-500 rounded-t-sm transition-all duration-500"
-                  style={{ height: `${h}%` }}
-                ></div>
+          <div className="bg-white rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100/60 flex flex-col justify-between transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center">
+                <Users className="w-5 h-5 text-emerald-600" />
               </div>
-            ))}
-          </div>
-          <div className="flex justify-between mt-3 text-[10px] text-slate-400 font-medium">
-            <span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span>CN</span>
+              {metrics.recentAppsCount > 0 && (
+                <span className="flex items-center text-xs font-semibold text-rose-600 bg-rose-50 px-2 py-1 rounded-lg animate-pulse">
+                  {metrics.recentAppsCount} Gấp
+                </span>
+              )}
+            </div>
+            <div>
+              <h3 className="text-3xl font-bold text-slate-800 tracking-tight">{metrics.pendingApps}</h3>
+              <p className="text-sm text-slate-500 font-medium mt-0.5">Chờ duyệt</p>
+            </div>
           </div>
         </div>
 
-        {/* Recent Jobs */}
+        {/* 3. Primary CTA: Post Job */}
+        <Link to="/employer/post-job" className="block outline-none group">
+          <div className="bg-gradient-to-r from-emerald-600 to-teal-500 rounded-3xl p-6 text-white shadow-lg shadow-emerald-500/25 relative overflow-hidden transition-all duration-300 active:scale-[0.98] group-hover:shadow-xl group-hover:shadow-emerald-500/30">
+            <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/20 rounded-full blur-2xl transition-transform duration-700 group-hover:scale-150"></div>
+            <div className="relative z-10 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-xl mb-1 tracking-tight">Tuyển thêm nhân sự?</h3>
+                <p className="text-emerald-50 text-sm font-medium opacity-90">Tạo tin tuyển dụng chỉ trong 2 phút.</p>
+              </div>
+              <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center font-bold shadow-sm transition-transform duration-300 group-hover:translate-x-1 group-hover:bg-white text-white group-hover:text-emerald-600">
+                <ChevronRight className="w-6 h-6" />
+              </div>
+            </div>
+          </div>
+        </Link>
+
+        {/* 4. Quick Actions Menus */}
+        <div className="bg-white rounded-3xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100/60">
+          <h2 className="font-bold text-slate-800 text-lg mb-4 tracking-tight">Lối tắt vận hành</h2>
+          <div className="grid grid-cols-3 gap-3">
+            <Link to="/employer/wallet" className="flex flex-col items-center justify-center text-center gap-2.5 p-3 rounded-2xl hover:bg-slate-50 transition-colors active:scale-95 group">
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center shadow-sm border border-amber-100/50 group-hover:bg-amber-100 transition-colors">
+                <Wallet className="w-5 h-5 text-amber-500" />
+              </div>
+              <span className="text-[11px] font-semibold text-slate-600">Ví thanh toán</span>
+            </Link>
+            <Link to="/employer/job-list" className="flex flex-col items-center justify-center text-center gap-2.5 p-3 rounded-2xl hover:bg-slate-50 transition-colors active:scale-95 group">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center shadow-sm border border-indigo-100/50 group-hover:bg-indigo-100 transition-colors">
+                <Calendar className="w-5 h-5 text-indigo-500" />
+              </div>
+              <span className="text-[11px] font-semibold text-slate-600">Quản lý tin</span>
+            </Link>
+            <Link to="/employer/shift-management" className="flex flex-col items-center justify-center text-center gap-2.5 p-3 rounded-2xl hover:bg-slate-50 transition-colors active:scale-95 group">
+              <div className="w-12 h-12 rounded-2xl bg-cyan-50 flex items-center justify-center shadow-sm border border-cyan-100/50 group-hover:bg-cyan-100 transition-colors">
+                <QrCode className="w-5 h-5 text-cyan-500" />
+              </div>
+              <span className="text-[11px] font-semibold text-slate-600">Check-in QR</span>
+            </Link>
+          </div>
+        </div>
+
+        {/* 5. Activity Feed (Replacement for static jobs list) */}
         <div>
-          <div className="flex items-center justify-between mb-3 px-1">
-            <h2 className="font-bold text-slate-800 text-lg">Tin tuyển dụng gần đây</h2>
-            <button className="text-sm font-semibold text-emerald-600 hover:text-emerald-700 cursor-pointer">Xem tất cả</button>
+          <div className="flex items-center justify-between mb-4 px-1">
+            <h2 className="font-bold text-slate-800 text-lg tracking-tight">Hoạt động gần đây</h2>
+            <Link to="/employer/applicants" search={{ jobId: undefined }} className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition-colors">
+              Xem tất cả
+            </Link>
           </div>
 
           <div className="space-y-3">
-            {/* Sample Job 1 */}
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
-                <span className="text-2xl">☕</span>
+            {metrics.recentApplications.length === 0 ? (
+              <div className="bg-white rounded-3xl p-8 text-center shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100/60 flex flex-col items-center justify-center">
+                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-3">
+                  <Users className="w-8 h-8 text-slate-300" />
+                </div>
+                <h3 className="font-bold text-slate-700 mb-1">Chưa có ứng viên mới</h3>
+                <p className="text-slate-500 text-sm">Chia sẻ tin tuyển dụng hoặc mua gói đẩy tin để thu hút nhân sự.</p>
               </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-slate-800 text-sm truncate">Nhân viên Phục vụ Part-time</h3>
-                <p className="text-xs text-slate-500 mt-1">Hết hạn: 15/10/2026</p>
-              </div>
-              <div className="text-right shrink-0">
-                <div className="text-sm font-bold text-emerald-600">12</div>
-                <div className="text-[10px] text-slate-500">Ứng viên</div>
-              </div>
-            </div>
-
-            {/* Sample Job 2 */}
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-                <span className="text-2xl">🛵</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-slate-800 text-sm truncate">Shipper Giao hàng</h3>
-                <p className="text-xs text-slate-500 mt-1">Hết hạn: 20/10/2026</p>
-              </div>
-              <div className="text-right shrink-0">
-                <div className="text-sm font-bold text-emerald-600">8</div>
-                <div className="text-[10px] text-slate-500">Ứng viên</div>
-              </div>
-            </div>
+            ) : (
+              metrics.recentApplications.map((app, index) => (
+                <div key={app.id || index} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-4 transition-colors hover:border-slate-200">
+                  <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200 overflow-hidden">
+                    {/* Placeholder for candidate avatar */}
+                    <Users className="w-5 h-5 text-slate-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-slate-800 text-sm truncate">
+                      Ứng viên mới đăng ký
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5 truncate flex items-center gap-1">
+                      <Briefcase className="w-3 h-3" /> Job ID: {app.jobId?.substring(0, 8)}...
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="px-2.5 py-1 bg-amber-50 text-amber-600 text-[10px] font-bold rounded-full border border-amber-100">
+                      Chờ duyệt
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -140,3 +209,5 @@ function EmployerDashboard() {
     </div>
   );
 }
+
+

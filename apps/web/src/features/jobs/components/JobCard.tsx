@@ -1,4 +1,3 @@
-import React from 'react';
 import { MapPin, Clock, DollarSign, ChevronRight, Briefcase } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from '@tanstack/react-router';
@@ -74,7 +73,7 @@ export function JobCard({
             <div className={cn(
                 "group bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary-100 transition-all duration-300 relative overflow-hidden h-full flex flex-col",
                 className
-            )}>
+            )} data-job-id={id}>
                 {/* Top Badges */}
                 <div className="flex justify-between items-start mb-4">
                     <div className="flex gap-2 flex-wrap">

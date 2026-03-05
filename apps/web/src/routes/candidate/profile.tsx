@@ -1,5 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { type ComponentType, useState } from 'react';
 import {
   User, ShieldCheck, ChevronRight, Settings,
   LogOut, Wallet, Briefcase, Bell, HelpCircle,
@@ -11,12 +12,27 @@ export const Route = createFileRoute('/candidate/profile')({
 });
 
 /* ── Menu Item Component ─────────────────────── */
-function MenuItem({ icon: Icon, title, subtitle, onClick, variant = 'default' }: { icon: any, title: string, subtitle?: string, onClick?: () => void, variant?: 'default' | 'danger' }) {
+function MenuItem({
+  icon: Icon,
+  title,
+  subtitle,
+  onClick,
+  variant = 'default',
+  disabled = false,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  title: string;
+  subtitle?: string;
+  onClick?: () => void;
+  variant?: 'default' | 'danger';
+  disabled?: boolean;
+}) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       className={`w-full flex items-center justify-between p-4 bg-white mb-2 rounded-2xl shadow-sm border border-slate-100 active:scale-[0.98] transition-all ${variant === 'danger' ? 'hover:bg-red-50 text-red-600' : 'hover:bg-slate-50 text-slate-700'
-        }`}
+        } ${disabled ? 'cursor-not-allowed opacity-70' : ''}`}
     >
       <div className="flex items-center gap-4">
         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${variant === 'danger' ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-500'
@@ -37,6 +53,8 @@ function MenuItem({ icon: Icon, title, subtitle, onClick, variant = 'default' }:
 
 function CandidateProfilePage() {
   const { userProfile, signOut } = useAuth();
+  const navigate = useNavigate();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Example stats
   const trustScore = userProfile?.reputation_score || 85;
@@ -44,9 +62,13 @@ function CandidateProfilePage() {
 
   const handleLogout = async () => {
     try {
+      setIsLoggingOut(true);
       await signOut();
+      await navigate({ to: '/login' });
     } catch (error) {
       console.error('Logout failed:', error);
+    } finally {
+      setIsLoggingOut(false);
     }
   };
 
@@ -156,9 +178,10 @@ function CandidateProfilePage() {
         <div className="animate-fade-in-up" style={{ animationDelay: '300ms' }}>
           <MenuItem
             icon={LogOut}
-            title="Đăng xuất"
+            title={isLoggingOut ? 'Đang đăng xuất...' : 'Đăng xuất'}
             variant="danger"
             onClick={handleLogout}
+            disabled={isLoggingOut}
           />
         </div>
 

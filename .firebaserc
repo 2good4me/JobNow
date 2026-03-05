@@ -1,5 +1,7 @@
 {
-  "projects": {},
+  "projects": {
+    "jobnow": "jobnow-80037"
+  },
   "targets": {},
   "etags": {}
 }

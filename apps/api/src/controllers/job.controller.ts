@@ -10,6 +10,13 @@ const nearbyQuerySchema = z.object({
     lat: z.coerce.number().min(-90).max(90),
     lng: z.coerce.number().min(-180).max(180),
     radius: z.coerce.number().min(100).max(50000).default(5000),
+    salary_min: z.coerce.number().min(0).optional(),
+    salary_max: z.coerce.number().min(0).optional(),
+    category_ids: z.string().optional(),
+    shift_time: z.enum(['MORNING', 'AFTERNOON', 'EVENING', 'NIGHT']).optional(),
+    keyword: z.string().max(100).optional(),
+    limit: z.coerce.number().min(1).max(50).default(20),
+    cursor: z.string().optional(),
 });
 
 // ========== Controllers ==========
@@ -55,15 +62,57 @@ export const getNearbyJobs = async (req: Request, res: Response) => {
             return;
         }
 
-        const { lat, lng, radius } = parsed.data;
-        const jobs = await jobService.getNearbyJobs(lat, lng, radius);
+        const {
+            lat,
+            lng,
+            radius,
+            salary_min: salaryMin,
+            salary_max: salaryMax,
+            category_ids: categoryIdsRaw,
+            shift_time: shiftTime,
+            keyword,
+            limit,
+            cursor,
+        } = parsed.data;
+
+        let offset = 0;
+        if (cursor) {
+            try {
+                const decoded = JSON.parse(Buffer.from(cursor, 'base64').toString('utf8')) as { offset?: number };
+                offset = decoded.offset ?? 0;
+            } catch {
+                offset = 0;
+            }
+        }
+
+        const categoryIds = categoryIdsRaw
+            ? categoryIdsRaw.split(',').map((item) => item.trim()).filter(Boolean)
+            : undefined;
+
+        const result = await jobService.getNearbyJobs({
+            lat,
+            lng,
+            radiusInMeters: radius,
+            salaryMin,
+            salaryMax,
+            categoryIds,
+            shiftTime,
+            keyword,
+            limit,
+            offset,
+        });
+
+        const nextCursor = result.nextOffset !== undefined
+            ? Buffer.from(JSON.stringify({ offset: result.nextOffset })).toString('base64')
+            : undefined;
 
         res.status(200).json({
             message: 'Jobs retrieved successfully',
-            count: jobs.length,
+            count: result.items.length,
             center: { lat, lng },
             radius,
-            data: jobs
+            next_cursor: nextCursor,
+            data: result.items
         });
     } catch (error) {
         console.error('Error fetching nearby jobs:', error);

@@ -68,6 +68,17 @@ export async function getUserDocument(uid: string): Promise<UserProfile | null> 
         identity_images: data.identity_images || [],
         created_at: data.created_at?.toDate?.() ?? new Date(),
         updated_at: data.updated_at?.toDate?.() ?? new Date(),
+        // Employer-specific fields
+        company_name: data.company_name || undefined,
+        company_tax_id: data.company_tax_id || undefined,
+        industry: data.industry || undefined,
+        company_logo_url: data.company_logo_url || null,
+        company_description: data.company_description || undefined,
+        company_website: data.company_website || undefined,
+        business_license_url: data.business_license_url || null,
+        verification_status: data.verification_status || 'UNVERIFIED',
+        notification_push: data.notification_push ?? true,
+        notification_email: data.notification_email ?? true,
     } as UserProfile;
 }
 

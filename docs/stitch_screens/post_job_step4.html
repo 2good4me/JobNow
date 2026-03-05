@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Post Job - Step 4 Review</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2463eb",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#111621",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen flex justify-center">
+<div class="relative flex h-full min-h-screen w-full max-w-md flex-col overflow-hidden bg-background-light dark:bg-background-dark shadow-xl">
+<!-- Top App Bar -->
+<div class="sticky top-0 z-10 bg-background-light dark:bg-background-dark px-4 pt-4 pb-2">
+<div class="flex items-center justify-between">
+<button class="flex size-10 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined text-slate-900 dark:text-slate-100 text-2xl">arrow_back</span>
+</button>
+<h2 class="text-lg font-bold leading-tight">Xem lại tin đăng</h2>
+<button class="flex h-10 items-center justify-center px-2">
+<span class="text-slate-500 dark:text-slate-400 text-sm font-semibold">Hủy</span>
+</button>
+</div>
+<!-- Progress Bar -->
+<div class="mt-4 flex w-full items-center justify-center gap-2 px-2">
+<div class="h-1.5 flex-1 rounded-full bg-primary"></div>
+<div class="h-1.5 flex-1 rounded-full bg-primary"></div>
+<div class="h-1.5 flex-1 rounded-full bg-primary"></div>
+<div class="h-1.5 flex-1 rounded-full bg-primary"></div>
+</div>
+<div class="mt-1 flex justify-between px-1 text-[10px] font-medium text-slate-400">
+<span>Thông tin</span>
+<span>Mô tả</span>
+<span>Yêu cầu</span>
+<span class="text-primary font-bold">Xem lại</span>
+</div>
+</div>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto px-4 pb-32">
+<div class="py-4">
+<h1 class="text-2xl font-bold text-slate-900 dark:text-white">Kiểm tra lại lần cuối</h1>
+<p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Đảm bảo mọi thông tin đều chính xác trước khi đăng tuyển.</p>
+</div>
+<!-- Upload Cover Photo Area -->
+<div class="mb-6">
+<label class="block mb-2 text-sm font-semibold text-slate-900 dark:text-white">Ảnh bìa tin đăng</label>
+<div class="relative flex aspect-video w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors cursor-pointer overflow-hidden group">
+<!-- Placeholder Content -->
+<div class="flex flex-col items-center justify-center p-6 text-center z-10">
+<div class="mb-3 rounded-full bg-primary/10 p-3 text-primary">
+<span class="material-symbols-outlined text-3xl">add_photo_alternate</span>
+</div>
+<p class="text-sm font-medium text-slate-900 dark:text-white">Tải ảnh lên</p>
+<p class="mt-1 text-xs text-slate-500 dark:text-slate-400">JPG, PNG tối đa 5MB</p>
+</div>
+<!-- Actual Image Background (simulated for preview if uploaded) -->
+<div class="absolute inset-0 bg-cover bg-center opacity-0 group-hover:opacity-10 transition-opacity" data-alt="Modern office workspace background" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDzoOZcsJzg33ffmbzIg9Jts1gXHr_jeibPbQqEm2Q1rX9FR3Cek-2dMXXqK7gfSaiZxCvRxOnfJIkazXvHS03Asbuxw2vJryov-gYgYy-eg00V5MmyI3bzjKap_dDSheYN1vwdGR4zvbb13KKrcB6BpXfY8DCDMg3OdO2Qgfxt6mPOwO_M-PGXzfyDd8InJptApWsjmAaTU7wmHKqvUBY5aj_kU0s1mLrE8UCX_ImobtATk9_xvs4hNNTCnyCp2aRXc7Prf9dE5wk');"></div>
+</div>
+</div>
+<!-- Summary Card -->
+<div class="rounded-xl bg-white dark:bg-slate-800 p-5 shadow-sm border border-slate-100 dark:border-slate-700">
+<div class="flex justify-between items-start mb-4">
+<h3 class="text-lg font-bold text-slate-900 dark:text-white">Nhân viên Marketing</h3>
+<button class="text-primary text-sm font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-base">edit</span> Sửa
+                    </button>
+</div>
+<div class="space-y-4">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-slate-400 mt-0.5">payments</span>
+<div>
+<p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide font-semibold">Mức lương</p>
+<p class="text-sm font-medium text-slate-900 dark:text-slate-200">12.000.000đ - 15.000.000đ</p>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-slate-400 mt-0.5">location_on</span>
+<div>
+<p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide font-semibold">Địa điểm</p>
+<p class="text-sm font-medium text-slate-900 dark:text-slate-200">Quận 1, TP. Hồ Chí Minh</p>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-slate-400 mt-0.5">schedule</span>
+<div>
+<p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide font-semibold">Hình thức</p>
+<p class="text-sm font-medium text-slate-900 dark:text-slate-200">Toàn thời gian</p>
+</div>
+</div>
+<div class="border-t border-slate-100 dark:border-slate-700 my-3"></div>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-slate-400 mt-0.5">description</span>
+<div>
+<p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide font-semibold">Mô tả ngắn</p>
+<p class="text-sm text-slate-600 dark:text-slate-300 line-clamp-2 mt-1">
+                                Xây dựng kế hoạch marketing online, quản lý fanpage, chạy quảng cáo Facebook Ads, Google Ads...
+                            </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Upsell Banner -->
+<div class="mt-6 overflow-hidden rounded-xl bg-gradient-to-r from-amber-100 to-yellow-50 border border-amber-200 relative">
+<div class="absolute top-0 right-0 p-2 opacity-10">
+<span class="material-symbols-outlined text-6xl text-amber-600">rocket_launch</span>
+</div>
+<div class="p-4 flex items-center gap-3">
+<div class="flex-shrink-0 size-10 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center text-white shadow-lg">
+<span class="material-symbols-outlined text-xl">bolt</span>
+</div>
+<div class="flex-1">
+<h4 class="text-amber-900 font-bold text-sm">Tuyển dụng nhanh gấp 3 lần</h4>
+<p class="text-amber-700 text-xs mt-0.5">Tin đăng của bạn sẽ được ưu tiên hiển thị ở vị trí đầu tiên.</p>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-xs text-amber-600 line-through">50k</span>
+<span class="text-amber-700 font-bold text-lg">20k</span>
+</div>
+</div>
+</div>
+<div class="mt-4 flex items-center gap-2 px-1">
+<input class="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4" id="terms" type="checkbox"/>
+<label class="text-xs text-slate-500 dark:text-slate-400" for="terms">
+                    Tôi đồng ý với <a class="text-primary font-medium hover:underline" href="#">Điều khoản dịch vụ</a> và <a class="text-primary font-medium hover:underline" href="#">Chính sách bảo mật</a>.
+                </label>
+</div>
+</div>
+<!-- Bottom Action Bar -->
+<div class="fixed bottom-0 left-0 right-0 z-20 bg-white dark:bg-background-dark border-t border-slate-100 dark:border-slate-800 p-4 pb-8 max-w-md mx-auto">
+<div class="flex flex-col gap-3">
+<button class="w-full relative overflow-hidden rounded-xl bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-500 p-[1px] shadow-md group">
+<div class="absolute inset-0 bg-white/20 group-hover:bg-white/10 transition-colors"></div>
+<div class="relative flex items-center justify-between rounded-[11px] bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-500 px-4 py-3 text-white">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined fill-1">rocket_launch</span>
+<span class="font-bold text-sm">ĐĂNG + BOOST</span>
+</div>
+<span class="font-bold text-sm bg-white/20 px-2 py-0.5 rounded text-white">20.000đ</span>
+</div>
+</button>
+<button class="w-full rounded-xl bg-white border border-primary/30 text-primary font-bold py-3.5 hover:bg-primary/5 transition-colors text-sm">
+                    ĐĂNG TIN MIỄN PHÍ
+                </button>
+</div>
+</div>
+</div>
+</body></html>
