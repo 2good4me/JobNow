@@ -172,6 +172,7 @@ function CandidateProfilePage() {
           <MenuItem
             icon={HelpCircle}
             title="Trung tâm hỗ trợ"
+            onClick={() => navigate({ to: '/support-center' })}
           />
         </div>
 
