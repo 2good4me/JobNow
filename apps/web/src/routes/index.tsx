@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useEffect } from 'react';
-import { BriefcaseBusiness, MapPin, Clock, Shield } from 'lucide-react';
+import { MapPin, Clock, Shield } from 'lucide-react';
 
 export const Route = createFileRoute('/')({
     component: Index,

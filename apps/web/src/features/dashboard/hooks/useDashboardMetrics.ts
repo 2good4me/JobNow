@@ -20,13 +20,15 @@ export function useDashboardMetrics(employerId: string | undefined) {
         data: jobs = [],
         isLoading: isJobsLoading,
         isError: isJobsError,
+        error: jobsError,
         refetch: refetchJobs
-    } = useGetEmployerJobs(employerId || '');
+    } = useGetEmployerJobs(employerId);
 
     const {
         data: applications = [],
         isLoading: isAppsLoading,
         isError: isAppsError,
+        error: appsError,
         refetch: refetchApps
     } = useGetEmployerApplications(employerId);
 
@@ -46,11 +48,11 @@ export function useDashboardMetrics(employerId: string | undefined) {
             };
         }
 
-        const activeJobsList = jobs.filter(j => j.status === 'ACTIVE');
+        const activeJobsList = jobs.filter(j => j.status === 'ACTIVE' || j.status === 'OPEN');
         const activeJobs = activeJobsList.length;
         const totalJobs = jobs.length;
 
-        const pendingApps = applications.filter(a => a.status === 'NEW').length;
+        const pendingApps = applications.filter(a => a.status === 'NEW' || a.status === 'PENDING').length;
         const totalApps = applications.length;
 
         // Recent applications (last 24h)
@@ -63,7 +65,7 @@ export function useDashboardMetrics(employerId: string | undefined) {
                 const createdAt = a.createdAt || a.appliedAt;
                 if (!createdAt) return false;
 
-                let date;
+                let date: Date;
                 if (typeof createdAt === 'object' && 'toDate' in createdAt) {
                     date = createdAt.toDate();
                 } else {
@@ -73,8 +75,8 @@ export function useDashboardMetrics(employerId: string | undefined) {
                 return date > oneDayAgo;
             })
             .sort((a, b) => {
-                const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
-                const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+                const dateA = typeof a.createdAt === 'object' && a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || a.appliedAt || 0);
+                const dateB = typeof b.createdAt === 'object' && b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || b.appliedAt || 0);
                 return dateB.getTime() - dateA.getTime();
             })
             .slice(0, 5); // Capture the 5 most recent apps
@@ -124,10 +126,18 @@ export function useDashboardMetrics(employerId: string | undefined) {
         };
     }, [jobs, applications]);
 
+    const hasEmployerId = Boolean(employerId);
+    const error = jobsError ?? appsError ?? null;
+    const errorMessage = error instanceof Error
+        ? error.message
+        : 'Không thể tải dữ liệu tổng quan. Vui lòng thử lại.';
+
     return {
         metrics,
-        isLoading: isJobsLoading || isAppsLoading,
-        isError: isJobsError || isAppsError,
+        isLoading: hasEmployerId && (isJobsLoading || isAppsLoading),
+        isError: hasEmployerId && (isJobsError || isAppsError),
+        error,
+        errorMessage,
         refetch: () => {
             refetchJobs();
             refetchApps();

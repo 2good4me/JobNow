@@ -1,4 +1,4 @@
-import { createRootRoute, Outlet, useNavigate, useLocation } from '@tanstack/react-router';
+import { createRootRoute, Outlet, useNavigate, useLocation, Link } from '@tanstack/react-router';
 import { BriefcaseBusiness } from 'lucide-react';
 import { useAuth } from '../features/auth/context/AuthContext';
 import { useEffect } from 'react';
@@ -88,6 +88,7 @@ function RootLayout() {
     }, [role, needsProfileSetup, loading, location.pathname, navigate]);
     const isCandidateRoute = role === 'CANDIDATE' && !isAuthPage;
     const isEmployerRoute = role === 'EMPLOYER' && !isAuthPage;
+    const isFullScreenFlow = location.pathname.startsWith('/employer/post-job');
 
     // Whether to show mobile-first app layout
     const isAppLayout = isCandidateRoute || isEmployerRoute;
@@ -121,16 +122,16 @@ function RootLayout() {
     return (
         <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
             {/* ── Global Header ─────────────────── */}
-            <GlobalHeader />
+            <GlobalHeader isAppLayout={isAppLayout} />
 
             {/* ── Main Content ─────────────────────────── */}
-            <main className={`flex-1 w-full pb-20 ${isAppLayout ? '' : 'bg-slate-50/50'}`}>
+            <main className={`flex-1 w-full ${isFullScreenFlow ? 'pb-0' : 'pb-20'} ${isAppLayout ? '' : 'bg-slate-50/50'}`}>
                 <Outlet />
             </main>
 
-            {/* ── Bottom Navs ─────────────────── */}
+            {/* ── Bottom Navs (hidden during full-screen wizard flows) ── */}
             {isCandidateRoute && <CandidateBottomNav />}
-            {isEmployerRoute && <EmployerBottomNav />}
+            {isEmployerRoute && !isFullScreenFlow && <EmployerBottomNav />}
 
             {/* ── Footer (Guest only) ─────────── */}
             {!isAppLayout && (

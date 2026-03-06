@@ -1,9 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    MessageCircle, Mail, Phone, Clock, ChevronRight,
-    MapPin, FileText, ShieldCheck, HelpCircle, Search, X, Send,
-    Bot, User, Loader2, ArrowLeft, ChevronUp, Sparkles,
+    MessageCircle, ChevronRight,
+    Search, X, Send,
+    Bot, User, Loader2, ArrowLeft, ChevronUp,
 } from 'lucide-react';
 import { GUIDE_CATEGORIES, getAllArticles, type GuideArticle, type GuideCategory } from '../lib/support-center-data';
 

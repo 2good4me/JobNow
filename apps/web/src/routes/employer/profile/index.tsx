@@ -213,6 +213,22 @@ function EmployerProfilePage() {
             </span>
           </div>
 
+          <Link
+            to="/employer/verification"
+            className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50 to-cyan-50 px-3.5 py-3 transition-colors hover:from-indigo-100 hover:to-cyan-100"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm">
+                <ShieldCheck className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-slate-800">Trung tâm xác thực</p>
+                <p className="text-xs text-slate-500">Gửi hồ sơ e-KYC và theo dõi trạng thái realtime</p>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-indigo-500" />
+          </Link>
+
           <div className="space-y-2.5 text-sm text-slate-700">
             {userProfile.address_text && (
               <div className="flex items-center gap-2.5">

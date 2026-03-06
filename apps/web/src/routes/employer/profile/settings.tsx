@@ -1,9 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useAuth } from '@/features/auth/context/AuthContext';
-import { useSubmitVerification, useUpdateEmployerProfile } from '@/features/auth/hooks/useEmployerProfile';
+import { useUpdateEmployerProfile } from '@/features/auth/hooks/useEmployerProfile';
 import { useState } from 'react';
-import { ArrowLeft, ShieldCheck, CheckCircle2, UploadCloud, Bell, BellOff, Lock, LogOut } from 'lucide-react';
-import { useNavigate } from '@tanstack/react-router';
+import { ArrowLeft, ShieldCheck, Bell, BellOff, Lock, LogOut, ChevronRight } from 'lucide-react';
+import { Link, useNavigate } from '@tanstack/react-router';
 
 
 export const Route = createFileRoute('/employer/profile/settings')({
@@ -11,24 +11,12 @@ export const Route = createFileRoute('/employer/profile/settings')({
 });
 
 function EmployerSettingsPage() {
-  const { userProfile: user } = useAuth();
+  const { userProfile: user, signOut } = useAuth();
   const navigate = useNavigate();
-  const { mutateAsync: uploadDocs, isPending: isUploading } = useSubmitVerification();
   const { mutateAsync: updateProfile, isPending: isUpdatingProfile } = useUpdateEmployerProfile();
 
   const [notifPush, setNotifPush] = useState<boolean>(user?.notification_push ?? true);
   const [notifEmail, setNotifEmail] = useState<boolean>(user?.notification_email ?? true);
-
-  const handleUploadLicense = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      await uploadDocs(file);
-      alert('Tải lên GPKD thành công. Đang chờ xác duyệt.');
-    } catch (err) {
-      alert('Lỗi khi tải lên GPKD.');
-    }
-  };
 
   const togglePush = async () => {
     const newVal = !notifPush;
@@ -44,12 +32,26 @@ function EmployerSettingsPage() {
 
   const handleLogout = async () => {
     try {
-      // Implement your auth signout here. Usually connected to Firebase auth.
-      navigate({ to: '/login' });
+      await signOut();
+      await navigate({ to: '/login' });
     } catch (err) {
       console.error(err);
     }
   };
+
+  const verificationStatus = user?.verification_status || 'UNVERIFIED';
+  const verificationLabel =
+    verificationStatus === 'VERIFIED'
+      ? 'Đã xác minh'
+      : verificationStatus === 'PENDING'
+        ? 'Đang xét duyệt'
+        : 'Chưa xác minh';
+  const verificationClass =
+    verificationStatus === 'VERIFIED'
+      ? 'text-emerald-700 bg-emerald-50 border-emerald-100'
+      : verificationStatus === 'PENDING'
+        ? 'text-amber-700 bg-amber-50 border-amber-100'
+        : 'text-slate-600 bg-slate-50 border-slate-200';
 
   return (
     <div className="min-h-screen bg-slate-50 pb-20 font-sans">
@@ -63,69 +65,28 @@ function EmployerSettingsPage() {
       <div className="max-w-md mx-auto p-4 space-y-6">
         {/* Verification Center */}
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
               <ShieldCheck className="w-5 h-5 text-emerald-600" />
             </div>
             <div>
               <h2 className="font-semibold text-slate-800 text-[15px]">Trung tâm Xác thực</h2>
-              <p className="text-xs text-slate-500">E-KYC doanh nghiệp</p>
+              <p className="text-xs text-slate-500">E-KYC doanh nghiệp tập trung tại một màn hình riêng</p>
             </div>
           </div>
 
-          {/* Stepper Progress */}
-          {(() => {
-            const verStatus = user?.verification_status;
-            const currentStep = verStatus === 'VERIFIED' ? 4 : verStatus === 'PENDING' ? 3 : user?.business_license_url ? 2 : 1;
-            const steps = [
-              { num: 1, label: 'Thông tin' },
-              { num: 2, label: 'Upload GPKD' },
-              { num: 3, label: 'Chờ duyệt' },
-              { num: 4, label: 'Xác minh' },
-            ];
-            return (
-              <div className="flex items-center justify-between mb-4 px-1">
-                {steps.map((s, i) => (
-                  <div key={s.num} className="flex items-center flex-1">
-                    <div className="flex flex-col items-center">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${s.num <= currentStep
-                          ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-200'
-                          : 'bg-slate-100 text-slate-400'
-                        }`}>
-                        {s.num < currentStep ? <CheckCircle2 className="w-4 h-4" /> : s.num}
-                      </div>
-                      <span className={`text-[10px] mt-1 font-medium ${s.num <= currentStep ? 'text-emerald-600' : 'text-slate-400'}`}>{s.label}</span>
-                    </div>
-                    {i < steps.length - 1 && (
-                      <div className={`flex-1 h-0.5 mx-1 mt-[-12px] rounded ${s.num < currentStep ? 'bg-emerald-400' : 'bg-slate-200'}`} />
-                    )}
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
-
-          {/* GPKD Preview */}
-          {user?.business_license_url && (
-            <div className="bg-slate-50 rounded-xl p-3 mb-4 border border-slate-100 flex items-center gap-3">
-              <img src={user.business_license_url} alt="GPKD" className="w-14 h-14 rounded-lg object-cover border border-slate-200" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-700 truncate">Giấy phép kinh doanh</p>
-                <p className="text-xs text-slate-500">
-                  {user.verification_status === 'VERIFIED' ? '✅ Đã xác minh' : user.verification_status === 'PENDING' ? '⏳ Đang chờ duyệt' : '📎 Đã tải lên'}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {user?.verification_status !== 'VERIFIED' && (
-            <div className="relative border-2 border-dashed border-slate-200 rounded-xl p-4 text-center hover:bg-slate-50 transition cursor-pointer">
-              <input type="file" accept="image/*,.pdf" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleUploadLicense} disabled={isUploading} />
-              <UploadCloud className="w-6 h-6 text-blue-500 mx-auto mb-2" />
-              <p className="text-sm font-medium text-slate-700">{isUploading ? 'Đang tải lên...' : user?.business_license_url ? 'Tải lên lại GPKD' : 'Tải lên GPKD'}</p>
-              <p className="text-xs text-slate-500 mt-1">PDF, JPG, PNG — tối đa 10MB</p>
-            </div>
-          )}
+          <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+            <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${verificationClass}`}>
+              {verificationLabel}
+            </span>
+            <Link
+              to="/employer/verification"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 hover:text-emerald-800"
+            >
+              Mở trung tâm
+              <ChevronRight className="w-4 h-4" />
+            </Link>
+          </div>
         </div>
 
         {/* Notifications */}

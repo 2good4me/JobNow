@@ -20,6 +20,7 @@ import { Route as JobsIndexRouteImport } from './routes/jobs/index'
 import { Route as EmployerIndexRouteImport } from './routes/employer/index'
 import { Route as CandidateIndexRouteImport } from './routes/candidate/index'
 import { Route as EmployerWalletRouteImport } from './routes/employer/wallet'
+import { Route as EmployerVerificationRouteImport } from './routes/employer/verification'
 import { Route as EmployerShiftManagementRouteImport } from './routes/employer/shift-management'
 import { Route as EmployerQrDisplayRouteImport } from './routes/employer/qr-display'
 import { Route as EmployerProfileRouteImport } from './routes/employer/profile'
@@ -30,7 +31,9 @@ import { Route as EmployerChatRouteImport } from './routes/employer/chat'
 import { Route as EmployerApplicantsRouteImport } from './routes/employer/applicants'
 import { Route as CandidateShiftsRouteImport } from './routes/candidate/shifts'
 import { Route as CandidateProfileRouteImport } from './routes/candidate/profile'
+import { Route as CandidateNotificationsRouteImport } from './routes/candidate/notifications'
 import { Route as CandidateChatRouteImport } from './routes/candidate/chat'
+import { Route as EmployerVerificationIndexRouteImport } from './routes/employer/verification/index'
 import { Route as EmployerProfileIndexRouteImport } from './routes/employer/profile/index'
 import { Route as EmployerProfileSettingsRouteImport } from './routes/employer/profile/settings'
 import { Route as EmployerProfileEditRouteImport } from './routes/employer/profile/edit'
@@ -90,6 +93,11 @@ const EmployerWalletRoute = EmployerWalletRouteImport.update({
   path: '/employer/wallet',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EmployerVerificationRoute = EmployerVerificationRouteImport.update({
+  id: '/employer/verification',
+  path: '/employer/verification',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EmployerShiftManagementRoute = EmployerShiftManagementRouteImport.update({
   id: '/employer/shift-management',
   path: '/employer/shift-management',
@@ -140,11 +148,22 @@ const CandidateProfileRoute = CandidateProfileRouteImport.update({
   path: '/candidate/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CandidateNotificationsRoute = CandidateNotificationsRouteImport.update({
+  id: '/candidate/notifications',
+  path: '/candidate/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CandidateChatRoute = CandidateChatRouteImport.update({
   id: '/candidate/chat',
   path: '/candidate/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EmployerVerificationIndexRoute =
+  EmployerVerificationIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => EmployerVerificationRoute,
+  } as any)
 const EmployerProfileIndexRoute = EmployerProfileIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -170,6 +189,7 @@ export interface FileRoutesByFullPath {
   '/support-center': typeof SupportCenterRoute
   '/support-center-data': typeof SupportCenterDataRoute
   '/candidate/chat': typeof CandidateChatRoute
+  '/candidate/notifications': typeof CandidateNotificationsRoute
   '/candidate/profile': typeof CandidateProfileRoute
   '/candidate/shifts': typeof CandidateShiftsRoute
   '/employer/applicants': typeof EmployerApplicantsRoute
@@ -180,6 +200,7 @@ export interface FileRoutesByFullPath {
   '/employer/profile': typeof EmployerProfileRouteWithChildren
   '/employer/qr-display': typeof EmployerQrDisplayRoute
   '/employer/shift-management': typeof EmployerShiftManagementRoute
+  '/employer/verification': typeof EmployerVerificationRouteWithChildren
   '/employer/wallet': typeof EmployerWalletRoute
   '/candidate/': typeof CandidateIndexRoute
   '/employer/': typeof EmployerIndexRoute
@@ -187,6 +208,7 @@ export interface FileRoutesByFullPath {
   '/employer/profile/edit': typeof EmployerProfileEditRoute
   '/employer/profile/settings': typeof EmployerProfileSettingsRoute
   '/employer/profile/': typeof EmployerProfileIndexRoute
+  '/employer/verification/': typeof EmployerVerificationIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -197,6 +219,7 @@ export interface FileRoutesByTo {
   '/support-center': typeof SupportCenterRoute
   '/support-center-data': typeof SupportCenterDataRoute
   '/candidate/chat': typeof CandidateChatRoute
+  '/candidate/notifications': typeof CandidateNotificationsRoute
   '/candidate/profile': typeof CandidateProfileRoute
   '/candidate/shifts': typeof CandidateShiftsRoute
   '/employer/applicants': typeof EmployerApplicantsRoute
@@ -213,6 +236,7 @@ export interface FileRoutesByTo {
   '/employer/profile/edit': typeof EmployerProfileEditRoute
   '/employer/profile/settings': typeof EmployerProfileSettingsRoute
   '/employer/profile': typeof EmployerProfileIndexRoute
+  '/employer/verification': typeof EmployerVerificationIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -224,6 +248,7 @@ export interface FileRoutesById {
   '/support-center': typeof SupportCenterRoute
   '/support-center-data': typeof SupportCenterDataRoute
   '/candidate/chat': typeof CandidateChatRoute
+  '/candidate/notifications': typeof CandidateNotificationsRoute
   '/candidate/profile': typeof CandidateProfileRoute
   '/candidate/shifts': typeof CandidateShiftsRoute
   '/employer/applicants': typeof EmployerApplicantsRoute
@@ -234,6 +259,7 @@ export interface FileRoutesById {
   '/employer/profile': typeof EmployerProfileRouteWithChildren
   '/employer/qr-display': typeof EmployerQrDisplayRoute
   '/employer/shift-management': typeof EmployerShiftManagementRoute
+  '/employer/verification': typeof EmployerVerificationRouteWithChildren
   '/employer/wallet': typeof EmployerWalletRoute
   '/candidate/': typeof CandidateIndexRoute
   '/employer/': typeof EmployerIndexRoute
@@ -241,6 +267,7 @@ export interface FileRoutesById {
   '/employer/profile/edit': typeof EmployerProfileEditRoute
   '/employer/profile/settings': typeof EmployerProfileSettingsRoute
   '/employer/profile/': typeof EmployerProfileIndexRoute
+  '/employer/verification/': typeof EmployerVerificationIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -253,6 +280,7 @@ export interface FileRouteTypes {
     | '/support-center'
     | '/support-center-data'
     | '/candidate/chat'
+    | '/candidate/notifications'
     | '/candidate/profile'
     | '/candidate/shifts'
     | '/employer/applicants'
@@ -263,6 +291,7 @@ export interface FileRouteTypes {
     | '/employer/profile'
     | '/employer/qr-display'
     | '/employer/shift-management'
+    | '/employer/verification'
     | '/employer/wallet'
     | '/candidate/'
     | '/employer/'
@@ -270,6 +299,7 @@ export interface FileRouteTypes {
     | '/employer/profile/edit'
     | '/employer/profile/settings'
     | '/employer/profile/'
+    | '/employer/verification/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -280,6 +310,7 @@ export interface FileRouteTypes {
     | '/support-center'
     | '/support-center-data'
     | '/candidate/chat'
+    | '/candidate/notifications'
     | '/candidate/profile'
     | '/candidate/shifts'
     | '/employer/applicants'
@@ -296,6 +327,7 @@ export interface FileRouteTypes {
     | '/employer/profile/edit'
     | '/employer/profile/settings'
     | '/employer/profile'
+    | '/employer/verification'
   id:
     | '__root__'
     | '/'
@@ -306,6 +338,7 @@ export interface FileRouteTypes {
     | '/support-center'
     | '/support-center-data'
     | '/candidate/chat'
+    | '/candidate/notifications'
     | '/candidate/profile'
     | '/candidate/shifts'
     | '/employer/applicants'
@@ -316,6 +349,7 @@ export interface FileRouteTypes {
     | '/employer/profile'
     | '/employer/qr-display'
     | '/employer/shift-management'
+    | '/employer/verification'
     | '/employer/wallet'
     | '/candidate/'
     | '/employer/'
@@ -323,6 +357,7 @@ export interface FileRouteTypes {
     | '/employer/profile/edit'
     | '/employer/profile/settings'
     | '/employer/profile/'
+    | '/employer/verification/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -334,6 +369,7 @@ export interface RootRouteChildren {
   SupportCenterRoute: typeof SupportCenterRoute
   SupportCenterDataRoute: typeof SupportCenterDataRoute
   CandidateChatRoute: typeof CandidateChatRoute
+  CandidateNotificationsRoute: typeof CandidateNotificationsRoute
   CandidateProfileRoute: typeof CandidateProfileRoute
   CandidateShiftsRoute: typeof CandidateShiftsRoute
   EmployerApplicantsRoute: typeof EmployerApplicantsRoute
@@ -344,6 +380,7 @@ export interface RootRouteChildren {
   EmployerProfileRoute: typeof EmployerProfileRouteWithChildren
   EmployerQrDisplayRoute: typeof EmployerQrDisplayRoute
   EmployerShiftManagementRoute: typeof EmployerShiftManagementRoute
+  EmployerVerificationRoute: typeof EmployerVerificationRouteWithChildren
   EmployerWalletRoute: typeof EmployerWalletRoute
   CandidateIndexRoute: typeof CandidateIndexRoute
   EmployerIndexRoute: typeof EmployerIndexRoute
@@ -429,6 +466,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmployerWalletRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/employer/verification': {
+      id: '/employer/verification'
+      path: '/employer/verification'
+      fullPath: '/employer/verification'
+      preLoaderRoute: typeof EmployerVerificationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/employer/shift-management': {
       id: '/employer/shift-management'
       path: '/employer/shift-management'
@@ -499,12 +543,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CandidateProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/candidate/notifications': {
+      id: '/candidate/notifications'
+      path: '/candidate/notifications'
+      fullPath: '/candidate/notifications'
+      preLoaderRoute: typeof CandidateNotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/candidate/chat': {
       id: '/candidate/chat'
       path: '/candidate/chat'
       fullPath: '/candidate/chat'
       preLoaderRoute: typeof CandidateChatRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/employer/verification/': {
+      id: '/employer/verification/'
+      path: '/'
+      fullPath: '/employer/verification/'
+      preLoaderRoute: typeof EmployerVerificationIndexRouteImport
+      parentRoute: typeof EmployerVerificationRoute
     }
     '/employer/profile/': {
       id: '/employer/profile/'
@@ -546,6 +604,17 @@ const EmployerProfileRouteWithChildren = EmployerProfileRoute._addFileChildren(
   EmployerProfileRouteChildren,
 )
 
+interface EmployerVerificationRouteChildren {
+  EmployerVerificationIndexRoute: typeof EmployerVerificationIndexRoute
+}
+
+const EmployerVerificationRouteChildren: EmployerVerificationRouteChildren = {
+  EmployerVerificationIndexRoute: EmployerVerificationIndexRoute,
+}
+
+const EmployerVerificationRouteWithChildren =
+  EmployerVerificationRoute._addFileChildren(EmployerVerificationRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
@@ -555,6 +624,7 @@ const rootRouteChildren: RootRouteChildren = {
   SupportCenterRoute: SupportCenterRoute,
   SupportCenterDataRoute: SupportCenterDataRoute,
   CandidateChatRoute: CandidateChatRoute,
+  CandidateNotificationsRoute: CandidateNotificationsRoute,
   CandidateProfileRoute: CandidateProfileRoute,
   CandidateShiftsRoute: CandidateShiftsRoute,
   EmployerApplicantsRoute: EmployerApplicantsRoute,
@@ -565,6 +635,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmployerProfileRoute: EmployerProfileRouteWithChildren,
   EmployerQrDisplayRoute: EmployerQrDisplayRoute,
   EmployerShiftManagementRoute: EmployerShiftManagementRoute,
+  EmployerVerificationRoute: EmployerVerificationRouteWithChildren,
   EmployerWalletRoute: EmployerWalletRoute,
   CandidateIndexRoute: CandidateIndexRoute,
   EmployerIndexRoute: EmployerIndexRoute,

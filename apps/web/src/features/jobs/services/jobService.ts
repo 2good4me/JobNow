@@ -144,7 +144,7 @@ export async function createJob(jobData: Partial<Job>): Promise<Job> {
             ? encodeGeohash(latitude, longitude)
             : '';
 
-        const jobToSave = {
+        const jobToSave: any = {
             employer_id: jobData.employerId,
             category_id: jobData.categoryId,
             title: jobData.title,
@@ -166,10 +166,17 @@ export async function createJob(jobData: Partial<Job>): Promise<Job> {
                 end_time: shift.endTime,
                 quantity: shift.quantity,
             })),
-            vacancies: jobData.vacancies,
             created_at: serverTimestamp(),
             updated_at: serverTimestamp(),
         };
+
+        if (jobData.vacancies !== undefined) jobToSave.vacancies = jobData.vacancies;
+        if (jobData.deadline !== undefined) jobToSave.deadline = jobData.deadline;
+        if (jobData.requirements !== undefined) jobToSave.requirements = jobData.requirements;
+        if (jobData.images !== undefined) jobToSave.images = jobData.images;
+        if (jobData.genderPreference !== undefined) jobToSave.gender_preference = jobData.genderPreference;
+        if (jobData.startDate !== undefined) jobToSave.start_date = jobData.startDate;
+        if (jobData.isPremium !== undefined) jobToSave.is_premium = jobData.isPremium;
 
         await setDoc(newJobRef, jobToSave);
         return mapJobDocToJob(newJobRef.id, jobToSave as any);

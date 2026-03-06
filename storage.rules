@@ -1,0 +1,65 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function getUserRole() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && getUserRole() == 'ADMIN';
+    }
+
+    function isEmployer() {
+      return isSignedIn() && getUserRole() == 'EMPLOYER';
+    }
+
+    function isImageUpload() {
+      return request.resource != null
+        && request.resource.contentType.matches('image/.*')
+        && request.resource.size < 12 * 1024 * 1024;
+    }
+
+    match /company-logos/{userId}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId) && isImageUpload();
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /job-images/{userId}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId) && isEmployer() && isImageUpload();
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /business-licenses/{userId}/{fileName} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId) && isImageUpload();
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /users_private/{userId}/ekyc/{fileName} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId) && isImageUpload();
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /verification-requests/{userId}/{fileName} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId) && isImageUpload();
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,7 +1,6 @@
 import { Link, useLocation } from '@tanstack/react-router';
-import { LayoutDashboard, Users, PlusCircle, Bell, UserCircle, MessageCircle } from 'lucide-react';
+import { LayoutDashboard, Users, PlusCircle, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/features/auth/context/AuthContext';
-import { useUnreadCount } from '@/features/notifications/hooks/useNotifications';
 import { useChatUnreadCount } from '@/features/chat/hooks/useChatUnreadCount';
 
 const navItemsDef = [
@@ -9,14 +8,11 @@ const navItemsDef = [
     { to: '/employer/applicants', icon: Users, label: 'Ứng viên' },
     { to: '/employer/chat', icon: MessageCircle, label: 'Chat', badgeType: 'chat' as const },
     { to: '/employer/post-job', icon: PlusCircle, label: 'Đăng tin' },
-    { to: '/employer/notifications', icon: Bell, label: 'Thông báo', badgeType: 'notifications' as const },
-    { to: '/employer/profile', icon: UserCircle, label: 'Tài khoản' },
 ] as const;
 
 export function EmployerBottomNav() {
     const location = useLocation();
     const { userProfile } = useAuth();
-    const notificationUnreadCount = useUnreadCount(userProfile?.uid);
     const chatUnreadCount = useChatUnreadCount(userProfile?.uid, 'EMPLOYER');
 
     return (
@@ -24,12 +20,7 @@ export function EmployerBottomNav() {
             <div className="flex items-center justify-around max-w-lg mx-auto h-16 px-2">
                 {navItemsDef.map(({ to, icon: Icon, label, ...rest }) => {
                     const badgeType = 'badgeType' in rest ? rest.badgeType : undefined;
-                    const badgeValue =
-                        badgeType === 'notifications'
-                            ? notificationUnreadCount
-                            : badgeType === 'chat'
-                                ? chatUnreadCount
-                                : 0;
+                    const badgeValue = badgeType === 'chat' ? chatUnreadCount : 0;
                     const hasBadge = Boolean(badgeType);
                     const isActive =
                         to === '/employer'
@@ -41,7 +32,7 @@ export function EmployerBottomNav() {
                             key={to}
                             to={to}
                             className={`
-                                flex flex-col items-center justify-center gap-0.5 min-w-[52px] py-1.5 rounded-xl transition-all duration-200
+                                flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition-all duration-200
                                 ${isActive
                                     ? 'text-primary-600'
                                     : 'text-slate-400 hover:text-slate-600'

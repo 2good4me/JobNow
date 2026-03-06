@@ -9,8 +9,13 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
     function getUserRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      let userDoc = getUserData();
+      return (userDoc != null && 'role' in userDoc.data) ? userDoc.data.role : null;
     }
 
     function isAdmin() {
@@ -35,6 +40,15 @@ service cloud.firestore {
     // --- USERS PRIVATE (PII/eKYC) ---
     match /users_private/{userId} {
       allow read, write: if isOwner(userId) || isAdmin();
+
+      match /verification_requests/{requestId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId)
+                      && request.resource.data.user_id == request.auth.uid
+                      && request.resource.data.status == 'PENDING';
+        allow update: if isAdmin();
+        allow delete: if false;
+      }
     }
 
     // --- JOBS ---
@@ -51,9 +65,11 @@ service cloud.firestore {
           && d.description is string;
       }
 
-      allow create: if isSignedIn() && getUserRole() == 'EMPLOYER' && isValidJobCreate();
+      allow create: if isSignedIn() 
+                    && (getUserRole() == 'EMPLOYER' || getUserRole() == 'employer')
+                    && isValidJobCreate();
       allow update, delete: if isSignedIn()
-                            && getUserRole() == 'EMPLOYER'
+                            && (getUserRole() == 'EMPLOYER' || getUserRole() == 'employer')
                             && resource.data.employer_id == request.auth.uid;
     }
 

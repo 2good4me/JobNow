@@ -5,7 +5,7 @@ import { fetchEmployerJobs, fetchJobById, createJob, updateJob, deleteJob } from
 /**
  * Hook to fetch all jobs created by a specific employer.
  */
-export function useGetEmployerJobs(employerId: string) {
+export function useGetEmployerJobs(employerId: string | undefined) {
     return useQuery<Job[], Error>({
         queryKey: ['jobs', 'employer', employerId],
         queryFn: async () => {
