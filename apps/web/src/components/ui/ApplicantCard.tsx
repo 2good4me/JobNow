@@ -86,8 +86,11 @@ export function ApplicantCard({
   }, [applicationId, updateStatus]);
 
   const handleChat = useCallback(() => {
-    navigate({ to: '/employer/applicants' } as any);
-  }, [navigate]);
+    navigate({
+      to: '/employer/chat',
+      search: { applicationId }
+    } as any);
+  }, [navigate, applicationId]);
 
   const canApprove = !['REVIEWED', 'APPROVED', 'COMPLETED', 'CANCELLED'].includes(status);
   const canReject = !['REJECTED', 'COMPLETED', 'CANCELLED'].includes(status);

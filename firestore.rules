@@ -97,6 +97,7 @@ service cloud.firestore {
     }
 
     // --- CONVERSATIONS / MESSAGES (writes via Cloud Functions only) ---
+    // --- CONVERSATIONS / MESSAGES (writes via Cloud Functions only) ---
     match /conversations/{conversationId} {
       allow read: if isSignedIn() && (
         resource.data.candidate_id == request.auth.uid ||
