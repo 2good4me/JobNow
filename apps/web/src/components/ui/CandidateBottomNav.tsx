@@ -25,7 +25,9 @@ export function CandidateBottomNav() {
                     const isActive =
                         to === '/candidate'
                             ? location.pathname === '/candidate' || location.pathname === '/candidate/'
-                            : location.pathname.startsWith(to);
+                            : to === '/candidate/profile'
+                                ? location.pathname.startsWith(to) || location.pathname.startsWith('/support-center')
+                                : location.pathname.startsWith(to);
 
                     return (
                         <Link

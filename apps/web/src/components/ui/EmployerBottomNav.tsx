@@ -38,7 +38,9 @@ export function EmployerBottomNav() {
                     const isActive =
                         to === '/employer'
                             ? location.pathname === '/employer' || location.pathname === '/employer/'
-                            : location.pathname.startsWith(to);
+                            : to === '/employer/profile'
+                                ? location.pathname.startsWith(to) || location.pathname.startsWith('/support-center')
+                                : location.pathname.startsWith(to);
 
                     if (isFab) {
                         return (
