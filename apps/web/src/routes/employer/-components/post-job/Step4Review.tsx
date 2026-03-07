@@ -1,14 +1,29 @@
 import { CalendarClock, Check, DollarSign, ImagePlus, MapPin, Sparkles, Trash2, UsersRound } from 'lucide-react';
 import { formatSalary, type JobFormState } from '../../post-job';
+import type { PayType } from '../../-schemas/jobFormSchema';
 
 interface Step4ReviewProps {
   form: JobFormState;
   setForm: React.Dispatch<React.SetStateAction<JobFormState>>;
   fileInputId: string;
   handleImageSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  calculateTotalBudget: (quantity: number, salary: number, payType: PayType, shifts?: any[]) => number;
 }
 
-export default function Step4Review({ form, setForm, fileInputId, handleImageSelect }: Step4ReviewProps) {
+export default function Step4Review({
+  form,
+  setForm,
+  fileInputId,
+  handleImageSelect,
+  calculateTotalBudget,
+}: Step4ReviewProps) {
+  const totalBudget = calculateTotalBudget(
+    form.vacancies,
+    Number(form.salary.replace(/\D/g, '')) || 0,
+    form.payType as PayType,
+    form.shifts
+  );
+
   return (
     <div className="w-full shrink-0 px-0.5 space-y-4">
       <section className="rounded-2xl border border-white/70 bg-white/70 p-4 shadow-md backdrop-blur-md">
@@ -16,15 +31,23 @@ export default function Step4Review({ form, setForm, fileInputId, handleImageSel
         <p className="mt-1 mb-4 text-xs text-slate-500">Đảm bảo mọi thông tin đều chính xác trước khi đăng tuyển.</p>
 
         {/* Image upload */}
-        <label htmlFor={fileInputId}
+        <label
+          htmlFor={fileInputId}
           className="mb-4 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/80 py-6 transition-colors hover:border-emerald-400 hover:bg-emerald-50/30"
         >
           {form.coverImage ? (
             <div className="flex items-center gap-2">
               <Check className="w-5 h-5 text-emerald-500" />
               <span className="text-sm font-medium text-slate-700">{form.coverImage.name}</span>
-              <button type="button" onClick={e => { e.preventDefault(); setForm(p => ({ ...p, coverImage: null })); }}
-                className="text-slate-400 hover:text-rose-500 cursor-pointer" aria-label="Xóa ảnh">
+              <button
+                type="button"
+                onClick={e => {
+                  e.preventDefault();
+                  setForm(p => ({ ...p, coverImage: null }));
+                }}
+                className="text-slate-400 hover:text-rose-500 cursor-pointer"
+                aria-label="Xóa ảnh"
+              >
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
@@ -35,14 +58,20 @@ export default function Step4Review({ form, setForm, fileInputId, handleImageSel
               <span className="text-[11px] text-slate-400 mt-0.5">JPG, PNG tối đa 5MB</span>
             </>
           )}
-          <input id={fileInputId} type="file" accept="image/jpeg,image/png" onChange={handleImageSelect} className="hidden" />
+          <input
+            id={fileInputId}
+            type="file"
+            accept="image/jpeg,image/png"
+            onChange={handleImageSelect}
+            className="hidden"
+          />
         </label>
 
         {/* Summary card */}
         <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
           <div>
             <h3 className="text-lg font-bold text-slate-900">{form.title || '(Chưa có tiêu đề)'}</h3>
-            <span className="text-xs text-slate-500">{form.category}</span>
+            <span className="text-xs text-slate-500">{form.category || '(Chưa chọn)'}</span>
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-xs">
@@ -71,29 +100,46 @@ export default function Step4Review({ form, setForm, fileInputId, handleImageSel
             </div>
           )}
 
-          {form.shifts.length > 0 && (
+          {form.shifts && form.shifts.length > 0 && (
             <div className="pt-2 border-t border-slate-100">
               <p className="text-xs text-slate-600 font-medium mb-1.5">Ca làm việc ({form.shifts.length})</p>
               <div className="space-y-1">
                 {form.shifts.map(s => (
-                  <div key={s.id} className="flex items-center justify-between text-xs bg-slate-50 rounded-lg px-3 py-1.5">
+                  <div
+                    key={s.id}
+                    className="flex items-center justify-between text-xs bg-slate-50 rounded-lg px-3 py-1.5"
+                  >
                     <span className="text-slate-700 font-medium">{s.name || 'Ca'}</span>
-                    <span className="text-slate-500">{s.startTime} — {s.endTime} · {s.quantity} người</span>
+                    <span className="text-slate-500">
+                      {s.startTime} — {s.endTime} · {s.quantity} người
+                    </span>
                   </div>
                 ))}
               </div>
             </div>
           )}
+
+          {/* Total Budget Display */}
+          <div className="pt-2 border-t border-slate-100 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-3">
+            <p className="text-xs text-slate-600 font-medium mb-1">Tổng ngân sách dự kiến</p>
+            <p className="text-lg font-bold text-emerald-700">{formatSalary(String(totalBudget))} VNĐ</p>
+            <p className="text-xs text-emerald-600 mt-1">
+              {form.payType === 'Theo ca'
+                ? `${form.shifts.reduce((acc, s) => acc + s.quantity, 0)} ca × ${formatSalary(form.salary)} VNĐ`
+                : `${form.vacancies} người × ${formatSalary(form.salary)} VNĐ`}
+            </p>
+          </div>
         </div>
       </section>
 
       {/* Premium upsell */}
       <section
         onClick={() => setForm(p => ({ ...p, isPremium: !p.isPremium }))}
-        className={`cursor-pointer rounded-2xl p-4 shadow-md transition-all duration-200 relative overflow-hidden ${form.isPremium
-          ? 'border-2 border-amber-400 bg-gradient-to-r from-amber-50 to-orange-50'
-          : 'border border-white/70 bg-white/70 backdrop-blur-md'
-          }`}
+        className={`cursor-pointer rounded-2xl p-4 shadow-md transition-all duration-200 relative overflow-hidden ${
+          form.isPremium
+            ? 'border-2 border-amber-400 bg-gradient-to-r from-amber-50 to-orange-50'
+            : 'border border-white/70 bg-white/70 backdrop-blur-md'
+        }`}
       >
         {form.isPremium && (
           <div className="absolute top-3 right-3 w-6 h-6 bg-amber-500 text-white rounded-full flex items-center justify-center">
@@ -106,7 +152,9 @@ export default function Step4Review({ form, setForm, fileInputId, handleImageSel
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-900">Tuyển dụng nhanh gấp 3 lần</h3>
-            <p className="text-xs text-slate-500 mt-0.5">Tin đăng sẽ được ưu tiên hiển thị ở vị trí đầu tiên.</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Tin đăng sẽ được ưu tiên hiển thị ở vị trí đầu tiên.
+            </p>
           </div>
         </div>
       </section>
