@@ -15,39 +15,27 @@ import Step1Info from './-components/post-job/Step1Info';
 import Step2Details from './-components/post-job/Step2Details';
 import Step3Shifts from './-components/post-job/Step3Shifts';
 import Step4Review from './-components/post-job/Step4Review';
+import { CategoryBottomSheet } from './-components/post-job/CategoryBottomSheet';
+import {
+  jobFormSchema,
+  type JobFormState as JobFormSchemaState,
+  type PayType,
+  type GenderPreference,
+  type Shift,
+  calculateTotalBudget,
+} from './-schemas/jobFormSchema';
 
 export const Route = createFileRoute('/employer/post-job')({
   component: EmployerPostJobRoute,
 });
 
-/* ── Types ───────────────────────────────────── */
-export type PayType = 'Theo giờ' | 'Theo ca' | 'Theo ngày';
-export type GenderPreference = 'Nam' | 'Nữ' | 'Cả hai';
-
-export interface Shift {
-  id: string;
-  name: string;
-  startTime: string;
-  endTime: string;
-  quantity: number;
-}
-
-export interface JobFormState {
-  title: string;
-  category: string;
-  description: string;
-  vacancies: number;
-  gender: GenderPreference;
-  salary: string;
-  payType: PayType;
-  address: string;
-  startDate: string;
-  deadline: string;
-  requirements: string[];
-  shifts: Shift[];
-  coverImage: File | null;
-  isPremium: boolean;
-}
+// App form state keeps GPS fields nullable until user selects a location.
+export type JobFormState = Omit<JobFormSchemaState, 'latitude' | 'longitude'> & {
+  latitude: number | null;
+  longitude: number | null;
+};
+// Re-export types for use in step components
+export type { PayType, GenderPreference, Shift };
 
 /* ── Constants ───────────────────────────────── */
 export const categories = ['F&B Service', 'Retail', 'Delivery', 'Event Helper'];
@@ -55,11 +43,6 @@ export const payTypes: PayType[] = ['Theo giờ', 'Theo ca', 'Theo ngày'];
 export const genderOptions: GenderPreference[] = ['Nam', 'Nữ', 'Cả hai'];
 
 const STEP_LABELS = ['Thông tin', 'Chi tiết', 'Ca làm', 'Xem lại'] as const;
-
-export const DEFAULT_SHIFTS: Shift[] = [
-  { id: 'default-1', name: 'Ca sáng', startTime: '06:00', endTime: '14:00', quantity: 1 },
-  { id: 'default-2', name: 'Ca chiều', startTime: '14:00', endTime: '22:00', quantity: 1 },
-];
 
 /* ── Helpers ─────────────────────────────────── */
 let _shiftId = 0;
@@ -108,21 +91,28 @@ function StepBar({ current, total }: { current: number; total: number }) {
 function EmployerPostJobRoute() {
   const [step, setStep] = useState(1);
   const [requirementInput, setRequirementInput] = useState('');
+  const [showCategoryBottomSheet, setShowCategoryBottomSheet] = useState(false);
+  const [errors, setErrors] = useState<Partial<Record<keyof JobFormState, string>>>({});
+  const [locationGpsError, setLocationGpsError] = useState<string | null>(null);
+  
+  // Empty form state - no defaults
   const [form, setForm] = useState<JobFormState>({
     title: '',
-    category: 'F&B Service',
+    category: '',
     description: '',
-    vacancies: 2,
+    vacancies: 0,
     gender: 'Cả hai',
-    salary: '50000',
+    salary: '',
     payType: 'Theo giờ',
     address: '',
     startDate: '',
     deadline: '',
     requirements: [],
-    shifts: [...DEFAULT_SHIFTS],
+    shifts: [],
     coverImage: null,
     isPremium: false,
+    latitude: null,
+    longitude: null,
   });
 
   const { user } = useAuth();
@@ -130,10 +120,83 @@ function EmployerPostJobRoute() {
   const { mutateAsync: createJob, isPending: isCreating } = useCreateJob();
   const fileInputId = useId();
 
+  // Validation for current step
+  const validateStep = useCallback((stepNum: number) => {
+    const newErrors: Partial<Record<keyof JobFormState, string>> = {};
+
+    if (stepNum === 1) {
+      if (!form.title.trim()) newErrors.title = 'Tiêu đề công việc không được để trống';
+      if (form.title.length < 5) newErrors.title = 'Tiêu đề phải >= 5 ký tự';
+      if (!form.description.trim()) newErrors.description = 'Mô tả công việc không được để trống';
+      if (form.description.length < 10) newErrors.description = 'Mô tả phải >= 10 ký tự';
+      if (!form.category) newErrors.category = 'Vui lòng chọn danh mục';
+    }
+
+    if (stepNum === 2) {
+      if (!form.address.trim()) newErrors.address = 'Địa chỉ không được để trống';
+      if (!form.startDate) newErrors.startDate = 'Ngày bắt đầu không được để trống';
+      if (form.deadline && new Date(form.deadline) < new Date(form.startDate)) {
+        newErrors.deadline = 'Hạn nộp đơn phải >= ngày bắt đầu';
+      }
+      // Location GPS guard
+      if (form.latitude === null || form.longitude === null) {
+        setLocationGpsError('⚠️ Vui lòng chọn vị trí GPS trước khi tiếp tục');
+      } else {
+        setLocationGpsError(null);
+      }
+    }
+
+    if (stepNum === 3) {
+      if (!form.salary.trim()) newErrors.salary = 'Mức lương không được để trống';
+      if (Number(form.salary.replace(/\D/g, '')) <= 0) newErrors.salary = 'Mức lương phải > 0';
+      if (!form.vacancies || form.vacancies < 1) newErrors.vacancies = 'Số lượng phải >= 1';
+      if (form.shifts.length === 0) newErrors.shifts = 'Phải có ít nhất 1 ca làm';
+
+      // Validate shifts
+      const shiftErrors: string[] = [];
+      form.shifts.forEach((shift, idx) => {
+        if (!shift.name.trim()) shiftErrors.push(`Ca ${idx + 1}: Tên ca không được để trống`);
+        const [startH, startM] = shift.startTime.split(':').map(Number);
+        const [endH, endM] = shift.endTime.split(':').map(Number);
+        const startMins = startH * 60 + startM;
+        const endMins = endH * 60 + endM;
+        if (endMins < startMins) shiftErrors.push(`Ca ${idx + 1}: Giờ kết thúc phải >= giờ bắt đầu`);
+        if (shift.quantity < 1) shiftErrors.push(`Ca ${idx + 1}: Số lượng phải >= 1`);
+      });
+      if (shiftErrors.length > 0) {
+        newErrors.shifts = shiftErrors.join('; ');
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }, [form]);
+
   const canAdvance = useMemo(() => {
-    if (step === 1) return form.title.trim().length > 0 && form.description.trim().length > 0;
-    if (step === 2) return form.address.trim().length > 0 && form.startDate.length > 0;
-    if (step === 3) return form.shifts.length > 0 && form.shifts.every(s => s.quantity > 0);
+    if (step === 1) {
+      return (
+        form.title.trim().length >= 5 &&
+        form.description.trim().length >= 10 &&
+        form.category.length > 0
+      );
+    }
+    if (step === 2) {
+      return (
+        form.address.trim().length >= 5 &&
+        form.startDate.length > 0 &&
+        form.latitude !== null &&
+        form.longitude !== null
+      );
+    }
+    if (step === 3) {
+      return (
+        form.salary.trim().length > 0 &&
+        Number(form.salary.replace(/\D/g, '')) > 0 &&
+        form.vacancies >= 1 &&
+        form.shifts.length > 0 &&
+        form.shifts.every(s => s.name.trim() && s.quantity >= 1)
+      );
+    }
     return true;
   }, [step, form]);
 
@@ -161,6 +224,8 @@ function EmployerPostJobRoute() {
     const file = e.target.files?.[0];
     if (file && file.size <= 5 * 1024 * 1024) {
       setForm(prev => ({ ...prev, coverImage: file }));
+    } else if (file) {
+      toast.error('Kích thước hình ảnh phải <= 5MB');
     }
   }, []);
 
@@ -189,6 +254,20 @@ function EmployerPostJobRoute() {
     return 'ANY';
   };
 
+  const handleStepChange = (newStep: number) => {
+    if (newStep > step) {
+      // Moving forward - validate current step
+      if (validateStep(step)) {
+        setStep(newStep);
+        setErrors({});
+      }
+    } else {
+      // Moving backward - just go
+      setStep(newStep);
+      setErrors({});
+    }
+  };
+
   /* ── Submit ── */
   const handleSubmit = async () => {
     if (!user?.uid) {
@@ -196,18 +275,20 @@ function EmployerPostJobRoute() {
       return;
     }
 
-    // Validate inputs one last time before submit
-    if (form.title.trim().length === 0 || form.description.trim().length === 0) {
-      toast.error('Vui lòng nhập đầy đủ tiêu đề và mô tả công việc.');
-      return;
-    }
-
-    if (form.address.trim().length === 0) {
-      toast.error('Vui lòng nhập địa chỉ làm việc.');
-      return;
-    }
-
     try {
+      // Final validation with Zod
+      const validationResult = jobFormSchema.safeParse(form);
+      if (!validationResult.success) {
+        const zodErrors = validationResult.error.flatten().fieldErrors;
+        const errorMap: Partial<Record<keyof JobFormState, string>> = {};
+        Object.entries(zodErrors).forEach(([key, msgs]) => {
+          errorMap[key as keyof JobFormState] = msgs?.[0] || 'Invalid field';
+        });
+        setErrors(errorMap);
+        toast.error('Vui lòng kiểm tra lại các trường bị lỗi');
+        return;
+      }
+
       // Upload cover image if selected
       let imageUrls: string[] = [];
       if (form.coverImage) {
@@ -225,9 +306,13 @@ function EmployerPostJobRoute() {
         status: 'ACTIVE',
         salary: Number(form.salary.replace(/\D/g, '')),
         salaryType: mapPayType(form.payType),
-        location: { address: form.address, latitude: 10.7769, longitude: 106.7009 },
+        location: {
+          address: form.address,
+          latitude: form.latitude ?? 10.7769,
+          longitude: form.longitude ?? 106.7009,
+        },
         geohash: '',
-        isGpsRequired: false,
+        isGpsRequired: true,
         shifts: form.shifts.map(s => ({
           id: s.id,
           name: s.name,
@@ -235,7 +320,6 @@ function EmployerPostJobRoute() {
           endTime: s.endTime,
           quantity: s.quantity,
         })),
-        // New structured fields
         vacancies: form.vacancies,
         genderPreference: mapGender(form.gender),
         startDate: form.startDate,
@@ -284,10 +368,12 @@ function EmployerPostJobRoute() {
             <Step1Info
               form={form}
               setForm={setForm}
+              errors={errors}
               requirementInput={requirementInput}
               setRequirementInput={setRequirementInput}
               addRequirement={addRequirement}
               removeRequirement={removeRequirement}
+              onCategoryClick={() => setShowCategoryBottomSheet(true)}
             />
           )}
 
@@ -295,6 +381,8 @@ function EmployerPostJobRoute() {
             <Step2Details
               form={form}
               setForm={setForm}
+              errors={errors}
+              locationGpsError={locationGpsError}
             />
           )}
 
@@ -304,6 +392,8 @@ function EmployerPostJobRoute() {
               addShift={addShift}
               updateShift={updateShift}
               removeShift={removeShift}
+              errors={errors}
+              calculateTotalBudget={calculateTotalBudget}
             />
           )}
 
@@ -313,10 +403,20 @@ function EmployerPostJobRoute() {
               setForm={setForm}
               fileInputId={fileInputId}
               handleImageSelect={handleImageSelect}
+              calculateTotalBudget={calculateTotalBudget}
             />
           )}
         </form>
       </div>
+
+      {/* Category Bottom Sheet */}
+      <CategoryBottomSheet
+        isOpen={showCategoryBottomSheet}
+        onClose={() => setShowCategoryBottomSheet(false)}
+        categories={categories}
+        selectedCategory={form.category}
+        onSelect={(cat) => setForm(prev => ({ ...prev, category: cat }))}
+      />
 
       {/* ── Sticky Action Bar ─────────────────── */}
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200/60 bg-white/90 shadow-[0_-4px_24px_rgba(0,0,0,0.08)] backdrop-blur-xl">
@@ -326,7 +426,7 @@ function EmployerPostJobRoute() {
           {step > 1 ? (
             <button
               type="button"
-              onClick={() => setStep(s => s - 1)}
+              onClick={() => handleStepChange(step - 1)}
               className="min-h-[48px] flex-1 rounded-xl border border-slate-200 bg-transparent px-4 py-3 text-sm font-semibold text-slate-600 transition-all hover:border-slate-300 hover:bg-slate-50 active:scale-[0.97] flex items-center justify-center gap-1.5"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -356,7 +456,7 @@ function EmployerPostJobRoute() {
             `}
             disabled={!canAdvance || isCreating}
             onClick={() => {
-              if (step < STEP_LABELS.length) setStep(s => s + 1);
+              if (step < STEP_LABELS.length) handleStepChange(step + 1);
               else handleSubmit();
             }}
           >
