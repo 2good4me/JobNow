@@ -1,4 +1,4 @@
-import { createRootRoute, Outlet, useNavigate, useLocation } from '@tanstack/react-router';
+import { createRootRoute, Outlet, useNavigate, useLocation, Link } from '@tanstack/react-router';
 import { BriefcaseBusiness } from 'lucide-react';
 import { useAuth } from '../features/auth/context/AuthContext';
 import { useEffect } from 'react';

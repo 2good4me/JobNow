@@ -89,7 +89,7 @@ function FloatingChat({ open, onClose }: { open: boolean; onClose: () => void })
         setMessages((prev) => [...prev, { role: 'user', text }]);
         setLoading(true);
         try {
-            const res = await fetch('https://viethoa127.app.n8n.cloud/webhook/24d70728-77d3-43e5-8e7a-2447085b1774/chat', {
+            const res = await fetch('https://viethoa127.app.n8n.cloud/webhook/06609eaf-18fe-4153-bbb4-a4c8f32da184/chat', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'sendMessage', chatInput: text, sessionId }),
             });
@@ -220,10 +220,17 @@ function DetailView({ article, category, onBack, onSelectArticle }: {
                                     const isActive = cat.id === category.id;
                                     return (
                                         <div key={cat.id}>
-                                            <div className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${isActive ? 'text-primary-700 bg-primary-50' : 'text-slate-500'}`}>
+                                            <button
+                                                onClick={() => {
+                                                    if (!isActive && cat.articles.length > 0) {
+                                                        onSelectArticle(cat.articles[0], cat);
+                                                    }
+                                                }}
+                                                className={`w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors cursor-pointer ${isActive ? 'text-primary-700 bg-primary-50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                                            >
                                                 <cat.icon className="w-4 h-4" />
                                                 {cat.name}
-                                            </div>
+                                            </button>
                                             {isActive && (
                                                 <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-primary-200 pl-3">
                                                     {cat.articles.map((a) => (
