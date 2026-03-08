@@ -36,6 +36,7 @@ import { Route as CandidateChatRouteImport } from './routes/candidate/chat'
 import { Route as EmployerVerificationIndexRouteImport } from './routes/employer/verification/index'
 import { Route as EmployerProfileIndexRouteImport } from './routes/employer/profile/index'
 import { Route as EmployerProfileSettingsRouteImport } from './routes/employer/profile/settings'
+import { Route as EmployerProfileReputationRouteImport } from './routes/employer/profile/reputation'
 import { Route as EmployerProfileEditRouteImport } from './routes/employer/profile/edit'
 
 const SupportCenterDataRoute = SupportCenterDataRouteImport.update({
@@ -174,6 +175,12 @@ const EmployerProfileSettingsRoute = EmployerProfileSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => EmployerProfileRoute,
 } as any)
+const EmployerProfileReputationRoute =
+  EmployerProfileReputationRouteImport.update({
+    id: '/reputation',
+    path: '/reputation',
+    getParentRoute: () => EmployerProfileRoute,
+  } as any)
 const EmployerProfileEditRoute = EmployerProfileEditRouteImport.update({
   id: '/edit',
   path: '/edit',
@@ -206,6 +213,7 @@ export interface FileRoutesByFullPath {
   '/employer/': typeof EmployerIndexRoute
   '/jobs/': typeof JobsIndexRoute
   '/employer/profile/edit': typeof EmployerProfileEditRoute
+  '/employer/profile/reputation': typeof EmployerProfileReputationRoute
   '/employer/profile/settings': typeof EmployerProfileSettingsRoute
   '/employer/profile/': typeof EmployerProfileIndexRoute
   '/employer/verification/': typeof EmployerVerificationIndexRoute
@@ -234,6 +242,7 @@ export interface FileRoutesByTo {
   '/employer': typeof EmployerIndexRoute
   '/jobs': typeof JobsIndexRoute
   '/employer/profile/edit': typeof EmployerProfileEditRoute
+  '/employer/profile/reputation': typeof EmployerProfileReputationRoute
   '/employer/profile/settings': typeof EmployerProfileSettingsRoute
   '/employer/profile': typeof EmployerProfileIndexRoute
   '/employer/verification': typeof EmployerVerificationIndexRoute
@@ -265,6 +274,7 @@ export interface FileRoutesById {
   '/employer/': typeof EmployerIndexRoute
   '/jobs/': typeof JobsIndexRoute
   '/employer/profile/edit': typeof EmployerProfileEditRoute
+  '/employer/profile/reputation': typeof EmployerProfileReputationRoute
   '/employer/profile/settings': typeof EmployerProfileSettingsRoute
   '/employer/profile/': typeof EmployerProfileIndexRoute
   '/employer/verification/': typeof EmployerVerificationIndexRoute
@@ -297,6 +307,7 @@ export interface FileRouteTypes {
     | '/employer/'
     | '/jobs/'
     | '/employer/profile/edit'
+    | '/employer/profile/reputation'
     | '/employer/profile/settings'
     | '/employer/profile/'
     | '/employer/verification/'
@@ -325,6 +336,7 @@ export interface FileRouteTypes {
     | '/employer'
     | '/jobs'
     | '/employer/profile/edit'
+    | '/employer/profile/reputation'
     | '/employer/profile/settings'
     | '/employer/profile'
     | '/employer/verification'
@@ -355,6 +367,7 @@ export interface FileRouteTypes {
     | '/employer/'
     | '/jobs/'
     | '/employer/profile/edit'
+    | '/employer/profile/reputation'
     | '/employer/profile/settings'
     | '/employer/profile/'
     | '/employer/verification/'
@@ -578,6 +591,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmployerProfileSettingsRouteImport
       parentRoute: typeof EmployerProfileRoute
     }
+    '/employer/profile/reputation': {
+      id: '/employer/profile/reputation'
+      path: '/reputation'
+      fullPath: '/employer/profile/reputation'
+      preLoaderRoute: typeof EmployerProfileReputationRouteImport
+      parentRoute: typeof EmployerProfileRoute
+    }
     '/employer/profile/edit': {
       id: '/employer/profile/edit'
       path: '/edit'
@@ -590,12 +610,14 @@ declare module '@tanstack/react-router' {
 
 interface EmployerProfileRouteChildren {
   EmployerProfileEditRoute: typeof EmployerProfileEditRoute
+  EmployerProfileReputationRoute: typeof EmployerProfileReputationRoute
   EmployerProfileSettingsRoute: typeof EmployerProfileSettingsRoute
   EmployerProfileIndexRoute: typeof EmployerProfileIndexRoute
 }
 
 const EmployerProfileRouteChildren: EmployerProfileRouteChildren = {
   EmployerProfileEditRoute: EmployerProfileEditRoute,
+  EmployerProfileReputationRoute: EmployerProfileReputationRoute,
   EmployerProfileSettingsRoute: EmployerProfileSettingsRoute,
   EmployerProfileIndexRoute: EmployerProfileIndexRoute,
 }
