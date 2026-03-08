@@ -35,13 +35,34 @@ function JobManagementRoute() {
   });
 
   const filteredJobs = useMemo(() => {
-    return jobs.filter(job => {
+    let filtered = jobs.filter(job => {
       const status = job.status || 'OPEN';
       if (activeTab === 'active') return status === 'OPEN' || status === 'ACTIVE';
       if (activeTab === 'pending') return status === 'DRAFT';
       if (activeTab === 'closed') return status === 'CLOSED';
       return true;
     });
+
+    // Sort by createdAt descending (newest first), with fallback to updatedAt
+    filtered.sort((a, b) => {
+      const getTimestamp = (job: typeof jobs[0]) => {
+        if (job.createdAt) {
+          const time = new Date(job.createdAt).getTime();
+          return isNaN(time) ? 0 : time;
+        }
+        if (job.updatedAt) {
+          const time = new Date(job.updatedAt).getTime();
+          return isNaN(time) ? 0 : time;
+        }
+        return 0;
+      };
+
+      const timeA = getTimestamp(a);
+      const timeB = getTimestamp(b);
+      return timeB - timeA; // Newest first
+    });
+
+    return filtered;
   }, [jobs, activeTab]);
 
   const getJobAppCount = (jobId: string) => {

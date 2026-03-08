@@ -3,6 +3,8 @@ import { useAuth } from '@/features/auth/context/AuthContext';
 import { Bell, Briefcase, ChevronRight, Users, Clock, AlertCircle, Plus, Zap, Image as ImageIcon } from 'lucide-react';
 import { useDashboardMetrics } from '@/features/dashboard/hooks/useDashboardMetrics';
 import { useCandidateProfile } from '@/features/jobs/hooks/useCandidateProfile';
+import { useGetEmployerJobs } from '@/features/jobs/hooks/useEmployerJobs';
+import { RecentPostedJobs } from './-components/RecentPostedJobs';
 
 function ActivityFeedItem({ app }: { app: any }) {
   const { data: candidateProfile } = useCandidateProfile(app.candidateId);
@@ -93,6 +95,7 @@ function EmployerDashboard() {
   const employerId = userProfile?.uid;
 
   const { metrics, isLoading, isError, error, errorMessage } = useDashboardMetrics(employerId);
+  const { data: employerJobs = [], isLoading: jobsLoading } = useGetEmployerJobs(employerId);
   const greeting = getGreeting();
 
   const companyName = userProfile?.company_name || userProfile?.full_name || 'Nhà tuyển dụng';
@@ -256,32 +259,11 @@ function EmployerDashboard() {
               </div>
             </div>
           ) : (
-            <div>
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="font-bold text-slate-900 text-lg tracking-tight">Hoạt động gần đây</h2>
-                <Link to="/employer/applicants" search={{ jobId: undefined }} className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors flex items-center">
-                  Xem tất cả <ChevronRight className="w-4 h-4 ml-0.5" />
-                </Link>
-              </div>
-
-              <div className="bg-white rounded-3xl p-6 shadow-[0_4px_24px_rgb(0,0,0,0.02)] border border-slate-100">
-                {metrics.recentApplications.length === 0 ? (
-                  <div className="text-center py-6">
-                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Users className="w-6 h-6 text-slate-300" />
-                    </div>
-                    <p className="font-semibold text-slate-700 mb-1">Chưa có hoạt động mới</p>
-                    <p className="text-slate-500 text-xs text-balance">Chia sẻ tin tuyển dụng để thu hút thêm ứng viên.</p>
-                  </div>
-                ) : (
-                  <div>
-                    {metrics.recentApplications.map((app, index) => (
-                      <ActivityFeedItem key={app.id || index} app={app} />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+            <RecentPostedJobs 
+              jobs={employerJobs} 
+              isLoading={jobsLoading}
+              onViewAll={() => {}}
+            />
           )}
         </div>
 
