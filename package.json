@@ -1,14 +1,14 @@
 {
   "name": "jobnow",
   "private": true,
-    "scripts": {
-        "build": "turbo run build",
-        "dev": "turbo run dev",
-        "lint": "turbo run lint",
-        "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-        "seed": "npx tsx apps/web/scripts/seed-firestore.ts",
-        "backfill:snake-case": "npx tsx scripts/backfill-snake-case.ts"
-    },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "seed": "npx tsx apps/web/scripts/seed-firestore.ts",
+    "backfill:snake-case": "npx tsx scripts/backfill-snake-case.ts"
+  },
   "devDependencies": {
     "@types/node": "^25.3.3",
     "dotenv": "^17.3.1",
@@ -19,5 +19,10 @@
     "turbo": "^2.0.0",
     "typescript": "^5.4.0"
   },
-  "packageManager": "pnpm@9.0.0"
+  "packageManager": "pnpm@9.0.0",
+  "dependencies": {
+    "lucide-react": "^0.577.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  }
 }

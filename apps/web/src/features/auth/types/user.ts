@@ -13,6 +13,8 @@ export interface UserProfile {
     status: 'ACTIVE' | 'LOCKED' | 'BANNED';
     balance: number;
     reputation_score: number;
+    average_rating?: number;          // Average rating từ evaluations
+    total_ratings?: number;           // Số lượt đánh giá
     skills: string[];
     identity_images: string[];
     created_at: Date;
