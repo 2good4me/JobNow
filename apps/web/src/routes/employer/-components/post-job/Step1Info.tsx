@@ -88,7 +88,7 @@ export default function Step1Info({
                 setForm((p) => ({ ...p, description: e.target.value }))
               }
               rows={3}
-              placeholder="Mô tả chi tiết công việc (ít nhất 10 ký tự)..."
+              placeholder="Mô tả chi tiết công việc..."
               className={`w-full resize-none rounded-xl border px-3 py-2.5 text-sm text-slate-800 focus:outline-none transition-colors ${
                 errors.description
                   ? 'border-rose-400 bg-rose-50 focus:border-rose-500 focus:ring-1 focus:ring-rose-200'

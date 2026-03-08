@@ -27,6 +27,7 @@ import { Route as EmployerProfileRouteImport } from './routes/employer/profile'
 import { Route as EmployerPostJobRouteImport } from './routes/employer/post-job'
 import { Route as EmployerNotificationsRouteImport } from './routes/employer/notifications'
 import { Route as EmployerJobListRouteImport } from './routes/employer/job-list'
+import { Route as EmployerJobDetailRouteImport } from './routes/employer/job-detail'
 import { Route as EmployerChatRouteImport } from './routes/employer/chat'
 import { Route as EmployerApplicantsRouteImport } from './routes/employer/applicants'
 import { Route as CandidateShiftsRouteImport } from './routes/candidate/shifts'
@@ -128,6 +129,11 @@ const EmployerJobListRoute = EmployerJobListRouteImport.update({
   path: '/employer/job-list',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EmployerJobDetailRoute = EmployerJobDetailRouteImport.update({
+  id: '/employer/job-detail',
+  path: '/employer/job-detail',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EmployerChatRoute = EmployerChatRouteImport.update({
   id: '/employer/chat',
   path: '/employer/chat',
@@ -194,6 +200,7 @@ export interface FileRoutesByFullPath {
   '/candidate/shifts': typeof CandidateShiftsRoute
   '/employer/applicants': typeof EmployerApplicantsRoute
   '/employer/chat': typeof EmployerChatRoute
+  '/employer/job-detail': typeof EmployerJobDetailRoute
   '/employer/job-list': typeof EmployerJobListRoute
   '/employer/notifications': typeof EmployerNotificationsRoute
   '/employer/post-job': typeof EmployerPostJobRoute
@@ -224,6 +231,7 @@ export interface FileRoutesByTo {
   '/candidate/shifts': typeof CandidateShiftsRoute
   '/employer/applicants': typeof EmployerApplicantsRoute
   '/employer/chat': typeof EmployerChatRoute
+  '/employer/job-detail': typeof EmployerJobDetailRoute
   '/employer/job-list': typeof EmployerJobListRoute
   '/employer/notifications': typeof EmployerNotificationsRoute
   '/employer/post-job': typeof EmployerPostJobRoute
@@ -253,6 +261,7 @@ export interface FileRoutesById {
   '/candidate/shifts': typeof CandidateShiftsRoute
   '/employer/applicants': typeof EmployerApplicantsRoute
   '/employer/chat': typeof EmployerChatRoute
+  '/employer/job-detail': typeof EmployerJobDetailRoute
   '/employer/job-list': typeof EmployerJobListRoute
   '/employer/notifications': typeof EmployerNotificationsRoute
   '/employer/post-job': typeof EmployerPostJobRoute
@@ -285,6 +294,7 @@ export interface FileRouteTypes {
     | '/candidate/shifts'
     | '/employer/applicants'
     | '/employer/chat'
+    | '/employer/job-detail'
     | '/employer/job-list'
     | '/employer/notifications'
     | '/employer/post-job'
@@ -315,6 +325,7 @@ export interface FileRouteTypes {
     | '/candidate/shifts'
     | '/employer/applicants'
     | '/employer/chat'
+    | '/employer/job-detail'
     | '/employer/job-list'
     | '/employer/notifications'
     | '/employer/post-job'
@@ -343,6 +354,7 @@ export interface FileRouteTypes {
     | '/candidate/shifts'
     | '/employer/applicants'
     | '/employer/chat'
+    | '/employer/job-detail'
     | '/employer/job-list'
     | '/employer/notifications'
     | '/employer/post-job'
@@ -374,6 +386,7 @@ export interface RootRouteChildren {
   CandidateShiftsRoute: typeof CandidateShiftsRoute
   EmployerApplicantsRoute: typeof EmployerApplicantsRoute
   EmployerChatRoute: typeof EmployerChatRoute
+  EmployerJobDetailRoute: typeof EmployerJobDetailRoute
   EmployerJobListRoute: typeof EmployerJobListRoute
   EmployerNotificationsRoute: typeof EmployerNotificationsRoute
   EmployerPostJobRoute: typeof EmployerPostJobRoute
@@ -515,6 +528,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmployerJobListRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/employer/job-detail': {
+      id: '/employer/job-detail'
+      path: '/employer/job-detail'
+      fullPath: '/employer/job-detail'
+      preLoaderRoute: typeof EmployerJobDetailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/employer/chat': {
       id: '/employer/chat'
       path: '/employer/chat'
@@ -629,6 +649,7 @@ const rootRouteChildren: RootRouteChildren = {
   CandidateShiftsRoute: CandidateShiftsRoute,
   EmployerApplicantsRoute: EmployerApplicantsRoute,
   EmployerChatRoute: EmployerChatRoute,
+  EmployerJobDetailRoute: EmployerJobDetailRoute,
   EmployerJobListRoute: EmployerJobListRoute,
   EmployerNotificationsRoute: EmployerNotificationsRoute,
   EmployerPostJobRoute: EmployerPostJobRoute,

@@ -29,6 +29,15 @@ export function mapNearbyApiToJobDoc(data: Record<string, unknown>): JobDoc {
         is_gps_required: Boolean(getValue(data, ['is_gps_required', 'isGpsRequired']) ?? false),
         status: (getValue(data, ['status']) as JobStatus) ?? 'OPEN',
         shifts: (getValue(data, ['shifts']) as JobDoc['shifts']) ?? [],
+        vacancies: getValue<number>(data, ['vacancies']),
+        deadline: getValue(data, ['deadline']),
+        requirements: getValue<string[]>(data, ['requirements']),
+        images: getValue<string[]>(data, ['images']),
+        gender_preference: getValue(data, ['gender_preference', 'genderPreference']),
+        contact_info: getValue(data, ['contact_info', 'contactInfo']),
+        age_range: getValue(data, ['age_range', 'ageRange']),
+        start_date: getValue<string>(data, ['start_date', 'startDate']),
+        is_premium: getValue<boolean>(data, ['is_premium', 'isPremium']),
         created_at: getValue(data, ['created_at', 'createdAt']),
         updated_at: getValue(data, ['updated_at', 'updatedAt']),
     };
@@ -59,6 +68,19 @@ export function mapJobDocToJob(id: string, data: Partial<JobDoc>): Job {
             quantity: shift.quantity,
         })),
         vacancies: data.vacancies,
+        deadline: data.deadline,
+        requirements: data.requirements,
+        images: data.images,
+        genderPreference: data.gender_preference,
+        contactInfo: data.contact_info
+            ? {
+                  name: data.contact_info.name,
+                  phone: data.contact_info.phone,
+              }
+            : undefined,
+        ageRange: data.age_range,
+        startDate: data.start_date,
+        isPremium: data.is_premium,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
     };

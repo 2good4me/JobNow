@@ -42,7 +42,6 @@ export const jobFormSchema = z.object({
   
   description: z.string()
     .min(1, 'Mô tả công việc không được để trống')
-    .min(10, 'Mô tả phải >= 10 ký tự')
     .max(500, 'Mô tả <= 500 ký tự'),
   
   vacancies: z.number()
@@ -55,8 +54,8 @@ export const jobFormSchema = z.object({
     .min(1, 'Mức lương không được để trống')
     .refine((val) => {
       const num = Number(val.replace(/\D/g, ''));
-      return num > 0;
-    }, 'Mức lương phải > 0'),
+      return num >= 0;
+    }, 'Mức lương phải >= 0'),
   
   payType: z.enum(['Theo giờ', 'Theo ca', 'Theo ngày'] as const),
   
