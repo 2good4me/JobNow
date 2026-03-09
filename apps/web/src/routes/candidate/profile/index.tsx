@@ -7,6 +7,7 @@ import {
   Briefcase,
   ChevronRight,
   FileCheck2,
+  LifeBuoy,
   LogOut,
   MapPin,
   Pencil,
@@ -244,6 +245,15 @@ function CandidateProfilePage() {
             >
               <span className="flex items-center gap-2.5 text-sm font-semibold">
                 <Settings className="w-4 h-4 text-slate-500" /> Cài đặt & Bảo mật
+              </span>
+              <ChevronRight className="w-4 h-4 text-slate-400" />
+            </Link>
+            <Link
+              to="/support-center"
+              className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 text-slate-700 transition-colors"
+            >
+              <span className="flex items-center gap-2.5 text-sm font-semibold">
+                <LifeBuoy className="w-4 h-4 text-emerald-500" /> Trung tâm hỗ trợ
               </span>
               <ChevronRight className="w-4 h-4 text-slate-400" />
             </Link>
