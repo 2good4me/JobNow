@@ -5,7 +5,6 @@ import { useAuth } from '@/features/auth/context/AuthContext';
 import { useState } from 'react';
 import { useDeleteJob } from '@/features/jobs/hooks/useEmployerJobs';
 import { toast } from 'sonner';
-import { getRelativeTimeString } from '@/utils/formatTime';
 
 export const Route = createFileRoute('/employer/job-detail')({
   component: JobDetailPage,
@@ -89,7 +88,6 @@ function JobDetailPage() {
   }
 
   const isOwner = userProfile?.uid === job.employerId;
-  const timeAgo = getRelativeTimeString(job.createdAt);
 
   const handleDelete = async () => {
     try {
