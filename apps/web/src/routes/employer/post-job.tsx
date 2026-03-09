@@ -3,10 +3,10 @@ import {
   ArrowLeft, ArrowRight, Check,
   Loader2, Send, X,
 } from 'lucide-react';
-import { useCallback, useId, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/features/auth/context/AuthContext';
-import { useCreateJob } from '@/features/jobs/hooks/useEmployerJobs';
+import { useCreateJob, useUpdateJob, useJobDetail } from '@/features/jobs/hooks/useEmployerJobs';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/config/firebase';
 import type { Job, SalaryType, GenderPreference as GenderPref } from '@jobnow/types';
@@ -26,6 +26,9 @@ import {
 } from './-schemas/jobFormSchema';
 
 export const Route = createFileRoute('/employer/post-job')({
+  validateSearch: (search: Record<string, unknown>) => ({
+    editJobId: search.editJobId as string | undefined,
+  }),
   component: EmployerPostJobRoute,
 });
 
@@ -89,6 +92,8 @@ function StepBar({ current, total }: { current: number; total: number }) {
 
 /* ── Main Component ──────────────────────────── */
 function EmployerPostJobRoute() {
+  const { editJobId } = Route.useSearch();
+  
   const [step, setStep] = useState(1);
   const [requirementInput, setRequirementInput] = useState('');
   const [showCategoryBottomSheet, setShowCategoryBottomSheet] = useState(false);
@@ -118,7 +123,10 @@ function EmployerPostJobRoute() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { mutateAsync: createJob, isPending: isCreating } = useCreateJob();
+  const { mutateAsync: updateJob, isPending: isUpdating } = useUpdateJob();
+  const { data: existingJob, isLoading: isLoadingJob } = useJobDetail(editJobId);
   const fileInputId = useId();
+  const isSubmitting = isCreating || isUpdating;
 
   // Validation for current step
   const validateStep = useCallback((stepNum: number) => {
@@ -128,8 +136,10 @@ function EmployerPostJobRoute() {
       if (!form.title.trim()) newErrors.title = 'Tiêu đề công việc không được để trống';
       if (form.title.length < 5) newErrors.title = 'Tiêu đề phải >= 5 ký tự';
       if (!form.description.trim()) newErrors.description = 'Mô tả công việc không được để trống';
-      if (form.description.length < 10) newErrors.description = 'Mô tả phải >= 10 ký tự';
       if (!form.category) newErrors.category = 'Vui lòng chọn danh mục';
+      if (!form.salary.trim()) newErrors.salary = 'Mức lương không được để trống';
+      if (Number(form.salary.replace(/\D/g, '')) < 0) newErrors.salary = 'Mức lương phải >= 0';
+      if (!form.vacancies || form.vacancies < 1) newErrors.vacancies = 'Số lượng phải >= 1';
     }
 
     if (stepNum === 2) {
@@ -147,9 +157,6 @@ function EmployerPostJobRoute() {
     }
 
     if (stepNum === 3) {
-      if (!form.salary.trim()) newErrors.salary = 'Mức lương không được để trống';
-      if (Number(form.salary.replace(/\D/g, '')) <= 0) newErrors.salary = 'Mức lương phải > 0';
-      if (!form.vacancies || form.vacancies < 1) newErrors.vacancies = 'Số lượng phải >= 1';
       if (form.shifts.length === 0) newErrors.shifts = 'Phải có ít nhất 1 ca làm';
 
       // Validate shifts
@@ -176,8 +183,11 @@ function EmployerPostJobRoute() {
     if (step === 1) {
       return (
         form.title.trim().length >= 5 &&
-        form.description.trim().length >= 10 &&
-        form.category.length > 0
+        form.description.trim().length > 0 &&
+        form.category.length > 0 &&
+        form.salary.trim().length > 0 &&
+        Number(form.salary.replace(/\D/g, '')) >= 0 &&
+        form.vacancies >= 1
       );
     }
     if (step === 2) {
@@ -190,9 +200,6 @@ function EmployerPostJobRoute() {
     }
     if (step === 3) {
       return (
-        form.salary.trim().length > 0 &&
-        Number(form.salary.replace(/\D/g, '')) > 0 &&
-        form.vacancies >= 1 &&
         form.shifts.length > 0 &&
         form.shifts.every(s => s.name.trim() && s.quantity >= 1)
       );
@@ -254,6 +261,49 @@ function EmployerPostJobRoute() {
     return 'ANY';
   };
 
+  // Reverse mappers for editing
+  const reverseMapPayType = (st: SalaryType): PayType => {
+    if (st === 'HOURLY') return 'Theo giờ';
+    if (st === 'PER_SHIFT') return 'Theo ca';
+    return 'Theo ngày';
+  };
+
+  const reverseMapGender = (gp: GenderPref): GenderPreference => {
+    if (gp === 'MALE') return 'Nam';
+    if (gp === 'FEMALE') return 'Nữ';
+    return 'Cả hai';
+  };
+
+  // Pre-populate form when editing
+  useEffect(() => {
+    if (existingJob && editJobId) {
+      setForm({
+        title: existingJob.title,
+        category: existingJob.categoryId,
+        description: existingJob.description,
+        vacancies: existingJob.vacancies || 0,
+        gender: reverseMapGender(existingJob.genderPreference || 'ANY'),
+        salary: existingJob.salary.toLocaleString('vi-VN'),
+        payType: reverseMapPayType(existingJob.salaryType),
+        address: existingJob.location.address || '',
+        startDate: existingJob.startDate || '',
+        deadline: existingJob.deadline || '',
+        requirements: existingJob.requirements || [],
+        shifts: existingJob.shifts.map(s => ({
+          id: s.id,
+          name: s.name,
+          startTime: s.startTime,
+          endTime: s.endTime,
+          quantity: s.quantity,
+        })),
+        coverImage: null, // Can't pre-populate file input
+        isPremium: existingJob.isPremium || false,
+        latitude: existingJob.location.latitude,
+        longitude: existingJob.location.longitude,
+      });
+    }
+  }, [existingJob, editJobId]);
+
   const handleStepChange = (newStep: number) => {
     if (newStep > step) {
       // Moving forward - validate current step
@@ -296,6 +346,9 @@ function EmployerPostJobRoute() {
         await uploadBytes(storageRef, form.coverImage);
         const downloadUrl = await getDownloadURL(storageRef);
         imageUrls = [downloadUrl];
+      } else if (editJobId && existingJob?.images) {
+        // Keep existing images when editing without new upload
+        imageUrls = existingJob.images;
       }
 
       const jobData: Partial<Job> = {
@@ -328,8 +381,16 @@ function EmployerPostJobRoute() {
         images: imageUrls.length > 0 ? imageUrls : undefined,
         isPremium: form.isPremium,
       };
-      await createJob(jobData);
-      toast.success('Đăng tin thành công!');
+
+      if (editJobId) {
+        // Update existing job
+        await updateJob({ jobId: editJobId, data: jobData });
+        toast.success('Cập nhật tin thành công!');
+      } else {
+        // Create new job
+        await createJob(jobData);
+        toast.success('Đăng tin thành công!');
+      }
       navigate({ to: '/employer' });
     } catch (error) {
       console.error('Failed to post job', error);
@@ -341,17 +402,30 @@ function EmployerPostJobRoute() {
     <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-blue-50/40 pb-24">
       <div className="mx-auto w-full max-w-md px-4 pt-4">
 
-        {/* ── Header ──────────────────────────── */}
-        <header className="sticky top-2 z-20 rounded-2xl border border-white/60 bg-white/80 p-4 shadow-lg backdrop-blur-md">
-          <div className="mb-3 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Job Wizard</p>
-              <h1 className="text-xl font-bold text-slate-900">Đăng tin tuyển dụng</h1>
+        {/* Loading state when fetching job data for editing */}
+        {editJobId && isLoadingJob && (
+          <div className="flex min-h-[60vh] items-center justify-center">
+            <div className="text-center">
+              <Loader2 className="mx-auto h-8 w-8 animate-spin text-emerald-600" />
+              <p className="mt-3 text-sm text-slate-600">Đang tải thông tin...</p>
             </div>
-            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
-              Bước {step}/{STEP_LABELS.length}
-            </span>
           </div>
+        )}
+
+        {/* Main content - hide while loading in edit mode */}
+        {!(editJobId && isLoadingJob) && (
+          <>
+            {/* ── Header ──────────────────────────── */}
+            <header className="sticky top-2 z-20 rounded-2xl border border-white/60 bg-white/80 p-4 shadow-lg backdrop-blur-md">
+              <div className="mb-3 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Job Wizard</p>
+                  <h1 className="text-xl font-bold text-slate-900">{editJobId ? 'Chỉnh sửa tin tuyển dụng' : 'Đăng tin tuyển dụng'}</h1>
+                </div>
+                <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
+                  Bước {step}/{STEP_LABELS.length}
+                </span>
+              </div>
           <StepBar current={step} total={STEP_LABELS.length} />
           <div className="mt-2 grid grid-cols-4 text-center">
             {STEP_LABELS.map((label, i) => (
@@ -407,6 +481,8 @@ function EmployerPostJobRoute() {
             />
           )}
         </form>
+          </>
+        )}
       </div>
 
       {/* Category Bottom Sheet */}
@@ -435,7 +511,7 @@ function EmployerPostJobRoute() {
           ) : (
             <button
               type="button"
-              onClick={() => navigate({ to: '/employer' })}
+              onClick={() => navigate({ to: editJobId ? `/employer/job-detail` : '/employer', search: editJobId ? { jobId: editJobId } : {} })}
               className="min-h-[48px] flex-1 rounded-xl border border-slate-200 bg-transparent px-4 py-3 text-sm font-semibold text-slate-500 transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-600 active:scale-[0.97] flex items-center justify-center gap-1.5"
             >
               <X className="w-4 h-4" />
@@ -447,23 +523,23 @@ function EmployerPostJobRoute() {
           <button
             type="button"
             className={`min-h-[52px] flex-[2] rounded-xl px-5 py-3.5 text-[15px] font-bold tracking-tight transition-all flex items-center justify-center gap-2
-              ${!canAdvance || isCreating
+              ${!canAdvance || isSubmitting
                 ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                 : step === 4
                   ? 'bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:brightness-110 active:scale-[0.97]'
                   : 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20 hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-600/30 active:scale-[0.97]'
               }
             `}
-            disabled={!canAdvance || isCreating}
+            disabled={!canAdvance || isSubmitting}
             onClick={() => {
               if (step < STEP_LABELS.length) handleStepChange(step + 1);
               else handleSubmit();
             }}
           >
-            {isCreating ? (
-              <><Loader2 className="w-5 h-5 animate-spin" /> Đang đăng...</>
+            {isSubmitting ? (
+              <><Loader2 className="w-5 h-5 animate-spin" /> {editJobId ? 'Đang cập nhật...' : 'Đang đăng...'}</>
             ) : step === 4 ? (
-              <><Send className="w-4.5 h-4.5" /> Đăng tin ngay</>
+              <><Send className="w-4.5 h-4.5" /> {editJobId ? 'Cập nhật tin' : 'Đăng tin ngay'}</>
             ) : (
               <>Tiếp tục <ArrowRight className="w-5 h-5" /></>
             )}

@@ -68,6 +68,17 @@ function dedupeJobs(items: Job[]): Job[] {
 
 function mapJobSnapshot(docSnap: { id: string; data: () => Record<string, unknown> }): Job {
     const raw = docSnap.data();
+    
+    // Convert Firestore Timestamp to Date if it has a toDate method
+    const convertTimestamp = (timestamp: any): string | undefined => {
+        if (!timestamp) return undefined;
+        if (typeof timestamp === 'string') return timestamp;
+        if (typeof timestamp.toDate === 'function') {
+            return timestamp.toDate().toISOString();
+        }
+        return undefined;
+    };
+    
     const normalized = {
         ...mapNearbyApiToJobDoc(raw),
         employer_id: String(raw.employer_id ?? raw.employerId ?? ''),
@@ -86,8 +97,8 @@ function mapJobSnapshot(docSnap: { id: string; data: () => Record<string, unknow
                 };
             })
             : [],
-        created_at: raw.created_at ?? raw.createdAt,
-        updated_at: raw.updated_at ?? raw.updatedAt,
+        created_at: convertTimestamp(raw.created_at ?? raw.createdAt),
+        updated_at: convertTimestamp(raw.updated_at ?? raw.updatedAt),
     };
 
     return mapJobDocToJob(docSnap.id, normalized);

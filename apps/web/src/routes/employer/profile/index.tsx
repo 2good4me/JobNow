@@ -19,6 +19,8 @@ import {
   Star,
   Users,
 } from 'lucide-react';
+import { ReputationStatsCard } from '@/features/auth/components/ReputationStatsCard';
+import { AchievementBadges, PREDEFINED_ACHIEVEMENTS } from '@/features/auth/components/AchievementBadges';
 
 export const Route = createFileRoute('/employer/profile/')({
   component: EmployerProfilePage,
@@ -165,29 +167,12 @@ function EmployerProfilePage() {
 
         {/* Trust + Rating card — progressive skeleton */}
         {isAppsLoading ? <StatsSkeleton /> : (
-          <div className="bg-white/90 backdrop-blur-md rounded-2xl p-4 shadow-sm border border-slate-100 grid grid-cols-3 divide-x divide-slate-100">
-            <div className="text-center px-2">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Uy tín</p>
-              <div className="flex items-center justify-center gap-1 text-emerald-600">
-                <ShieldCheck className="w-4 h-4" />
-                <span className="text-lg font-extrabold">{userProfile.reputation_score}</span>
-              </div>
-            </div>
-            <div className="text-center px-2">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Đánh giá</p>
-              <div className="flex items-center justify-center gap-1 text-amber-500">
-                <Star className="w-4 h-4 fill-amber-400" />
-                <span className="text-lg font-extrabold">4.6</span>
-              </div>
-            </div>
-            <div className="text-center px-2">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Ứng viên</p>
-              <div className="flex items-center justify-center gap-1 text-blue-600">
-                <Users className="w-4 h-4" />
-                <span className="text-lg font-extrabold">{stats.totalApplicants}</span>
-              </div>
-            </div>
-          </div>
+          <ReputationStatsCard
+            reputationScore={userProfile.reputation_score || 0}
+            averageRating={userProfile.average_rating || 0}
+            totalApplicants={stats.totalApplicants}
+            onViewDetails={() => navigate({ to: '/employer/profile/reputation' })}
+          />
         )}
 
         {/* Verification badges */}
@@ -249,6 +234,26 @@ function EmployerProfilePage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Achievement Badges Section */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[13px] font-bold text-slate-400 uppercase tracking-wider">
+              Huy Hiệu & Thành Tựu
+            </h3>
+            <Link
+              to="/employer/profile/settings"
+              className="text-xs font-semibold text-blue-600"
+            >
+              Xem tất cả
+            </Link>
+          </div>
+          <AchievementBadges
+            achievements={PREDEFINED_ACHIEVEMENTS}
+            maxDisplay={6}
+            size="md"
+          />
         </div>
 
         {/* Active Jobs — progressive skeleton */}

@@ -1,4 +1,4 @@
-import { collection, getDocs, query, where, limit } from 'firebase/firestore';
+import { collection, getDocs, query, where, limit, orderBy } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '@/config/firebase';
 import type { Application, ApplicationStatus } from '@jobnow/types';
@@ -51,9 +51,22 @@ function mapServiceError(error: unknown, fallbackMessage: string): Error {
     return new Error(fallbackMessage);
 }
 
-async function fetchApplicationsByField(field: 'jobId' | 'job_id' | 'employerId' | 'employer_id', value: string, maxResults?: number): Promise<Application[]> {
+async function fetchApplicationsByField(
+    jobField: 'jobId' | 'job_id',
+    jobValue: string,
+    employerField: 'employerId' | 'employer_id',
+    employerValue: string,
+    maxResults?: number
+): Promise<Application[]> {
     const appsRef = collection(db, 'applications');
-    const baseQuery = query(appsRef, where(field, '==', value));
+    const orderField = (jobField === 'jobId') ? 'createdAt' : 'updated_at';
+
+    // Query with composite index (jobId + employerId) (temporarily removed orderBy)
+    const baseQuery = query(
+        appsRef,
+        where(jobField, '==', jobValue),
+        where(employerField, '==', employerValue)
+    );
     const finalQuery = maxResults ? query(baseQuery, limit(maxResults)) : baseQuery;
     const snapshot = await getDocs(finalQuery);
 
@@ -63,19 +76,27 @@ async function fetchApplicationsByField(field: 'jobId' | 'job_id' | 'employerId'
     });
 }
 
+function fetchAllAppsByEmployerField(field: 'employerId' | 'employer_id', value: string, maxResults?: number): Promise<Application[]> {
+    const appsRef = collection(db, 'applications');
+    const orderField = (field === 'employerId') ? 'createdAt' : 'updated_at';
+    const baseQuery = query(appsRef, where(field, '==', value));
+    const finalQuery = maxResults ? query(baseQuery, limit(maxResults)) : baseQuery;
+    return getDocs(finalQuery).then(snapshot => snapshot.docs.map(docSnap => mapApplicationDocToApplication(docSnap.id, docSnap.data() as any)));
+}
+
 /**
- * Fetch all applications for a specific job.
+ * Fetch all applications for a specific job, filtered by employerId.
  */
-export async function fetchJobApplications(jobId: string): Promise<Application[]> {
+export async function fetchJobApplications(jobId: string, employerId: string): Promise<Application[]> {
     try {
         const [camelItems, snakeItems] = await Promise.all([
-            fetchApplicationsByField('jobId', jobId),
-            fetchApplicationsByField('job_id', jobId),
+            fetchApplicationsByField('jobId', jobId, 'employerId', employerId),
+            fetchApplicationsByField('job_id', jobId, 'employer_id', employerId),
         ]);
-        return dedupeById([...camelItems, ...snakeItems])
-            .sort((a, b) => getApplicationSortTime(b) - getApplicationSortTime(a));
+        // Remove client-side sorting since Firestore handles it via orderBy, just dedupe.
+        return dedupeById([...camelItems, ...snakeItems]);
     } catch (error) {
-        console.error('Error in fetchJobApplications:', { jobId, error });
+        console.error('Error in fetchJobApplications:', { jobId, employerId, error });
         throw mapServiceError(error, 'Không thể lấy danh sách ứng viên. Vui lòng thử lại sau.');
     }
 }
@@ -86,8 +107,8 @@ export async function fetchJobApplications(jobId: string): Promise<Application[]
 export async function fetchEmployerApplications(employerId: string): Promise<Application[]> {
     try {
         const [camelItems, snakeItems] = await Promise.all([
-            fetchApplicationsByField('employerId', employerId, 100),
-            fetchApplicationsByField('employer_id', employerId, 100),
+            fetchAllAppsByEmployerField('employerId', employerId, 100),
+            fetchAllAppsByEmployerField('employer_id', employerId, 100),
         ]);
         return dedupeById([...camelItems, ...snakeItems])
             .sort((a, b) => getApplicationSortTime(b) - getApplicationSortTime(a))

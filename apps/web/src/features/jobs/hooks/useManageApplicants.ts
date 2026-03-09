@@ -5,14 +5,16 @@ import { fetchJobApplications, updateApplicationStatus, fetchEmployerApplication
 /**
  * Hook to fetch all applications for a specific job.
  */
-export function useGetApplicants(jobId: string) {
+export function useGetApplicants(jobId: string, employerId: string | undefined) {
     return useQuery<Application[], Error>({
-        queryKey: ['applications', 'job', jobId],
+        queryKey: ['applications', 'job', jobId, employerId],
         queryFn: async () => {
             if (!jobId) throw new Error('Job ID is required');
-            return await fetchJobApplications(jobId);
+            if (!employerId) throw new Error('Employer ID is required');
+            return await fetchJobApplications(jobId, employerId);
         },
-        enabled: !!jobId,
+        enabled: !!jobId && !!employerId,
+        staleTime: 60 * 1000, // 1 min — apps change but instant back-navigation is needed
     });
 }
 

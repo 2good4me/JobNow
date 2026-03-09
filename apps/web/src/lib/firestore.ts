@@ -64,6 +64,8 @@ export async function getUserDocument(uid: string): Promise<UserProfile | null> 
         status: data.status,
         balance: data.balance ?? 0,
         reputation_score: data.reputation_score ?? 100,
+        average_rating: data.average_rating ?? 0,     // New: Average rating
+        total_ratings: data.total_ratings ?? 0,       // New: Total ratings
         skills: data.skills || [],
         identity_images: data.identity_images || [],
         created_at: data.created_at?.toDate?.() ?? new Date(),
