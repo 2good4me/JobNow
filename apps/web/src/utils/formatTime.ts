@@ -15,6 +15,10 @@ export function getRelativeTimeString(dateStrOrObj: any): string {
     timestamp = new Date(dateStrOrObj).getTime();
   }
 
+  if (isNaN(timestamp)) {
+    return ''; // Guard against Invalid Date which would crash Intl.RelativeTimeFormat
+  }
+
   const now = Date.now();
   const diffInMilliseconds = now - timestamp;
 

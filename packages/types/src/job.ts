@@ -54,6 +54,7 @@ export interface Job {
     ageRange?: { min: number; max: number };
     startDate?: string;          // Ngày bắt đầu làm việc
     isPremium?: boolean;         // Tin ưu tiên
+    totalAppliedCount?: number;  // Computed from shift_capacity for fast empty state
 }
 
 /**

@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, BriefcaseBusiness, Search, Users, Share2, Sparkles } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { ApplicantCard } from '@/components/ui/ApplicantCard';
 import { useGetApplicants, useGetEmployerApplications } from '@/features/jobs/hooks/useManageApplicants';
 import { useGetEmployerJobs } from '@/features/jobs/hooks/useEmployerJobs';
@@ -37,6 +37,24 @@ function CardSkeleton() {
         {[1, 2, 3, 4].map(i => <div key={i} className="h-6 bg-slate-50" />)}
       </div>
     </div>
+  );
+}
+
+function DelayedSkeleton({ delayMs = 500 }: { delayMs?: number }) {
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShow(true), delayMs);
+    return () => clearTimeout(timer);
+  }, [delayMs]);
+
+  if (!show) return null;
+  return (
+    <>
+      <CardSkeleton />
+      <CardSkeleton />
+      <CardSkeleton />
+    </>
   );
 }
 
@@ -102,11 +120,15 @@ function EmployerApplicantsRoute() {
   const { data: allApplications = [], isLoading: isAllAppsLoading } = useGetEmployerApplications(!jobId ? employerId : undefined);
 
   const applicants = jobId ? jobApplicants : allApplications;
-  const isLoading = jobId ? isJobAppsLoading : isAllAppsLoading;
 
   const { data: jobs = [] } = useGetEmployerJobs(employerId || '');
   const selectedJob = jobs.find(j => j.id === jobId);
   const pageTitle = selectedJob ? selectedJob.title : 'Tất cả ứng viên';
+
+  // ── Optimization: Instant Empty State ──
+  // If we know from the job document that there are 0 applicants, bypass the loading state.
+  const isDefinitelyEmpty = jobId && selectedJob && selectedJob.totalAppliedCount === 0;
+  const isLoading = (jobId ? isJobAppsLoading : isAllAppsLoading) && !isDefinitelyEmpty;
 
   const stats = useMemo(() => {
     const all = applicants.length;
@@ -223,11 +245,7 @@ function EmployerApplicantsRoute() {
         {/* ── Applicant List ── */}
         <div className="px-4 pt-5 space-y-3">
           {isLoading ? (
-            <>
-              <CardSkeleton />
-              <CardSkeleton />
-              <CardSkeleton />
-            </>
+            <DelayedSkeleton delayMs={500} />
           ) : filteredApplicants.length === 0 ? (
             <EmptyApplicants
               isFiltered={searchTerm.length > 0 || (activeTab !== 'all' && stats.all > 0)}
@@ -250,6 +268,11 @@ function EmployerApplicantsRoute() {
                   candidateId={applicant.candidateId}
                   status={applicant.status}
                   jobTitle={jobs.find(j => j.id === applicant.jobId)?.title}
+                  candidateName={applicant.candidateName}
+                  candidateAvatar={applicant.candidateAvatar}
+                  candidateSkills={applicant.candidateSkills}
+                  candidateRating={applicant.candidateRating}
+                  candidateVerified={applicant.candidateVerified}
                 />
               ))}
 

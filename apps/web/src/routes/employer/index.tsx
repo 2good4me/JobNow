@@ -167,12 +167,26 @@ function EmployerDashboard() {
         </div>
 
         {metrics.pendingApps > 0 ? (
-          <div className="relative z-10 mt-5 inline-flex items-center gap-2">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 font-bold text-sm">
-              Bạn có {metrics.pendingApps} ứng viên đang chờ duyệt
-            </span>
-            <div className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></div>
-          </div>
+          <Link
+            to="/employer/applicants"
+            search={{ jobId: undefined }}
+            className="relative z-10 mt-5 flex items-center justify-between gap-3 bg-gradient-to-r from-indigo-600 to-indigo-800 rounded-2xl px-5 py-4 shadow-lg shadow-indigo-600/25 transition-transform active:scale-[0.98] group"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/4"></div>
+            <div className="relative z-10 flex items-center gap-3">
+              <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-white/20 backdrop-blur-sm border border-white/10 shrink-0">
+                <Users className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="text-white font-extrabold text-lg leading-tight">{metrics.pendingApps} ứng viên mới</p>
+                <p className="text-indigo-200 text-xs font-medium mt-0.5">đang chờ bạn duyệt</p>
+              </div>
+            </div>
+            <div className="relative z-10 flex items-center gap-1 bg-white/20 backdrop-blur-sm rounded-xl px-3 py-2 border border-white/10 shrink-0 group-hover:bg-white/30 transition-colors">
+              <span className="text-white text-xs font-bold">Xem ngay</span>
+              <ChevronRight className="w-4 h-4 text-white" />
+            </div>
+          </Link>
         ) : (
           <div className="relative z-10 mt-5">
             <span className="text-slate-500 font-medium text-sm">
@@ -259,10 +273,10 @@ function EmployerDashboard() {
               </div>
             </div>
           ) : (
-            <RecentPostedJobs 
-              jobs={employerJobs} 
+            <RecentPostedJobs
+              jobs={employerJobs}
               isLoading={jobsLoading}
-              onViewAll={() => {}}
+              onViewAll={() => { }}
             />
           )}
         </div>

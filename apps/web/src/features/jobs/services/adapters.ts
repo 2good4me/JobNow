@@ -60,29 +60,27 @@ export function mapJobDocToJob(id: string, data: Partial<JobDoc>): Job {
         geohash: data.geohash ?? '',
         isGpsRequired: data.is_gps_required ?? false,
         status: data.status ?? 'OPEN',
-        shifts: (data.shifts ?? []).map((shift) => ({
-            id: shift.id,
-            name: shift.name,
-            startTime: shift.start_time,
-            endTime: shift.end_time,
-            quantity: shift.quantity,
+        shifts: (Array.isArray(data.shifts) ? data.shifts : []).map(s => ({
+            id: s.id ?? '',
+            name: s.name ?? '',
+            startTime: s.start_time ?? '',
+            endTime: s.end_time ?? '',
+            quantity: s.quantity ?? 1,
         })),
-        vacancies: data.vacancies,
-        deadline: data.deadline,
-        requirements: data.requirements,
-        images: data.images,
-        genderPreference: data.gender_preference,
-        contactInfo: data.contact_info
-            ? {
-                  name: data.contact_info.name,
-                  phone: data.contact_info.phone,
-              }
-            : undefined,
-        ageRange: data.age_range,
-        startDate: data.start_date,
-        isPremium: data.is_premium,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
+        deadline: data.deadline,
+        requirements: Array.isArray(data.requirements) ? data.requirements : (data.requirements ? [String(data.requirements)] : []),
+        images: Array.isArray(data.images) ? data.images : (data.images ? [String(data.images)] : []),
+        vacancies: data.vacancies,
+        genderPreference: data.gender_preference ?? 'ANY',
+        contactInfo: data.contact_info,
+        ageRange: data.age_range,
+        startDate: data.start_date ?? '',
+        isPremium: data.is_premium ?? false,
+        totalAppliedCount: data.shift_capacity && Object.keys(data.shift_capacity).length > 0
+            ? Object.values(data.shift_capacity).reduce((sum, shift) => sum + (shift.applied_count || 0), 0)
+            : undefined,
     };
 }
 
@@ -103,5 +101,11 @@ export function mapApplicationDocToApplication(id: string, data: Partial<Applica
         appliedAt: getValue(data, ['applied_at', 'appliedAt']),
         createdAt: getValue(data, ['created_at', 'createdAt']),
         updatedAt: getValue(data, ['updated_at', 'updatedAt']),
+        // ─── Denormalized candidate snapshot ───
+        candidateName: getValue(data, ['candidate_name', 'candidateName']) as string | undefined,
+        candidateAvatar: getValue(data, ['candidate_avatar', 'candidateAvatar']) as string | undefined,
+        candidateSkills: getValue(data, ['candidate_skills', 'candidateSkills']) as string[] | undefined,
+        candidateRating: getValue(data, ['candidate_rating', 'candidateRating']) as number | undefined,
+        candidateVerified: getValue(data, ['candidate_verified', 'candidateVerified']) as boolean | undefined,
     };
 }
