@@ -42,6 +42,8 @@ import { Route as EmployerProfileEditRouteImport } from './routes/employer/profi
 import { Route as CandidateProfileVerifyRouteImport } from './routes/candidate/profile/verify'
 import { Route as CandidateProfileSettingsRouteImport } from './routes/candidate/profile/settings'
 import { Route as CandidateProfileEditRouteImport } from './routes/candidate/profile/edit'
+import { Route as CandidateJobsJobIdRouteImport } from './routes/candidate/jobs/$jobId'
+import { Route as CandidateEmployerEmployerIdRouteImport } from './routes/candidate/employer/$employerId'
 
 const SupportCenterDataRoute = SupportCenterDataRouteImport.update({
   id: '/support-center-data',
@@ -211,6 +213,17 @@ const CandidateProfileEditRoute = CandidateProfileEditRouteImport.update({
   path: '/edit',
   getParentRoute: () => CandidateProfileRoute,
 } as any)
+const CandidateJobsJobIdRoute = CandidateJobsJobIdRouteImport.update({
+  id: '/candidate/jobs/$jobId',
+  path: '/candidate/jobs/$jobId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CandidateEmployerEmployerIdRoute =
+  CandidateEmployerEmployerIdRouteImport.update({
+    id: '/candidate/employer/$employerId',
+    path: '/candidate/employer/$employerId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -237,6 +250,8 @@ export interface FileRoutesByFullPath {
   '/candidate/': typeof CandidateIndexRoute
   '/employer/': typeof EmployerIndexRoute
   '/jobs/': typeof JobsIndexRoute
+  '/candidate/employer/$employerId': typeof CandidateEmployerEmployerIdRoute
+  '/candidate/jobs/$jobId': typeof CandidateJobsJobIdRoute
   '/candidate/profile/edit': typeof CandidateProfileEditRoute
   '/candidate/profile/settings': typeof CandidateProfileSettingsRoute
   '/candidate/profile/verify': typeof CandidateProfileVerifyRoute
@@ -269,6 +284,8 @@ export interface FileRoutesByTo {
   '/candidate': typeof CandidateIndexRoute
   '/employer': typeof EmployerIndexRoute
   '/jobs': typeof JobsIndexRoute
+  '/candidate/employer/$employerId': typeof CandidateEmployerEmployerIdRoute
+  '/candidate/jobs/$jobId': typeof CandidateJobsJobIdRoute
   '/candidate/profile/edit': typeof CandidateProfileEditRoute
   '/candidate/profile/settings': typeof CandidateProfileSettingsRoute
   '/candidate/profile/verify': typeof CandidateProfileVerifyRoute
@@ -305,6 +322,8 @@ export interface FileRoutesById {
   '/candidate/': typeof CandidateIndexRoute
   '/employer/': typeof EmployerIndexRoute
   '/jobs/': typeof JobsIndexRoute
+  '/candidate/employer/$employerId': typeof CandidateEmployerEmployerIdRoute
+  '/candidate/jobs/$jobId': typeof CandidateJobsJobIdRoute
   '/candidate/profile/edit': typeof CandidateProfileEditRoute
   '/candidate/profile/settings': typeof CandidateProfileSettingsRoute
   '/candidate/profile/verify': typeof CandidateProfileVerifyRoute
@@ -342,6 +361,8 @@ export interface FileRouteTypes {
     | '/candidate/'
     | '/employer/'
     | '/jobs/'
+    | '/candidate/employer/$employerId'
+    | '/candidate/jobs/$jobId'
     | '/candidate/profile/edit'
     | '/candidate/profile/settings'
     | '/candidate/profile/verify'
@@ -374,6 +395,8 @@ export interface FileRouteTypes {
     | '/candidate'
     | '/employer'
     | '/jobs'
+    | '/candidate/employer/$employerId'
+    | '/candidate/jobs/$jobId'
     | '/candidate/profile/edit'
     | '/candidate/profile/settings'
     | '/candidate/profile/verify'
@@ -409,6 +432,8 @@ export interface FileRouteTypes {
     | '/candidate/'
     | '/employer/'
     | '/jobs/'
+    | '/candidate/employer/$employerId'
+    | '/candidate/jobs/$jobId'
     | '/candidate/profile/edit'
     | '/candidate/profile/settings'
     | '/candidate/profile/verify'
@@ -445,6 +470,8 @@ export interface RootRouteChildren {
   CandidateIndexRoute: typeof CandidateIndexRoute
   EmployerIndexRoute: typeof EmployerIndexRoute
   JobsIndexRoute: typeof JobsIndexRoute
+  CandidateEmployerEmployerIdRoute: typeof CandidateEmployerEmployerIdRoute
+  CandidateJobsJobIdRoute: typeof CandidateJobsJobIdRoute
   CandidateVerificationIndexRoute: typeof CandidateVerificationIndexRoute
 }
 
@@ -681,6 +708,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CandidateProfileEditRouteImport
       parentRoute: typeof CandidateProfileRoute
     }
+    '/candidate/jobs/$jobId': {
+      id: '/candidate/jobs/$jobId'
+      path: '/candidate/jobs/$jobId'
+      fullPath: '/candidate/jobs/$jobId'
+      preLoaderRoute: typeof CandidateJobsJobIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/candidate/employer/$employerId': {
+      id: '/candidate/employer/$employerId'
+      path: '/candidate/employer/$employerId'
+      fullPath: '/candidate/employer/$employerId'
+      preLoaderRoute: typeof CandidateEmployerEmployerIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -753,6 +794,8 @@ const rootRouteChildren: RootRouteChildren = {
   CandidateIndexRoute: CandidateIndexRoute,
   EmployerIndexRoute: EmployerIndexRoute,
   JobsIndexRoute: JobsIndexRoute,
+  CandidateEmployerEmployerIdRoute: CandidateEmployerEmployerIdRoute,
+  CandidateJobsJobIdRoute: CandidateJobsJobIdRoute,
   CandidateVerificationIndexRoute: CandidateVerificationIndexRoute,
 }
 export const routeTree = rootRouteImport

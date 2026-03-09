@@ -38,7 +38,9 @@ export function mapJobDocToJob(id: string, data: Partial<JobDoc>): Job {
     return {
         id,
         employerId: data.employer_id ?? '',
+        employerName: data.employer_name,
         categoryId: data.category_id ?? '',
+        category: data.category,
         title: data.title ?? '',
         description: data.description ?? '',
         salary: data.salary ?? 0,

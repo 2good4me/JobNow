@@ -31,7 +31,9 @@ export interface ShiftCapacity {
 export interface Job {
     id: string;
     employerId: string;
+    employerName?: string;
     categoryId: string;
+    category?: string;
     title: string;
     description: string;
     salary: number;
