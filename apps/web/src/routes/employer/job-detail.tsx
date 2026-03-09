@@ -81,7 +81,7 @@ function JobDetailPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Fetch applicants for this job (must be called unconditionally before early returns)
-  const { data: applicants = [] } = useGetApplicants(jobId);
+  const { data: applicants = [] } = useGetApplicants(jobId, userProfile?.uid);
 
   if (!jobId) {
     return (

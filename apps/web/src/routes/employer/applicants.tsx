@@ -3,7 +3,7 @@ import { ArrowLeft, BriefcaseBusiness, Search, Users, Share2, Sparkles } from 'l
 import { useMemo, useState, useEffect } from 'react';
 import { ApplicantCard } from '@/components/ui/ApplicantCard';
 import { useGetApplicants, useGetEmployerApplications } from '@/features/jobs/hooks/useManageApplicants';
-import { useGetEmployerJobs } from '@/features/jobs/hooks/useEmployerJobs';
+import { useJobDetail } from '@/features/jobs/hooks/useEmployerJobs';
 import { useAuth } from '@/features/auth/context/AuthContext';
 
 export const Route = createFileRoute('/employer/applicants')({
@@ -110,32 +110,33 @@ function StatPill({ label, value, color, active, onClick }: {
 function EmployerApplicantsRoute() {
   const { jobId } = Route.useSearch();
   const navigate = useNavigate();
-  const { userProfile } = useAuth();
-  const employerId = userProfile?.uid;
+  const { user } = useAuth();
+  const employerId = user?.uid;
 
   const [activeTab, setActiveTab] = useState<ApplicantTab>('pending');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const { data: jobApplicants = [], isLoading: isJobAppsLoading } = useGetApplicants(jobId || '');
+  const { data: jobApplicants = [], isLoading: isJobAppsLoading } = useGetApplicants(jobId || '', employerId);
   const { data: allApplications = [], isLoading: isAllAppsLoading } = useGetEmployerApplications(!jobId ? employerId : undefined);
 
   const applicants = jobId ? jobApplicants : allApplications;
 
-  const { data: jobs = [] } = useGetEmployerJobs(employerId || '');
-  const selectedJob = jobs.find(j => j.id === jobId);
+  const { data: selectedJob } = useJobDetail(jobId);
   const pageTitle = selectedJob ? selectedJob.title : 'Tất cả ứng viên';
 
   // ── Optimization: Instant Empty State ──
   // If we know from the job document that there are 0 applicants, bypass the loading state.
-  const isDefinitelyEmpty = jobId && selectedJob && selectedJob.totalAppliedCount === 0;
+  const isDefinitelyEmpty = jobId && selectedJob && (selectedJob as any).totalAppliedCount === 0;
   const isLoading = (jobId ? isJobAppsLoading : isAllAppsLoading) && !isDefinitelyEmpty;
 
   const stats = useMemo(() => {
-    const all = applicants.length;
-    const pending = applicants.filter(a => a.status === 'NEW' || a.status === 'PENDING').length;
-    const approved = applicants.filter(a => a.status === 'APPROVED' || a.status === 'REVIEWED').length;
-    const rejected = applicants.filter(a => a.status === 'REJECTED').length;
-    return { all, pending, approved, rejected };
+    return applicants.reduce((acc, a) => {
+      acc.all++;
+      if (a.status === 'NEW' || a.status === 'PENDING') acc.pending++;
+      else if (a.status === 'APPROVED' || a.status === 'REVIEWED') acc.approved++;
+      else if (a.status === 'REJECTED') acc.rejected++;
+      return acc;
+    }, { all: 0, pending: 0, approved: 0, rejected: 0 });
   }, [applicants]);
 
   const filteredApplicants = useMemo(() => {
@@ -267,7 +268,7 @@ function EmployerApplicantsRoute() {
                   applicationId={applicant.id}
                   candidateId={applicant.candidateId}
                   status={applicant.status}
-                  jobTitle={jobs.find(j => j.id === applicant.jobId)?.title}
+                  jobTitle={selectedJob?.title}
                   candidateName={applicant.candidateName}
                   candidateAvatar={applicant.candidateAvatar}
                   candidateSkills={applicant.candidateSkills}
