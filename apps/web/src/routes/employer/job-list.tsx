@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { Search, SlidersHorizontal, MapPin, Eye, Users, MoreVertical, Briefcase, Plus, Share2, Edit2, ArchiveRestore, PowerOff } from 'lucide-react';
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { Search, MapPin, Eye, Users, MoreVertical, Briefcase, Plus, Share2, Edit2, ArchiveRestore, PowerOff } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { fetchEmployerJobs, updateJob } from '@/features/jobs/services/jobService';
@@ -62,7 +62,7 @@ function EmptyState() {
         <h3 className="text-lg font-bold text-slate-800 mb-1">Chưa có tin đăng nào</h3>
         <p className="text-slate-500 text-sm mb-6 max-w-[200px]">Hãy tạo tin đăng đầu tiên để bắt đầu tìm kiếm ứng viên tài năng.</p>
         <button
-          onClick={() => navigate({ to: '/employer/post-job' })}
+          onClick={() => navigate({ to: '/employer/post-job', search: {} as any })}
           className="bg-emerald-600 hover:bg-emerald-700 active:scale-95 transition-all text-white font-bold py-3 px-6 rounded-xl flex items-center gap-2 shadow-sm shadow-emerald-600/20"
         >
           <Plus className="w-5 h-5" /> Đăng tin ngay
@@ -156,6 +156,8 @@ function JobManagementRoute() {
   };
 
   const handleEdit = (jobId: string) => {
+    // Keep jobId to prevent warning, or omit if unused.
+    console.log('Edit job', jobId);
     setOpenMenuId(null);
     toast.info('Tính năng Sửa tin đang được phát triển');
   };
@@ -238,8 +240,9 @@ function JobManagementRoute() {
             return (
               <div
                 key={job.id}
-                className={`relative flex flex-col rounded-[20px] bg-white p-4 shadow-[0_2px_12px_rgb(0,0,0,0.03)] border transition-all duration-300
-                  ${isClosed ? 'border-slate-100 opacity-80' : 'border-indigo-50/50 hover:border-indigo-100 hover:shadow-[0_4px_20px_rgb(0,0,0,0.06)]'}
+                onClick={() => navigate({ to: '/employer/job-detail', search: { jobId: job.id } })}
+                className={`relative flex flex-col rounded-2xl bg-white p-4 border transition-all duration-200 cursor-pointer
+                  ${isClosed ? 'border-slate-100 opacity-80' : 'border-slate-200 hover:border-indigo-200 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.99] active:bg-slate-50'}
                 `}
                 style={{ animationDelay: `${index * 50}ms` }}
               >
@@ -299,30 +302,23 @@ function JobManagementRoute() {
                 </div>
 
                 {/* Metrics & Location */}
-                <div className="flex flex-col gap-3 mb-5">
+                <div className="flex flex-col gap-2.5 mb-5">
                   {job.location?.address && (
-                    <div className="flex items-start gap-2 text-slate-500 text-[13px] font-medium leading-relaxed">
+                    <div className="flex items-start gap-1.5 text-slate-500 text-[13px] font-medium leading-relaxed">
                       <MapPin className="w-4 h-4 shrink-0 mt-0.5 text-slate-400" />
                       <span className="line-clamp-2">{job.location.address}</span>
                     </div>
                   )}
 
-                  {/* Funnel Metrics Bar */}
-                  <div className="bg-slate-50 rounded-xl p-3 flex items-center justify-around border border-slate-100">
-                    <div className="flex flex-col items-center gap-1">
-                      <div className="flex items-center gap-1.5 text-slate-400">
-                        <Eye className="w-3.5 h-3.5" />
-                        <span className="text-xs font-semibold">Lượt xem</span>
-                      </div>
-                      <span className="text-sm font-bold text-slate-700">{viewCount}</span>
+                  {/* Inline Metrics */}
+                  <div className="flex items-center gap-3 text-[13px] font-medium mt-1">
+                    <div className="flex items-center gap-1.5 text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>{viewCount} lượt xem</span>
                     </div>
-                    <div className="w-px h-8 bg-slate-200" />
-                    <div className="flex flex-col items-center gap-1">
-                      <div className="flex items-center gap-1.5 text-indigo-500">
-                        <Users className="w-3.5 h-3.5" />
-                        <span className="text-xs font-semibold">Ứng viên</span>
-                      </div>
-                      <span className="text-sm font-bold text-indigo-700">{appCount}</span>
+                    <div className="flex items-center gap-1.5 text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100/50">
+                      <Users className="w-3.5 h-3.5" />
+                      <span>{appCount} ứng viên</span>
                     </div>
                   </div>
                 </div>
@@ -330,10 +326,10 @@ function JobManagementRoute() {
                 {/* Actions */}
                 <div className="flex gap-3">
                   <button
-                    onClick={() => navigate({ to: '/employer/applicants', search: { jobId: job.id } })}
-                    className="flex-1 flex items-center justify-center h-12 rounded-xl bg-indigo-50 text-indigo-600 text-sm font-bold hover:bg-indigo-100 active:scale-[0.98] transition-all"
+                    onClick={(e) => { e.stopPropagation(); navigate({ to: '/employer/applicants', search: { jobId: job.id } }); }}
+                    className="flex-1 flex items-center justify-center h-11 rounded-xl border border-indigo-200 bg-white text-indigo-600 text-sm font-bold hover:bg-indigo-50 active:bg-indigo-100 transition-colors"
                   >
-                    Xem {appCount} ứng viên
+                    Quản lý ứng viên
                   </button>
                 </div>
               </div>
