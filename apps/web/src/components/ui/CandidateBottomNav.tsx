@@ -1,5 +1,5 @@
 import { Link, useLocation } from '@tanstack/react-router';
-import { Map, Search, CalendarDays, MessageCircle } from 'lucide-react';
+import { Map, Search, CalendarDays, MessageCircle, UserCircle } from 'lucide-react';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useChatUnreadCount } from '@/features/chat/hooks/useChatUnreadCount';
 
@@ -8,6 +8,7 @@ const navItems = [
     { to: '/jobs', icon: Search, label: 'Tìm kiếm' },
     { to: '/candidate/shifts', icon: CalendarDays, label: 'Ca của tôi' },
     { to: '/candidate/chat', icon: MessageCircle, label: 'Chat', badgeType: 'chat' as const },
+    { to: '/candidate/profile', icon: UserCircle, label: 'Tài khoản' },
 ] as const;
 
 export function CandidateBottomNav() {
