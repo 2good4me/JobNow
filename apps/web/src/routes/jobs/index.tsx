@@ -1,216 +1,296 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
-import { JobSearchFilter } from '../../features/jobs/components/JobSearchFilter';
-import { JobList } from '../../features/jobs/components/JobList';
-import type { JobCardProps } from '../../features/jobs/components/JobCard';
-import { useGeolocation } from '../../features/jobs/hooks/useGeolocation';
-import { useJobSearch } from '../../features/jobs/hooks/useJobSearch';
-import { getApiBase, seedJobs } from '../../lib/api';
-import { MapPin, AlertTriangle, RefreshCw, Database } from 'lucide-react';
-import type { ShiftTimeBucket } from '@jobnow/types';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { useState } from 'react';
+import {
+  ArrowLeft, Search, Mic, Map as MapIcon,
+  List, Heart, CheckCircle2
+} from 'lucide-react';
 
 export const Route = createFileRoute('/jobs/')({
-  component: JobsPage,
+  component: CandidateSearchDashboard,
 });
 
-type SortMode = 'nearest' | 'newest' | 'salary';
+function CandidateSearchDashboard() {
+  const [distance, setDistance] = useState(5);
+  const [minWage, setMinWage] = useState(35);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(['F&B']);
+  const [selectedTime, setSelectedTime] = useState<string>('');
+  const [selectedShifts, setSelectedShifts] = useState<string[]>([]);
+  const [verifiedOnly, setVerifiedOnly] = useState(true);
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
-function JobsPage() {
-  const apiBase = getApiBase();
-  const geo = useGeolocation();
-  const [radius, setRadius] = useState(5000);
-  const [keyword, setKeyword] = useState('');
-  const [salaryMin, setSalaryMin] = useState<number | undefined>(undefined);
-  const [salaryMax, setSalaryMax] = useState<number | undefined>(undefined);
-  const [category, setCategory] = useState<string | undefined>(undefined);
-  const [shiftTime, setShiftTime] = useState<ShiftTimeBucket | undefined>(undefined);
-  const [sortMode, setSortMode] = useState<SortMode>('nearest');
-  const [seeding, setSeeding] = useState(false);
-
-  const {
-    data,
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useJobSearch({
-    lat: geo.latitude,
-    lng: geo.longitude,
-    enabled: !geo.loading,
-    filters: {
-      radius_m: radius,
-      salary_min: salaryMin,
-      salary_max: salaryMax,
-      category_ids: category ? [category] : undefined,
-      shift_time: shiftTime,
-      keyword,
-      limit: 20,
-    },
-  });
-
-  const rawJobs = useMemo(() => data?.pages.flatMap((page) => page.items) ?? [], [data]);
-
-  const sortedJobs = useMemo(() => {
-    if (sortMode === 'salary') {
-      return [...rawJobs].sort((a, b) => b.salary - a.salary);
-    }
-    if (sortMode === 'newest') {
-      return [...rawJobs].sort((a, b) => {
-        const aTime = a.createdAt?.toDate?.()?.getTime?.() ?? 0;
-        const bTime = b.createdAt?.toDate?.()?.getTime?.() ?? 0;
-        return bTime - aTime;
-      });
-    }
-    return rawJobs;
-  }, [rawJobs, sortMode]);
-
-  const jobCards: JobCardProps[] = sortedJobs.map((job) => {
-    const salaryType: JobCardProps['salaryType'] = job.salaryType === 'HOURLY'
-      ? 'HOURLY'
-      : job.salaryType === 'DAILY'
-        ? 'DAILY'
-        : 'JOB';
-
-    return {
-    id: job.id,
-    title: job.title,
-    employerName: job.employerId || 'Nhà tuyển dụng',
-    salary: job.salary,
-    salaryType,
-    postedAt: new Date(),
-    isHot: (job.salary >= 35000 && job.salaryType === 'HOURLY') || (job.salary >= 300000 && job.salaryType === 'DAILY'),
-    address: job.location.address,
-    category: job.categoryId,
-    shifts: job.shifts.map((shift) => ({
-      id: shift.id,
-      name: shift.name,
-      start_time: shift.startTime,
-      end_time: shift.endTime,
-      quantity: shift.quantity,
-    })),
+  const toggleCategory = (cat: string) => {
+    setSelectedCategories(prev =>
+      prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
+    );
   };
-  });
 
-  const handleSeedData = async () => {
-    setSeeding(true);
-    try {
-      const result = await seedJobs();
-      alert(`✅ Đã seed thành công ${result.count} công việc mẫu! Đang tải lại...`);
-      refetch();
-    } catch {
-      alert('❌ Lỗi seed data. Hãy đảm bảo backend đang chạy (npm run dev trong apps/api).');
-    } finally {
-      setSeeding(false);
-    }
+  const toggleShift = (shift: string) => {
+    setSelectedShifts(prev =>
+      prev.includes(shift) ? prev.filter(s => s !== shift) : [...prev, shift]
+    );
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl animate-in fade-in slide-in-from-bottom-4 duration-500 ease-out">
-      <div className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold font-heading text-slate-900 tracking-tight mb-2">
-          Tìm việc làm thời vụ <span className="text-primary-600 relative inline-block">ngay gần bạn</span>
-        </h1>
-        <p className="text-slate-600 text-lg">Hàng ngàn ca làm việc đang chờ bạn khám phá và ứng tuyển.</p>
-      </div>
-
-      {geo.isDefault && !geo.loading && (
-        <div className="mb-6 flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm">
-          <AlertTriangle className="w-5 h-5 shrink-0 text-amber-500" />
-          <span>{geo.error || 'Đang hiển thị khu vực mặc định: Nam Từ Liêm, Hà Nội. Bật GPS để tìm việc chính xác hơn!'}</span>
-        </div>
-      )}
-
-      {!geo.loading && (
-        <div className="mb-6 flex items-center gap-2 text-sm text-slate-500">
-          <MapPin className="w-4 h-4 text-primary-500" />
-          <span>Vị trí: {geo.latitude.toFixed(4)}, {geo.longitude.toFixed(4)}</span>
-          <span className="text-slate-300">|</span>
-          <span>Bán kính: {radius >= 1000 ? `${radius / 1000}km` : `${radius}m`}</span>
-        </div>
-      )}
-
-      <JobSearchFilter
-        radius={radius}
-        keyword={keyword}
-        salaryMin={salaryMin}
-        salaryMax={salaryMax}
-        categoryId={category}
-        shiftTime={shiftTime}
-        onRadiusChange={setRadius}
-        onKeywordChange={setKeyword}
-        onSalaryMinChange={setSalaryMin}
-        onSalaryMaxChange={setSalaryMax}
-        onCategoryChange={setCategory}
-        onShiftTimeChange={setShiftTime}
-      />
-
-      <div className="flex justify-between items-center mb-6 gap-3 flex-wrap">
-        <h2 className="text-xl font-bold text-slate-800">
-          {isLoading ? 'Đang tìm kiếm...' : <>Có <span className="text-primary-600">{jobCards.length}</span> công việc</>}
-        </h2>
-
-        <div className="flex gap-2">
-          <button
-            onClick={handleSeedData}
-            disabled={seeding}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors disabled:opacity-50"
-            title="Seed 25 công việc mẫu vào Firestore (Development)"
-          >
-            <Database className="w-3.5 h-3.5" />
-            {seeding ? 'Đang seed...' : 'Seed Data'}
+    <div className="min-h-[100dvh] bg-slate-50 pb-24 font-sans text-slate-800">
+      {/* Search Header */}
+      <div className="bg-white sticky top-0 z-40 pt-4 pb-2 px-4 shadow-sm border-b border-slate-200">
+        <div className="flex justify-between items-center gap-3 mb-4">
+          <button className="text-slate-600">
+            <ArrowLeft className="w-6 h-6" />
           </button>
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              type="text"
+              defaultValue="Nhân viên"
+              className="w-full bg-slate-100 text-slate-900 rounded-full py-2.5 pl-10 pr-10 border border-transparent focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
+            />
+            <button className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+              <Mic className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
 
-          <button
-            onClick={() => refetch()}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-slate-50 text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            {isFetching ? 'Đang tải...' : 'Tải lại'}
+        {/* Search Suggestion Tags */}
+        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar text-[13px] whitespace-nowrap mb-2">
+          <span className="text-slate-500 font-semibold uppercase tracking-wider text-[11px] mr-1">Gần đây</span>
+          <button className="bg-slate-100 hover:bg-slate-200 px-4 py-1.5 rounded-full text-slate-700 transition-colors">
+            Phục vụ bàn
           </button>
-
-          <select
-            className="bg-white border-slate-200 text-slate-700 font-medium py-2 px-4 rounded-xl shadow-sm focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
-            value={sortMode}
-            onChange={(e) => setSortMode(e.target.value as SortMode)}
-          >
-            <option value="nearest">Gần đây nhất</option>
-            <option value="newest">Mới đăng</option>
-            <option value="salary">Lương cao nhất</option>
-          </select>
+          <button className="bg-slate-100 hover:bg-slate-200 px-4 py-1.5 rounded-full text-slate-700 transition-colors">
+            PG sự kiện
+          </button>
+          <div className="w-[1px] h-4 bg-slate-300 mx-1"></div>
+          <span className="text-slate-500 font-semibold uppercase tracking-wider text-[11px] ml-1 mr-1">Phổ biến</span>
         </div>
       </div>
 
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
-          Lỗi kết nối: {(error as Error).message}. API hiện tại: <code className="bg-red-100 px-1.5 py-0.5 rounded">{apiBase}</code>
-        </div>
-      )}
+      <div className="px-4 py-4">
+        {/* Advanced Filters Section */}
+        <div className="mb-6 border-b border-slate-200 pb-6 bg-white p-4 rounded-3xl shadow-sm">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-[18px] font-bold text-slate-900">Bộ lọc nâng cao</h2>
+            <button className="text-blue-500 text-[14px]">Đặt lại</button>
+          </div>
 
-      <JobList jobs={jobCards} isLoading={isLoading || geo.loading} />
+          {/* Distance Filter */}
+          <div className="mb-6">
+            <div className="flex justify-between mb-2">
+              <span className="text-slate-600 text-[14px] font-medium">Khoảng cách</span>
+              <span className="text-blue-600 text-[14px] font-bold">{distance} km</span>
+            </div>
+            <input
+              type="range"
+              min="1" max="10"
+              value={distance}
+              onChange={(e) => setDistance(parseInt(e.target.value))}
+              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+            />
+            <div className="flex justify-between mt-1 text-slate-400 text-[12px]">
+              <span>1km</span>
+              <span>10km</span>
+            </div>
+          </div>
 
-      {jobCards.length > 0 && (
-        <div className="mt-10 flex justify-center">
-          {hasNextPage ? (
-            <button
-              className="px-6 py-3 bg-white border border-slate-200 text-slate-700 font-medium rounded-xl shadow-sm hover:bg-slate-50 hover:text-primary-600 transition-colors disabled:opacity-50"
-              onClick={() => fetchNextPage()}
-              disabled={isFetchingNextPage}
+          {/* Minimum Wage Filter */}
+          <div className="mb-6">
+            <div className="flex justify-between mb-2">
+              <span className="text-slate-600 text-[14px] font-medium">Lương tối thiểu / giờ</span>
+              <span className="text-blue-600 text-[14px] font-bold">{minWage}k</span>
+            </div>
+            <input
+              type="range"
+              min="20" max="100" step="5"
+              value={minWage}
+              onChange={(e) => setMinWage(parseInt(e.target.value))}
+              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+            />
+            <div className="flex justify-between mt-1 text-slate-400 text-[12px]">
+              <span>20k</span>
+              <span>100k</span>
+            </div>
+          </div>
+
+          {/* Categories */}
+          <div className="mb-6">
+            <div className="text-slate-600 font-medium text-[14px] mb-3">Danh mục</div>
+            <div className="flex flex-wrap gap-2">
+              {['F&B', 'Giao hàng', 'Sự kiện', 'Bán hàng'].map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => toggleCategory(cat)}
+                  className={`px-5 py-2 rounded-full text-[14px] font-medium transition-colors ${selectedCategories.includes(cat)
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                    }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Time and Shift */}
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <div>
+              <div className="text-slate-600 font-medium text-[14px] mb-3">Thời gian</div>
+              <div className="flex flex-col gap-2">
+                {['Hôm nay', 'Ngày mai'].map(time => (
+                  <button
+                    key={time}
+                    onClick={() => setSelectedTime(time)}
+                    className={`py-2 rounded-xl text-[14px] font-medium transition-colors ${selectedTime === time
+                      ? 'bg-blue-50 border-2 border-blue-500 text-blue-700'
+                      : 'bg-white border-2 border-slate-100 text-slate-600 hover:bg-slate-50'
+                      }`}
+                  >
+                    {time}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="text-slate-600 font-medium text-[14px] mb-3">Ca làm</div>
+              <div className="grid grid-cols-2 gap-2">
+                {['Sáng', 'Chiều', 'Tối'].map(shift => (
+                  <button
+                    key={shift}
+                    onClick={() => toggleShift(shift)}
+                    className={`py-2 rounded-xl text-[14px] font-medium transition-colors ${shift === 'Tối' ? 'col-span-2' : ''
+                      } ${selectedShifts.includes(shift)
+                        ? 'bg-blue-50 border-2 border-blue-500 text-blue-700'
+                        : 'bg-white border-2 border-slate-100 text-slate-600 hover:bg-slate-50'
+                      }`}
+                  >
+                    {shift}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Verified Employer Toggle */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex justify-between items-center mb-6">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+              <span className="text-slate-700 font-semibold text-[14px]">Employer đã xác thực</span>
+            </div>
+            <div
+              className={`w-12 h-6 rounded-full p-1 cursor-pointer transition-colors ${verifiedOnly ? 'bg-blue-600' : 'bg-slate-300'}`}
+              onClick={() => setVerifiedOnly(!verifiedOnly)}
             >
-              {isFetchingNextPage ? 'Đang tải thêm...' : 'Tải thêm'}
-            </button>
-          ) : (
-            <button
-              className="px-6 py-3 bg-white border border-slate-200 text-slate-700 font-medium rounded-xl shadow-sm hover:bg-slate-50 hover:text-primary-600 transition-colors"
-              onClick={() => setRadius((prev) => Math.min(prev + 5000, 50000))}
-            >
-              Mở rộng bán kính (+5km)
-            </button>
-          )}
+              <div className={`w-4 h-4 bg-white rounded-full transition-transform shadow-sm ${verifiedOnly ? 'translate-x-6' : 'translate-x-0'}`}></div>
+            </div>
+          </div>
+
+          <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-blue-200 transition-all active:scale-[0.98]">
+            ÁP DỤNG BỘ LỌC
+          </button>
         </div>
-      )}
+
+        {/* Results Header */}
+        <div className="flex justify-between items-center mb-4 px-1">
+          <h3 className="text-slate-600 font-medium">Tìm thấy <span className="font-bold text-slate-900">24</span> việc làm</h3>
+          <div className="bg-white border border-slate-200 rounded-lg p-1 flex shadow-sm">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-semibold transition-colors ${viewMode === 'list' ? 'bg-slate-100 text-slate-900' : 'text-slate-500'}`}
+            >
+              <List className="w-4 h-4" /> Danh sách
+            </button>
+            <button
+              onClick={() => setViewMode('map')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-semibold transition-colors ${viewMode === 'map' ? 'bg-slate-100 text-slate-900' : 'text-slate-500'}`}
+            >
+              <MapIcon className="w-4 h-4" /> Bản đồ
+            </button>
+          </div>
+        </div>
+
+        {/* Real Job Items / Mock items based on new design */}
+        <div className="space-y-4">
+          <JobCard
+            id="job1"
+            companyName="The Coffee House"
+            title="Nhân viên Phục vụ"
+            wage="25k - 30k/h"
+            distance="0.5km"
+            shift="Ca chiều"
+            logoUrl="https://api.dicebear.com/7.x/initials/svg?seed=TCH&backgroundColor=3b82f6"
+          />
+          <JobCard
+            id="job2"
+            companyName="Pizza 4P's"
+            title="Phụ bếp Nhà hàng"
+            wage="35k/h"
+            distance="1.2km"
+            shift="Ca gãy"
+            logoUrl="https://api.dicebear.com/7.x/initials/svg?seed=4P&backgroundColor=ea580c"
+            hasVerifiedBadge
+          />
+          <JobCard
+            id="job3"
+            companyName="Galaxy Event"
+            title="PG Sự Kiện Ra Mắt"
+            wage="150k/ca"
+            distance="2.5km"
+            shift="Thời vụ"
+            logoUrl="https://api.dicebear.com/7.x/initials/svg?seed=GL&backgroundColor=10b981"
+          />
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+function JobCard({
+  id, companyName, title, wage, distance, shift, logoUrl, hasVerifiedBadge
+}: {
+  id: string, companyName: string, title: string, wage: string,
+  distance: string, shift: string, logoUrl: string, hasVerifiedBadge?: boolean
+}) {
+  const navigate = useNavigate();
+
+  return (
+    <div
+      onClick={() => {
+        navigate({ to: '/candidate/jobs/$jobId', params: { jobId: id } });
+      }}
+      className="bg-white rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:bg-slate-50 transition-colors shadow-sm border border-slate-100"
+    >
+      <div className="relative">
+        <div className="w-[60px] h-[60px] rounded-full overflow-hidden shrink-0 border border-slate-200">
+          <img src={logoUrl} alt={companyName} className="w-full h-full object-cover" />
+        </div>
+        {hasVerifiedBadge && (
+          <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full"></div>
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0 py-1">
+        <div className="flex justify-between items-start mb-0.5">
+          <h3 className="font-bold text-[16px] text-slate-900 truncate pr-2">{title}</h3>
+          <button className="text-slate-400 hover:text-red-500 transition-colors shrink-0 bg-slate-50 p-1.5 rounded-full">
+            <Heart className="w-4 h-4" />
+          </button>
+        </div>
+
+        <p className="text-[13px] text-slate-500 mb-2 truncate">
+          {companyName} <span className="text-slate-300">•</span> {distance}
+        </p>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="bg-blue-50 border border-blue-100 text-blue-600 text-[12px] px-2.5 py-1 rounded-md font-medium">
+            {shift}
+          </div>
+          <div className="bg-emerald-50 border border-emerald-100 text-emerald-600 text-[12px] px-2.5 py-1 rounded-md font-medium">
+            {wage}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
