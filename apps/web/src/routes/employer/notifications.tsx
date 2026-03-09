@@ -1,9 +1,10 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router';
+import { NotificationCenter } from '@/features/notifications/components/NotificationCenter';
 
 export const Route = createFileRoute('/employer/notifications')({
-  component: RouteComponent,
-})
+  component: EmployerNotifications,
+});
 
-function RouteComponent() {
-  return <div>Hello "/employer/notifications"!</div>
+function EmployerNotifications() {
+  return <NotificationCenter />;
 }
