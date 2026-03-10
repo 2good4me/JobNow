@@ -203,14 +203,51 @@ export async function createJob(jobData: Partial<Job>): Promise<Job> {
 export async function updateJob(jobId: string, data: Partial<Job>): Promise<void> {
     try {
         const jobRef = doc(db, 'jobs', jobId);
-        await updateDoc(jobRef, {
-            ...(data.title !== undefined ? { title: data.title } : {}),
-            ...(data.description !== undefined ? { description: data.description } : {}),
-            ...(data.salary !== undefined ? { salary: data.salary } : {}),
-            ...(data.salaryType !== undefined ? { salary_type: data.salaryType } : {}),
-            ...(data.status !== undefined ? { status: data.status === 'ACTIVE' ? 'OPEN' : data.status } : {}),
+        const latitude = Number(data.location?.latitude ?? 0);
+        const longitude = Number(data.location?.longitude ?? 0);
+        const nextGeohash = latitude && longitude
+            ? encodeGeohash(latitude, longitude)
+            : '';
+
+        const updateData: Record<string, unknown> = {
             updated_at: serverTimestamp(),
-        });
+        };
+
+        if (data.title !== undefined) updateData.title = data.title;
+        if (data.description !== undefined) updateData.description = data.description;
+        if (data.salary !== undefined) updateData.salary = data.salary;
+        if (data.salaryType !== undefined) updateData.salary_type = data.salaryType;
+        if (data.status !== undefined) updateData.status = data.status === 'ACTIVE' ? 'OPEN' : data.status;
+        if (data.categoryId !== undefined) updateData.category_id = data.categoryId;
+        if (data.vacancies !== undefined) updateData.vacancies = data.vacancies;
+        if (data.deadline !== undefined) updateData.deadline = data.deadline;
+        if (data.requirements !== undefined) updateData.requirements = data.requirements;
+        if (data.images !== undefined) updateData.images = data.images;
+        if (data.genderPreference !== undefined) updateData.gender_preference = data.genderPreference;
+        if (data.startDate !== undefined) updateData.start_date = data.startDate;
+        if (data.isPremium !== undefined) updateData.is_premium = data.isPremium;
+        if (data.isGpsRequired !== undefined) updateData.is_gps_required = data.isGpsRequired;
+
+        if (data.location !== undefined) {
+            updateData.address = data.location?.address ?? '';
+            updateData.location = {
+                latitude,
+                longitude,
+            };
+            updateData.geohash = nextGeohash;
+        }
+
+        if (data.shifts !== undefined) {
+            updateData.shifts = data.shifts.map((shift) => ({
+                id: shift.id,
+                name: shift.name,
+                start_time: shift.startTime,
+                end_time: shift.endTime,
+                quantity: shift.quantity,
+            }));
+        }
+
+        await updateDoc(jobRef, updateData);
     } catch (error) {
         console.error('Error in updateJob:', error);
         throw new Error('Không thể cập nhật tin tuyển dụng.');

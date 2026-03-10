@@ -22,7 +22,6 @@ import {
   type PayType,
   type GenderPreference,
   type Shift,
-  calculateTotalBudget,
 } from './-schemas/jobFormSchema';
 
 export const Route = createFileRoute('/employer/post-job')({
@@ -341,11 +340,30 @@ function EmployerPostJobRoute() {
 
       // Upload cover image if selected
       let imageUrls: string[] = [];
+      let imageUploadWarning: string | null = null;
       if (form.coverImage) {
-        const storageRef = ref(storage, `job-images/${user.uid}/${Date.now()}_${form.coverImage.name}`);
-        await uploadBytes(storageRef, form.coverImage);
-        const downloadUrl = await getDownloadURL(storageRef);
-        imageUrls = [downloadUrl];
+        const fileName = `${Date.now()}_${form.coverImage.name}`;
+        const primaryRef = ref(storage, `job-images/${user.uid}/${fileName}`);
+
+        try {
+          await uploadBytes(primaryRef, form.coverImage);
+          const downloadUrl = await getDownloadURL(primaryRef);
+          imageUrls = [downloadUrl];
+        } catch (primaryUploadError) {
+          // Fallback to an owner-writable path so users can still submit when job-images rules are not synced yet.
+          const fallbackRef = ref(storage, `company-logos/${user.uid}/job-cover_${fileName}`);
+          try {
+            await uploadBytes(fallbackRef, form.coverImage);
+            const fallbackUrl = await getDownloadURL(fallbackRef);
+            imageUrls = [fallbackUrl];
+          } catch (fallbackUploadError) {
+            console.error('Image upload failed on both primary and fallback paths', {
+              primaryUploadError,
+              fallbackUploadError,
+            });
+            imageUploadWarning = 'Không thể tải ảnh lên lúc này. Tin vẫn được đăng/cập nhật nhưng chưa có ảnh.';
+          }
+        }
       } else if (editJobId && existingJob?.images) {
         // Keep existing images when editing without new upload
         imageUrls = existingJob.images;
@@ -391,10 +409,24 @@ function EmployerPostJobRoute() {
         await createJob(jobData);
         toast.success('Đăng tin thành công!');
       }
+
+      if (imageUploadWarning) {
+        toast.error(imageUploadWarning);
+      }
+
       navigate({ to: '/employer' });
     } catch (error) {
       console.error('Failed to post job', error);
-      toast.error('Đã xảy ra lỗi khi đăng tin. Vui lòng thử lại.');
+      const errorCode = typeof error === 'object' && error !== null && 'code' in error
+        ? String((error as { code?: unknown }).code)
+        : '';
+
+      if (errorCode === 'storage/unauthorized') {
+        toast.error('Không có quyền tải ảnh. Hệ thống đã thử lưu theo đường dẫn thay thế, vui lòng thử lại.');
+        return;
+      }
+
+      toast.error('Đã xảy ra lỗi khi đăng/cập nhật tin. Vui lòng thử lại.');
     }
   };
 
@@ -467,7 +499,6 @@ function EmployerPostJobRoute() {
               updateShift={updateShift}
               removeShift={removeShift}
               errors={errors}
-              calculateTotalBudget={calculateTotalBudget}
             />
           )}
 
@@ -477,7 +508,6 @@ function EmployerPostJobRoute() {
               setForm={setForm}
               fileInputId={fileInputId}
               handleImageSelect={handleImageSelect}
-              calculateTotalBudget={calculateTotalBudget}
             />
           )}
         </form>

@@ -1,6 +1,7 @@
-import { Clock, Minus, Plus, X, AlertCircle, DollarSign } from 'lucide-react';
+import { Clock, Minus, Plus, X, AlertCircle, DollarSign, CheckCircle2 } from 'lucide-react';
 import { type JobFormState, type Shift, formatSalary } from '../../post-job';
 import type { PayType } from '../../-schemas/jobFormSchema';
+import { calculateBudget } from '../../-utils/budgetCalculations';
 
 interface Step3ShiftsProps {
   form: JobFormState;
@@ -8,7 +9,6 @@ interface Step3ShiftsProps {
   updateShift: (id: string, patch: Partial<Shift>) => void;
   removeShift: (id: string) => void;
   errors: Partial<Record<keyof JobFormState, string>>;
-  calculateTotalBudget: (quantity: number, salary: number, payType: PayType, shifts?: Shift[]) => number;
 }
 
 export default function Step3Shifts({
@@ -17,9 +17,8 @@ export default function Step3Shifts({
   updateShift,
   removeShift,
   errors,
-  calculateTotalBudget,
 }: Step3ShiftsProps) {
-  // Calculate time validation for a shift
+  // Calculate time validation for a shift (for real-time UX feedback)
   const getTimeError = (shift: Shift): string | null => {
     const [startH, startM] = shift.startTime.split(':').map(Number);
     const [endH, endM] = shift.endTime.split(':').map(Number);
@@ -31,9 +30,9 @@ export default function Step3Shifts({
     return null;
   };
 
-  // Calculate total budget
+  // Calculate total budget using new utility
   const salary = Number(form.salary.replace(/\D/g, '')) || 0;
-  const totalBudget = calculateTotalBudget(form.vacancies, salary, form.payType as PayType, form.shifts);
+  const budgetResult = calculateBudget(form.payType as PayType, salary, form.vacancies, form.shifts);
 
   return (
     <div className="w-full shrink-0 px-0.5 space-y-4">
@@ -161,20 +160,42 @@ export default function Step3Shifts({
         </button>
       </section>
 
-      {/* Total Budget Display */}
+      {/* Total Budget Display with Breakdown */}
       <section className="rounded-2xl border-2 border-emerald-300 bg-emerald-50 p-4 shadow-md">
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2 mb-3">
           <DollarSign className="w-5 h-5 text-emerald-600" />
           <h3 className="text-sm font-bold text-emerald-900">Tổng ngân sách dự kiến</h3>
         </div>
-        <p className="text-2xl font-bold text-emerald-700">
-          {formatSalary(String(totalBudget))} VNĐ
+
+        <p className="text-2xl font-bold text-emerald-700 mb-4">
+          {formatSalary(String(budgetResult.totalBudget))} VNĐ
         </p>
-        <p className="mt-2 text-xs text-emerald-600">
-          {form.payType === 'Theo ca'
-            ? `${form.shifts.reduce((acc, s) => acc + s.quantity, 0)} ca × ${formatSalary(form.salary)} VNĐ`
-            : `${form.vacancies} người × ${formatSalary(form.salary)} VNĐ`}
-        </p>
+
+        {/* Breakdown Details */}
+        <div className="space-y-2 mb-3">
+          <p className="text-xs font-semibold text-emerald-900 uppercase">Chi tiết tính toán</p>
+          {budgetResult.breakdown.map((item, idx) => (
+            <div key={idx} className="flex items-start gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 flex items-center justify-between text-xs">
+                <span className="text-emerald-800">{item.label}</span>
+                <span className="font-semibold text-emerald-700">
+                  {formatSalary(String(item.amount))} VNĐ
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Explanation & Total Hours (if applicable) */}
+        <div className="pt-3 border-t border-emerald-200">
+          <p className="text-xs text-emerald-700 mb-2">{budgetResult.explanation}</p>
+          {budgetResult.workingHours && (
+            <p className="text-xs text-emerald-600">
+              ⏱️ <strong>Tổng số giờ:</strong> {budgetResult.workingHours.toFixed(1)} giờ
+            </p>
+          )}
+        </div>
       </section>
     </div>
   );

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { calculateBudget } from '../-utils/budgetCalculations';
 
 export type PayType = 'Theo giờ' | 'Theo ca' | 'Theo ngày';
 export type GenderPreference = 'Nam' | 'Nữ' | 'Cả hai';
@@ -11,97 +12,160 @@ export interface Shift {
   quantity: number;
 }
 
-// Shift validation schema
+/* ─────────────────────────────────────────────────────────────
+   VALIDATION RULES - Per specification
+   ─────────────────────────────────────────────────────────────
+   
+   ALL PAYMENT TYPES:
+   • workers > 0
+   • salary > 0
+   • GPS coordinates required before submission
+   • timeGuard: endTime must be > startTime
+   • locationGuard: latitude & longitude required
+   
+   ───────────────────────────────────────────────────────────── */
+
+/**
+ * Shift validation schema
+ * Used for all payment types that involve shifts
+ */
 export const shiftSchema = z.object({
   id: z.string().min(1),
-  name: z.string().min(1, 'Tên ca không được để trống'),
-  startTime: z.string().regex(/^\d{2}:\d{2}$/, 'Format giờ không hợp lệ'),
-  endTime: z.string().regex(/^\d{2}:\d{2}$/, 'Format giờ không hợp lệ'),
-  quantity: z.number().int().min(1, 'Số lượng phải >= 1'),
-}).refine((data) => {
-  // Validate end time >= start time
-  const [startH, startM] = data.startTime.split(':').map(Number);
-  const [endH, endM] = data.endTime.split(':').map(Number);
-  const startMins = startH * 60 + startM;
-  const endMins = endH * 60 + endM;
-  return endMins >= startMins;
-}, {
-  message: 'Giờ kết thúc phải >= giờ bắt đầu',
-  path: ['endTime'],
-});
-
-// Main job form validation schema
-export const jobFormSchema = z.object({
-  title: z.string()
-    .min(1, 'Tiêu đề công việc không được để trống')
-    .min(5, 'Tiêu đề phải >= 5 ký tự')
-    .max(100, 'Tiêu đề <= 100 ký tự'),
-  
-  category: z.string()
-    .min(1, 'Vui lòng chọn danh mục'),
-  
-  description: z.string()
-    .min(1, 'Mô tả công việc không được để trống')
-    .max(500, 'Mô tả <= 500 ký tự'),
-  
-  vacancies: z.number()
+  name: z.string()
+    .min(1, 'Tên ca không được để trống'),
+  startTime: z.string()
+    .regex(/^\d{2}:\d{2}$/, 'Format giờ không hợp lệ (VD: 08:00)'),
+  endTime: z.string()
+    .regex(/^\d{2}:\d{2}$/, 'Format giờ không hợp lệ (VD: 17:00)'),
+  quantity: z.number()
     .int('Số lượng phải là số nguyên')
     .min(1, 'Số lượng phải >= 1'),
-  
-  gender: z.enum(['Nam', 'Nữ', 'Cả hai'] as const),
-  
+})
+  // TIME GUARD: End time must be >= start time
+  .refine((data) => {
+    const [startH, startM] = data.startTime.split(':').map(Number);
+    const [endH, endM] = data.endTime.split(':').map(Number);
+    const startMins = startH * 60 + startM;
+    const endMins = endH * 60 + endM;
+    return endMins >= startMins;
+  }, {
+    message: 'End time must be later than start time',
+    path: ['endTime'],
+  });
+
+/**
+ * Core job form validation schema
+ * No defaultValue allowed - all fields empty initially
+ */
+export const jobFormSchema = z.object({
+  // ──────── STEP 1: Job Information ─────────
+  title: z.string()
+    .min(1, 'Job title is required')
+    .min(5, 'Title must be >= 5 characters')
+    .max(100, 'Title must be <= 100 characters'),
+
+  category: z.string()
+    .min(1, 'Category selection required'),
+
+  description: z.string()
+    .min(1, 'Job description is required')
+    .max(500, 'Description must be <= 500 characters'),
+
+  gender: z.enum(['Nam', 'Nữ', 'Cả hai'] as const)
+    .default('Cả hai'),
+
+  // ──────── STEP 2: Work Details (Dynamic) ──────────────
+  payType: z.enum(['Theo giờ', 'Theo ca', 'Theo ngày'] as const),
+
+  /**
+   * SALARY VALIDATION
+   * - Must be > 0 for all payment types
+   * - Placeholder: "Enter salary (e.g. 50000)"
+   */
   salary: z.string()
-    .min(1, 'Mức lương không được để trống')
+    .min(1, 'Salary is required')
     .refine((val) => {
       const num = Number(val.replace(/\D/g, ''));
-      return num >= 0;
-    }, 'Mức lương phải >= 0'),
-  
-  payType: z.enum(['Theo giờ', 'Theo ca', 'Theo ngày'] as const),
-  
-  address: z.string()
-    .min(1, 'Địa chỉ không được để trống')
-    .min(5, 'Địa chỉ phải >= 5 ký tự'),
-  
-  // Location guard: require GPS coordinates
-  latitude: z.number().nullable()
-    .refine((val) => val !== null, 'Vui lòng chọn vị trí GPS'),
-  
-  longitude: z.number().nullable()
-    .refine((val) => val !== null, 'Vui lòng chọn vị trí GPS'),
-  
-  startDate: z.string()
-    .min(1, 'Ngày bắt đầu không được để trống'),
-  
-  deadline: z.string().optional(),
-  
-  requirements: z.array(z.string()).default([]),
-  
+      return num > 0;
+    }, 'Salary must be > 0'),
+
+  /**
+   * WORKERS VALIDATION
+   * - Only used for HOURLY and DAILY types
+   * - Must be > 0
+   * - Placeholder: "Number of workers needed"
+   */
+  vacancies: z.number()
+    .int('Workers must be an integer')
+    .min(1, 'Workers must be >= 1'),
+
+  /**
+   * SHIFTS VALIDATION
+   * - Required for all types (even if single shift for daily)
+   * - At least 1 shift required
+   * - TIME GUARD enforced at shift level
+   */
   shifts: z.array(shiftSchema)
-    .min(1, 'Phải có ít nhất 1 ca làm'),
-  
+    .min(1, 'At least 1 shift required'),
+
+  // ──────── STEP 3: Location & Confirmation ───────────────
+  address: z.string()
+    .min(1, 'Address is required')
+    .min(5, 'Address must be >= 5 characters'),
+
+  /**
+   * LOCATION GUARD: GPS coordinates required
+   * Cannot submit without:
+   * - latitude (required, not null)
+   * - longitude (required, not null)
+   *
+   * Error message: "Please select a job location on the map."
+   */
+  latitude: z.number()
+    .refine((val) => val !== null && val !== undefined, {
+      message: 'Please select a job location on the map',
+    }),
+
+  longitude: z.number()
+    .refine((val) => val !== null && val !== undefined, {
+      message: 'Please select a job location on the map',
+    }),
+
+  startDate: z.string()
+    .min(1, 'Start date required'),
+
+  deadline: z.string().optional(),
+
+  requirements: z.array(z.string()).default([]),
+
   coverImage: z.instanceof(File).nullable().optional(),
-  
+
   isPremium: z.boolean().default(false),
-}).refine((data) => {
-  // Validate deadline > startDate if provided
-  if (data.deadline) {
-    return new Date(data.deadline) >= new Date(data.startDate);
-  }
-  return true;
-}, {
-  message: 'Hạn nộp đơn phải >= ngày bắt đầu',
-  path: ['deadline'],
-});
+})
+  // Composite validation: deadline must be >= startDate
+  .refine((data) => {
+    if (data.deadline) {
+      return new Date(data.deadline) >= new Date(data.startDate);
+    }
+    return true;
+  }, {
+    message: 'Deadline must be >= start date',
+    path: ['deadline'],
+  });
 
 export type JobFormState = z.infer<typeof jobFormSchema>;
 
-// Helper to get total budget
-export function calculateTotalBudget(quantity: number, salary: number, payType: PayType, shifts?: Shift[]) {
-  if (payType === 'Theo ca' && shifts && shifts.length > 0) {
-    // Sum up all shifts
-    const totalShifts = shifts.reduce((acc, s) => acc + s.quantity, 0);
-    return totalShifts * salary;
-  }
-  return quantity * salary;
+/**
+ * Helper function for backward compatibility
+ * Delegates to the new calculateBudget utility
+ */
+export function calculateTotalBudget(
+  quantity: number,
+  salary: number,
+  payType: PayType,
+  shifts: Shift[] = [],
+  numberOfDays: number = 1
+): number {
+  const result = calculateBudget(payType, salary, quantity, shifts, numberOfDays);
+  return result.totalBudget;
 }

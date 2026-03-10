@@ -1,5 +1,6 @@
-import { DollarSign, Tag, UsersRound, X, ChevronDown } from 'lucide-react';
+import { DollarSign, Tag, UsersRound, X, ChevronDown, Info } from 'lucide-react';
 import { payTypes, type JobFormState, type PayType } from '../../post-job';
+import { getSalaryLabel, getSalaryExplanation } from '../../-utils/budgetCalculations';
 
 interface Step1InfoProps {
   form: JobFormState;
@@ -195,9 +196,11 @@ export default function Step1Info({
             </div>
             {errors.vacancies && <p className="mt-1 text-xs font-semibold text-rose-600">🔴 {errors.vacancies}</p>}
           </label>
+
+          {/* Dynamic Salary Label based on payment type */}
           <label>
             <span className="mb-1 block text-xs font-semibold text-slate-600">
-              Mức lương (VNĐ) <span className="text-rose-400">*</span>
+              {getSalaryLabel(form.payType)} <span className="text-rose-400">*</span>
             </span>
             <div className="relative">
               <DollarSign className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -216,6 +219,8 @@ export default function Step1Info({
             {errors.salary && <p className="mt-1 text-xs font-semibold text-rose-600">🔴 {errors.salary}</p>}
           </label>
         </div>
+
+        {/* Payment Type Selection with dynamic explanation */}
         <div className="mt-3">
           <p className="mb-1 text-xs font-semibold text-slate-600">
             Hình thức trả <span className="text-rose-400">*</span>
@@ -235,6 +240,14 @@ export default function Step1Info({
                 {pt}
               </button>
             ))}
+          </div>
+
+          {/* Explanation text for selected payment type */}
+          <div className="mt-3 flex gap-2 rounded-xl border border-blue-200 bg-blue-50 p-3">
+            <Info className="h-4 w-4 flex-shrink-0 text-blue-600 mt-0.5" />
+            <p className="text-xs text-blue-700 leading-relaxed">
+              {getSalaryExplanation(form.payType)}
+            </p>
           </div>
         </div>
       </section>
