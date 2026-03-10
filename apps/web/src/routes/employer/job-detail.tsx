@@ -1,10 +1,12 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { ArrowLeft, MapPin, Users, Calendar, DollarSign, AlertCircle, Trash2, Loader2, Pencil } from 'lucide-react';
+import { ArrowLeft, MapPin, Users, Calendar, DollarSign, AlertCircle, Trash2, Loader2, Pencil, CheckCircle2 } from 'lucide-react';
 import { useJobDetail } from '@/features/jobs/hooks/useEmployerJobs';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useState } from 'react';
 import { useDeleteJob } from '@/features/jobs/hooks/useEmployerJobs';
 import { toast } from 'sonner';
+import { calculateBudget } from './-utils/budgetCalculations';
+import type { PayType } from './-schemas/jobFormSchema';
 
 export const Route = createFileRoute('/employer/job-detail')({
   component: JobDetailPage,
@@ -88,6 +90,22 @@ function JobDetailPage() {
   }
 
   const isOwner = userProfile?.uid === job.employerId;
+
+  // Map database salary type to PayType
+  const mapSalaryType = (type: string): PayType => {
+    if (type === 'HOURLY') return 'Theo giờ';
+    if (type === 'PER_SHIFT') return 'Theo ca';
+    return 'Theo ngày';
+  };
+
+  // Calculate budget using new utility
+  const payType = mapSalaryType(job.salaryType);
+  const budgetResult = calculateBudget(
+    payType,
+    job.salary || 0,
+    job.vacancies || 0,
+    job.shifts || [],
+  );
 
   const handleDelete = async () => {
     try {
@@ -216,15 +234,41 @@ function JobDetailPage() {
             </div>
           )}
 
-          {/* Total Budget */}
-          <div className="pt-2 border-t border-slate-100 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-3 mt-3">
-            <p className="text-xs text-slate-600 font-medium mb-1">Tổng ngân sách dự kiến</p>
+          {/* Total Budget with Breakdown */}
+          <div className="pt-2 border-t border-slate-100 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-3 mt-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-slate-600 font-medium">Tổng ngân sách dự kiến</p>
+              <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">{payType}</span>
+            </div>
             <p className="text-lg font-bold text-emerald-700">
-              {((job.vacancies || 0) * (job.salary || 0)).toLocaleString('vi-VN')} VNĐ
+              {budgetResult.totalBudget.toLocaleString('vi-VN')} VNĐ
             </p>
-            <p className="text-xs text-emerald-600 mt-1">
-              {job.vacancies || 0} người × {(job.salary || 0).toLocaleString('vi-VN')} VNĐ
-            </p>
+            <p className="text-xs text-emerald-700">{budgetResult.summaryLine}</p>
+
+            {/* Breakdown Details */}
+            {budgetResult.breakdown.length > 0 && (
+              <div className="pt-2 border-t border-emerald-200 space-y-1">
+                <p className="text-xs font-semibold text-emerald-900 uppercase">Tính toán</p>
+                {budgetResult.breakdown.map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-1.5 text-xs">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                    <span className="text-emerald-800 flex-1">{item.label}</span>
+                    <span className="font-semibold text-emerald-700">
+                      {item.amount.toLocaleString('vi-VN')} VNĐ
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Working hours (for HOURLY) */}
+            {budgetResult.workingHours && (
+              <div className="pt-2 border-t border-emerald-200">
+                <p className="text-xs text-emerald-600">
+                  ⏱️ <strong>Tổng số giờ:</strong> {budgetResult.workingHours.toFixed(1)} giờ
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

@@ -22,7 +22,6 @@ import {
   type PayType,
   type GenderPreference,
   type Shift,
-  calculateTotalBudget,
 } from './-schemas/jobFormSchema';
 
 export const Route = createFileRoute('/employer/post-job')({
@@ -500,7 +499,6 @@ function EmployerPostJobRoute() {
               updateShift={updateShift}
               removeShift={removeShift}
               errors={errors}
-              calculateTotalBudget={calculateTotalBudget}
             />
           )}
 
@@ -510,7 +508,6 @@ function EmployerPostJobRoute() {
               setForm={setForm}
               fileInputId={fileInputId}
               handleImageSelect={handleImageSelect}
-              calculateTotalBudget={calculateTotalBudget}
             />
           )}
         </form>

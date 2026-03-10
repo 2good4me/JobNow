@@ -1,13 +1,13 @@
-import { CalendarClock, Check, DollarSign, ImagePlus, MapPin, Sparkles, Trash2, UsersRound } from 'lucide-react';
+import { CalendarClock, Check, DollarSign, ImagePlus, MapPin, Sparkles, Trash2, UsersRound, CheckCircle2 } from 'lucide-react';
 import { formatSalary, type JobFormState } from '../../post-job';
 import type { PayType } from '../../-schemas/jobFormSchema';
+import { calculateBudget } from '../../-utils/budgetCalculations';
 
 interface Step4ReviewProps {
   form: JobFormState;
   setForm: React.Dispatch<React.SetStateAction<JobFormState>>;
   fileInputId: string;
   handleImageSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  calculateTotalBudget: (quantity: number, salary: number, payType: PayType, shifts?: any[]) => number;
 }
 
 export default function Step4Review({
@@ -15,14 +15,10 @@ export default function Step4Review({
   setForm,
   fileInputId,
   handleImageSelect,
-  calculateTotalBudget,
 }: Step4ReviewProps) {
-  const totalBudget = calculateTotalBudget(
-    form.vacancies,
-    Number(form.salary.replace(/\D/g, '')) || 0,
-    form.payType as PayType,
-    form.shifts
-  );
+  // Calculate budget using new utility
+  const salary = Number(form.salary.replace(/\D/g, '')) || 0;
+  const budgetResult = calculateBudget(form.payType as PayType, salary, form.vacancies, form.shifts);
 
   return (
     <div className="w-full shrink-0 px-0.5 space-y-4">
@@ -119,15 +115,39 @@ export default function Step4Review({
             </div>
           )}
 
-          {/* Total Budget Display */}
-          <div className="pt-2 border-t border-slate-100 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-3">
-            <p className="text-xs text-slate-600 font-medium mb-1">Tổng ngân sách dự kiến</p>
-            <p className="text-lg font-bold text-emerald-700">{formatSalary(String(totalBudget))} VNĐ</p>
-            <p className="text-xs text-emerald-600 mt-1">
-              {form.payType === 'Theo ca'
-                ? `${form.shifts.reduce((acc, s) => acc + s.quantity, 0)} ca × ${formatSalary(form.salary)} VNĐ`
-                : `${form.vacancies} người × ${formatSalary(form.salary)} VNĐ`}
-            </p>
+          {/* Total Budget Display with Breakdown */}
+          <div className="pt-2 border-t border-slate-100 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-slate-600 font-medium">Tổng ngân sách dự kiến</p>
+              <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">{form.payType}</span>
+            </div>
+            <p className="text-2xl font-bold text-emerald-700">{formatSalary(String(budgetResult.totalBudget))} VNĐ</p>
+            <p className="text-xs text-emerald-700">{budgetResult.summaryLine}</p>
+
+            {/* Breakdown Details */}
+            {budgetResult.breakdown.length > 0 && (
+              <div className="pt-2 border-t border-emerald-200 space-y-1">
+                <p className="text-xs font-semibold text-emerald-900 uppercase">Tính toán</p>
+                {budgetResult.breakdown.map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-1.5 text-xs">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                    <span className="text-emerald-800 flex-1">{item.label}</span>
+                    <span className="font-semibold text-emerald-700">
+                      {formatSalary(String(item.amount))} VNĐ
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Working hours (for HOURLY) */}
+            {budgetResult.workingHours && (
+              <div className="pt-2 border-t border-emerald-200">
+                <p className="text-xs text-emerald-600">
+                  ⏱️ <strong>Tổng số giờ:</strong> {budgetResult.workingHours.toFixed(1)} giờ
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </section>
