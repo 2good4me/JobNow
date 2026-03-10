@@ -30,10 +30,12 @@ import { Route as EmployerJobListRouteImport } from './routes/employer/job-list'
 import { Route as EmployerJobDetailRouteImport } from './routes/employer/job-detail'
 import { Route as EmployerChatRouteImport } from './routes/employer/chat'
 import { Route as EmployerApplicantsRouteImport } from './routes/employer/applicants'
+import { Route as CandidateWishlistRouteImport } from './routes/candidate/wishlist'
 import { Route as CandidateShiftsRouteImport } from './routes/candidate/shifts'
 import { Route as CandidateProfileRouteImport } from './routes/candidate/profile'
 import { Route as CandidateNotificationsRouteImport } from './routes/candidate/notifications'
 import { Route as CandidateChatRouteImport } from './routes/candidate/chat'
+import { Route as CandidateApplicationsRouteImport } from './routes/candidate/applications'
 import { Route as EmployerVerificationIndexRouteImport } from './routes/employer/verification/index'
 import { Route as EmployerProfileIndexRouteImport } from './routes/employer/profile/index'
 import { Route as CandidateVerificationIndexRouteImport } from './routes/candidate/verification/index'
@@ -152,6 +154,11 @@ const EmployerApplicantsRoute = EmployerApplicantsRouteImport.update({
   path: '/employer/applicants',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CandidateWishlistRoute = CandidateWishlistRouteImport.update({
+  id: '/candidate/wishlist',
+  path: '/candidate/wishlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CandidateShiftsRoute = CandidateShiftsRouteImport.update({
   id: '/candidate/shifts',
   path: '/candidate/shifts',
@@ -170,6 +177,11 @@ const CandidateNotificationsRoute = CandidateNotificationsRouteImport.update({
 const CandidateChatRoute = CandidateChatRouteImport.update({
   id: '/candidate/chat',
   path: '/candidate/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CandidateApplicationsRoute = CandidateApplicationsRouteImport.update({
+  id: '/candidate/applications',
+  path: '/candidate/applications',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EmployerVerificationIndexRoute =
@@ -246,10 +258,12 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/support-center': typeof SupportCenterRoute
   '/support-center-data': typeof SupportCenterDataRoute
+  '/candidate/applications': typeof CandidateApplicationsRoute
   '/candidate/chat': typeof CandidateChatRoute
   '/candidate/notifications': typeof CandidateNotificationsRoute
   '/candidate/profile': typeof CandidateProfileRouteWithChildren
   '/candidate/shifts': typeof CandidateShiftsRoute
+  '/candidate/wishlist': typeof CandidateWishlistRoute
   '/employer/applicants': typeof EmployerApplicantsRoute
   '/employer/chat': typeof EmployerChatRoute
   '/employer/job-detail': typeof EmployerJobDetailRoute
@@ -285,9 +299,11 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/support-center': typeof SupportCenterRoute
   '/support-center-data': typeof SupportCenterDataRoute
+  '/candidate/applications': typeof CandidateApplicationsRoute
   '/candidate/chat': typeof CandidateChatRoute
   '/candidate/notifications': typeof CandidateNotificationsRoute
   '/candidate/shifts': typeof CandidateShiftsRoute
+  '/candidate/wishlist': typeof CandidateWishlistRoute
   '/employer/applicants': typeof EmployerApplicantsRoute
   '/employer/chat': typeof EmployerChatRoute
   '/employer/job-detail': typeof EmployerJobDetailRoute
@@ -322,10 +338,12 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/support-center': typeof SupportCenterRoute
   '/support-center-data': typeof SupportCenterDataRoute
+  '/candidate/applications': typeof CandidateApplicationsRoute
   '/candidate/chat': typeof CandidateChatRoute
   '/candidate/notifications': typeof CandidateNotificationsRoute
   '/candidate/profile': typeof CandidateProfileRouteWithChildren
   '/candidate/shifts': typeof CandidateShiftsRoute
+  '/candidate/wishlist': typeof CandidateWishlistRoute
   '/employer/applicants': typeof EmployerApplicantsRoute
   '/employer/chat': typeof EmployerChatRoute
   '/employer/job-detail': typeof EmployerJobDetailRoute
@@ -363,10 +381,12 @@ export interface FileRouteTypes {
     | '/register'
     | '/support-center'
     | '/support-center-data'
+    | '/candidate/applications'
     | '/candidate/chat'
     | '/candidate/notifications'
     | '/candidate/profile'
     | '/candidate/shifts'
+    | '/candidate/wishlist'
     | '/employer/applicants'
     | '/employer/chat'
     | '/employer/job-detail'
@@ -402,9 +422,11 @@ export interface FileRouteTypes {
     | '/register'
     | '/support-center'
     | '/support-center-data'
+    | '/candidate/applications'
     | '/candidate/chat'
     | '/candidate/notifications'
     | '/candidate/shifts'
+    | '/candidate/wishlist'
     | '/employer/applicants'
     | '/employer/chat'
     | '/employer/job-detail'
@@ -438,10 +460,12 @@ export interface FileRouteTypes {
     | '/register'
     | '/support-center'
     | '/support-center-data'
+    | '/candidate/applications'
     | '/candidate/chat'
     | '/candidate/notifications'
     | '/candidate/profile'
     | '/candidate/shifts'
+    | '/candidate/wishlist'
     | '/employer/applicants'
     | '/employer/chat'
     | '/employer/job-detail'
@@ -478,10 +502,12 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRoute
   SupportCenterRoute: typeof SupportCenterRoute
   SupportCenterDataRoute: typeof SupportCenterDataRoute
+  CandidateApplicationsRoute: typeof CandidateApplicationsRoute
   CandidateChatRoute: typeof CandidateChatRoute
   CandidateNotificationsRoute: typeof CandidateNotificationsRoute
   CandidateProfileRoute: typeof CandidateProfileRouteWithChildren
   CandidateShiftsRoute: typeof CandidateShiftsRoute
+  CandidateWishlistRoute: typeof CandidateWishlistRoute
   EmployerApplicantsRoute: typeof EmployerApplicantsRoute
   EmployerChatRoute: typeof EmployerChatRoute
   EmployerJobDetailRoute: typeof EmployerJobDetailRoute
@@ -650,6 +676,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmployerApplicantsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/candidate/wishlist': {
+      id: '/candidate/wishlist'
+      path: '/candidate/wishlist'
+      fullPath: '/candidate/wishlist'
+      preLoaderRoute: typeof CandidateWishlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/candidate/shifts': {
       id: '/candidate/shifts'
       path: '/candidate/shifts'
@@ -676,6 +709,13 @@ declare module '@tanstack/react-router' {
       path: '/candidate/chat'
       fullPath: '/candidate/chat'
       preLoaderRoute: typeof CandidateChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/candidate/applications': {
+      id: '/candidate/applications'
+      path: '/candidate/applications'
+      fullPath: '/candidate/applications'
+      preLoaderRoute: typeof CandidateApplicationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/employer/verification/': {
@@ -819,10 +859,12 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterRoute: RegisterRoute,
   SupportCenterRoute: SupportCenterRoute,
   SupportCenterDataRoute: SupportCenterDataRoute,
+  CandidateApplicationsRoute: CandidateApplicationsRoute,
   CandidateChatRoute: CandidateChatRoute,
   CandidateNotificationsRoute: CandidateNotificationsRoute,
   CandidateProfileRoute: CandidateProfileRouteWithChildren,
   CandidateShiftsRoute: CandidateShiftsRoute,
+  CandidateWishlistRoute: CandidateWishlistRoute,
   EmployerApplicantsRoute: EmployerApplicantsRoute,
   EmployerChatRoute: EmployerChatRoute,
   EmployerJobDetailRoute: EmployerJobDetailRoute,

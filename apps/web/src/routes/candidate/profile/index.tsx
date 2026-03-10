@@ -7,6 +7,7 @@ import {
   Briefcase,
   ChevronRight,
   FileCheck2,
+  Heart,
   LifeBuoy,
   LogOut,
   MapPin,
@@ -16,6 +17,7 @@ import {
   ShieldCheck,
   Star,
 } from 'lucide-react';
+import { useMyApplicationsRealtime } from '@/features/jobs/hooks/useMyApplicationsRealtime';
 
 export const Route = createFileRoute('/candidate/profile/')({
   component: CandidateProfilePage,
@@ -46,11 +48,20 @@ function CandidateProfilePage() {
   const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  // Mock data for Candidate
+  // Fetch real applications data
+  const { data: applications = [] } = useMyApplicationsRealtime({
+    candidateId: userProfile?.uid,
+    limit: 100,
+  });
+
+  const activeShiftsCount = applications.filter((app) => app.status === 'APPROVED' || app.status === 'CHECKED_IN').length;
+  const completedShiftsCount = applications.filter((app) => app.status === 'COMPLETED').length;
+
+  // Mock data for Rating (since there's no reviews feature yet)
   const stats = {
     rating: 4.8,
-    activeShifts: 0,
-    completedShifts: 12
+    activeShifts: activeShiftsCount,
+    completedShifts: completedShiftsCount
   };
 
   const handleLogout = async () => {
@@ -89,9 +100,6 @@ function CandidateProfilePage() {
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-lg font-bold text-white/90 tracking-tight">Tài khoản</h1>
-            <button className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-md hover:bg-white/20 transition-colors">
-              <Bell className="w-5 h-5 text-white" />
-            </button>
           </div>
 
           <div className="flex flex-col items-center">
@@ -213,17 +221,31 @@ function CandidateProfilePage() {
               Ca làm sắp tới ({stats.activeShifts})
             </h3>
             <Link to="/candidate/shifts" className="text-xs font-semibold text-blue-600">
-              Xem tất cả
+              Xem ca làm
             </Link>
           </div>
 
-          {stats.activeShifts === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-4">Chưa có ca làm việc nào</p>
-          ) : (
-            <div className="space-y-2">
-              {/* Future shift items would go here */}
-            </div>
-          )}
+          <div className="space-y-3">
+            <Link
+              to="/candidate/applications"
+              className="w-full flex items-center justify-between p-3 rounded-xl border border-indigo-100 bg-indigo-50/50 hover:bg-indigo-50 text-slate-700 transition-colors"
+            >
+              <span className="flex items-center gap-2.5 text-sm font-semibold">
+                <Briefcase className="w-4 h-4 text-indigo-500" /> Xem việc làm đã ứng tuyển
+              </span>
+              <ChevronRight className="w-4 h-4 text-slate-400" />
+            </Link>
+
+            <Link
+              to="/candidate/wishlist"
+              className="w-full flex items-center justify-between p-3 rounded-xl border border-red-100 bg-red-50/50 hover:bg-red-50 text-slate-700 transition-colors"
+            >
+              <span className="flex items-center gap-2.5 text-sm font-semibold">
+                <Heart className="w-4 h-4 text-red-500" /> Việc làm đã lưu
+              </span>
+              <ChevronRight className="w-4 h-4 text-slate-400" />
+            </Link>
+          </div>
         </div>
 
         {/* Admin Actions */}
