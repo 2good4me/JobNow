@@ -1,5 +1,5 @@
 import { useNavigate } from '@tanstack/react-router';
-import { ChevronRight, Briefcase, Clock } from 'lucide-react';
+import { ChevronRight, Briefcase, Clock, Users } from 'lucide-react';
 import { Job } from '@jobnow/types';
 import { getRelativeTimeString } from '@/utils/formatTime';
 
@@ -9,44 +9,40 @@ interface RecentPostedJobsProps {
   onViewAll?: () => void;
 }
 
+const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }> = {
+  ACTIVE: { bg: 'bg-emerald-50 border-emerald-100', text: 'text-emerald-700', label: 'Đang tuyển' },
+  CLOSED: { bg: 'bg-slate-100 border-slate-200', text: 'text-slate-500', label: 'Đã đóng' },
+  DRAFT: { bg: 'bg-amber-50 border-amber-100', text: 'text-amber-700', label: 'Bản nháp' },
+  EXPIRED: { bg: 'bg-rose-50 border-rose-100', text: 'text-rose-600', label: 'Hết hạn' },
+};
+
 export function RecentPostedJobs({ jobs, isLoading, onViewAll }: RecentPostedJobsProps) {
   const navigate = useNavigate();
 
-  // Sort by createdAt descending (newest first), with fallback to updatedAt
   const sortedJobs = [...jobs].sort((a, b) => {
-    const getTimestamp = (job: Job) => {
-      // Try createdAt first
-      if (job.createdAt) {
-        const time = new Date(job.createdAt).getTime();
-        if (!isNaN(time)) return time;
-      }
-      // Fall back to updatedAt
-      if (job.updatedAt) {
-        const time = new Date(job.updatedAt).getTime();
-        if (!isNaN(time)) return time;
-      }
-      // No valid timestamp, use 0 (will sort to end)
-      return 0;
+    const getTs = (job: Job) => {
+      const raw = job.createdAt ?? job.updatedAt;
+      if (!raw) return 0;
+      if (typeof raw === 'object' && 'toDate' in raw) return (raw as any).toDate().getTime();
+      const t = new Date(raw as string).getTime();
+      return isNaN(t) ? 0 : t;
     };
-
-    const timeA = getTimestamp(a);
-    const timeB = getTimestamp(b);
-    return timeB - timeA; // Newest first
+    return getTs(b) - getTs(a);
   });
 
-  // Show only the latest 3-5 jobs
   const displayedJobs = sortedJobs.slice(0, 5);
 
+  /* ── Loading ──────────────────────────────────── */
   if (isLoading) {
     return (
-      <div className="bg-white rounded-3xl p-6 shadow-[0_4px_24px_rgb(0,0,0,0.02)] border border-slate-100">
-        <div className="space-y-4 animate-pulse">
+      <div className="bg-white rounded-xl border border-slate-200">
+        <div className="space-y-0 divide-y divide-slate-100 animate-pulse">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="flex items-center gap-4 pb-4 border-b border-slate-100 last:border-b-0">
-              <div className="w-10 h-10 bg-slate-200 rounded-lg flex-shrink-0"></div>
-              <div className="flex-1">
-                <div className="h-4 w-3/4 bg-slate-200 rounded mb-2"></div>
-                <div className="h-3 w-1/2 bg-slate-100 rounded"></div>
+            <div key={i} className="flex items-center gap-4 p-4">
+              <div className="w-10 h-10 bg-slate-100 rounded-lg shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-3/4 bg-slate-100 rounded" />
+                <div className="h-3 w-1/2 bg-slate-100 rounded" />
               </div>
             </div>
           ))}
@@ -55,57 +51,76 @@ export function RecentPostedJobs({ jobs, isLoading, onViewAll }: RecentPostedJob
     );
   }
 
+  /* ── Empty ────────────────────────────────────── */
   if (displayedJobs.length === 0) {
     return (
-      <div className="bg-white rounded-3xl p-6 shadow-[0_4px_24px_rgb(0,0,0,0.02)] border border-slate-100">
-        <div className="text-center py-6">
-          <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
-            <Briefcase className="w-6 h-6 text-slate-300" />
-          </div>
-          <p className="font-semibold text-slate-700 mb-1">Chưa có hoạt động mới</p>
-          <p className="text-slate-500 text-xs text-balance">Hãy đăng tin tuyển dụng để bắt đầu tuyển dụng.</p>
+      <div className="bg-white rounded-xl border border-slate-200 p-6 text-center">
+        <div className="w-14 h-14 bg-slate-50 rounded-xl flex items-center justify-center mx-auto mb-3 border border-slate-100">
+          <Briefcase className="w-5 h-5 text-slate-300" />
         </div>
+        <p className="font-semibold text-slate-700 text-sm mb-1">Chưa có hoạt động</p>
+        <p className="text-slate-500 text-xs">Đăng tin tuyển dụng để bắt đầu.</p>
       </div>
     );
   }
 
+  /* ── Job list ─────────────────────────────────── */
   return (
     <div>
-      <div className="flex items-center justify-between mb-5">
-        <h2 className="font-bold text-slate-900 text-lg tracking-tight">Hoạt động gần đây</h2>
-        {displayedJobs.length > 0 && onViewAll && (
+      {/* Section header */}
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-bold text-slate-900 text-base">Tin tuyển dụng gần đây</h2>
+        {onViewAll && (
           <button
             onClick={onViewAll}
-            className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors flex items-center"
+            className="text-sm font-medium text-sky-700 hover:text-sky-800 transition-colors flex items-center gap-0.5"
           >
-            Xem tất cả <ChevronRight className="w-4 h-4 ml-0.5" />
+            Xem tất cả
+            <ChevronRight className="w-4 h-4" />
           </button>
         )}
       </div>
 
-      <div className="bg-white rounded-3xl shadow-[0_4px_24px_rgb(0,0,0,0.02)] border border-slate-100 overflow-hidden">
+      {/* Cards */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="divide-y divide-slate-100">
           {displayedJobs.map((job) => {
             const timeAgo = getRelativeTimeString(job.createdAt);
+            const statusKey = (job.status || 'ACTIVE').toUpperCase();
+            const style = STATUS_STYLES[statusKey] || STATUS_STYLES['ACTIVE'];
+
             return (
               <button
                 key={job.id}
                 onClick={() => navigate({ to: '/employer/job-detail', search: { jobId: job.id } as any })}
-                className="w-full flex items-center gap-4 p-5 transition-all hover:bg-slate-50 active:bg-slate-100 group text-left"
+                className="w-full flex flex-col gap-3 p-4 transition-colors hover:bg-slate-50 active:bg-slate-100 text-left group cursor-pointer"
               >
-                <div className="w-11 h-11 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center flex-shrink-0 group-hover:shadow-md transition-shadow">
-                  <Briefcase className="w-5 h-5 text-blue-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-slate-900 text-sm line-clamp-1 group-hover:text-blue-600 transition-colors">
+                {/* Top row: title + badge */}
+                <div className="flex justify-between items-start gap-3">
+                  <h3 className="font-semibold text-slate-900 text-sm line-clamp-1 group-hover:text-sky-700 transition-colors">
                     {job.title}
                   </h3>
-                  <p className="text-xs text-slate-500 mt-1.5 flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 flex-shrink-0" />
-                    Đăng {timeAgo}
-                  </p>
+                  <span className={`shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium border ${style.bg} ${style.text}`}>
+                    {style.label}
+                  </span>
                 </div>
-                <ChevronRight className="w-5 h-5 text-slate-300 flex-shrink-0 group-hover:text-blue-400 transition-colors" />
+
+                {/* Bottom row: meta */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 text-xs text-slate-500">
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5" />
+                      {timeAgo}
+                    </span>
+                    {typeof (job as any).applicantCount === 'number' && (
+                      <span className="flex items-center gap-1">
+                        <Users className="w-3.5 h-3.5" />
+                        {(job as any).applicantCount} ứng viên
+                      </span>
+                    )}
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-sky-500 transition-colors" />
+                </div>
               </button>
             );
           })}

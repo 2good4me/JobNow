@@ -31,7 +31,9 @@ export interface ShiftCapacity {
 export interface Job {
     id: string;
     employerId: string;
+    employerName?: string;
     categoryId: string;
+    category?: string;
     title: string;
     description: string;
     salary: number;
@@ -54,6 +56,7 @@ export interface Job {
     ageRange?: { min: number; max: number };
     startDate?: string;          // Ngày bắt đầu làm việc
     isPremium?: boolean;         // Tin ưu tiên
+    totalAppliedCount?: number;  // Computed from shift_capacity for fast empty state
 }
 
 /**

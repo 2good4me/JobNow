@@ -61,7 +61,7 @@ export function JobSearchFilter({
     onShiftTimeChange,
 }: JobSearchFilterProps) {
     return (
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 mb-8 sticky top-20 z-40">
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 mb-8">
             <div className="flex flex-col gap-3">
                 <div className="flex flex-col md:flex-row gap-3">
                     <div className="relative flex-grow">

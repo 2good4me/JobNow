@@ -25,6 +25,12 @@ export interface Application {
     appliedAt?: any;          // Timestamp ứng tuyển
     createdAt?: any;
     updatedAt?: any;
+    // ─── Denormalized candidate snapshot (for fast listing) ───
+    candidateName?: string;
+    candidateAvatar?: string;
+    candidateSkills?: string[];
+    candidateRating?: number;
+    candidateVerified?: boolean;
 }
 
 /**
@@ -44,6 +50,12 @@ export interface ApplicationDoc {
     applied_at?: any;
     created_at?: any;
     updated_at?: any;
+    // ─── Denormalized candidate snapshot ───
+    candidate_name?: string;
+    candidate_avatar?: string;
+    candidate_skills?: string[];
+    candidate_rating?: number;
+    candidate_verified?: boolean;
 }
 
 export interface ApplyJobInput {

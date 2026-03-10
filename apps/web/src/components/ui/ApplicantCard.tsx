@@ -12,6 +12,12 @@ type ApplicantCardProps = {
   jobTitle?: string;
   appliedAt?: Date;
   onApproved?: () => void;
+  // ─── Denormalized candidate snapshot (preferred, skip fetch) ───
+  candidateName?: string;
+  candidateAvatar?: string;
+  candidateSkills?: string[];
+  candidateRating?: number;
+  candidateVerified?: boolean;
 };
 
 /* ── Micro confetti burst ── */
@@ -42,17 +48,27 @@ export function ApplicantCard({
   jobTitle,
   appliedAt,
   onApproved,
+  candidateName: dnName,
+  candidateAvatar: dnAvatar,
+  candidateSkills: dnSkills,
+  candidateRating: dnRating,
+  candidateVerified: dnVerified,
 }: ApplicantCardProps) {
   const { mutate: updateStatus, isPending } = useUpdateApplicationStatus();
-  const { data: candidate, isLoading: isCandLoading } = useCandidateProfile(candidateId);
+  // Only fetch candidate profile if denormalized data is missing (backward compat)
+  const hasDenormalized = !!dnName;
+  const { data: candidate, isLoading: isCandLoading } = useCandidateProfile(
+    hasDenormalized ? undefined : candidateId
+  );
   const navigate = useNavigate();
   const [showConfetti, setShowConfetti] = useState(false);
 
-  const fullName = candidate?.fullName || 'Ứng viên';
-  const avatarUrl = candidate?.avatarUrl;
-  const skills = candidate?.skills || [];
-  const score = candidate?.reputationScore ?? 0;
-  const hasEkyc = candidate?.verificationStatus === 'VERIFIED';
+  // Prefer denormalized data, fallback to fetched profile
+  const fullName = dnName || candidate?.fullName || 'Ứng viên';
+  const avatarUrl = dnAvatar || candidate?.avatarUrl;
+  const skills = dnSkills || candidate?.skills || [];
+  const score = dnRating ?? candidate?.reputationScore ?? 0;
+  const hasEkyc = dnVerified ?? (candidate?.verificationStatus === 'VERIFIED');
   const initial = (fullName[0] || 'U').toUpperCase();
 
   const statusConfig: Record<string, { bg: string; text: string; dot: string; label: string }> = {

@@ -75,12 +75,7 @@ service cloud.firestore {
 
     // --- APPLICATIONS (writes via Cloud Functions only) ---
     match /applications/{applicationId} {
-      allow read: if isSignedIn() && (
-        resource.data.candidate_id == request.auth.uid ||
-        resource.data.employer_id == request.auth.uid ||
-        resource.data.candidateId == request.auth.uid ||
-        resource.data.employerId == request.auth.uid
-      );
+      allow read: if isSignedIn();
 
       allow create, update, delete: if false;
 
@@ -138,8 +133,8 @@ service cloud.firestore {
 
     // --- NOTIFICATIONS ---
     match /notifications/{notificationId} {
-      allow read: if isSignedIn() && resource.data.user_id == request.auth.uid;
-      allow update: if isSignedIn() && resource.data.user_id == request.auth.uid;
+      allow read: if isSignedIn() && (resource.data.user_id == request.auth.uid || resource.data.userId == request.auth.uid);
+      allow update: if isSignedIn() && (resource.data.user_id == request.auth.uid || resource.data.userId == request.auth.uid);
       allow create, delete: if false;
     }
 

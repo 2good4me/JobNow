@@ -158,7 +158,12 @@ export const applyJob = onCall<ApplyJobInput>({ region: 'asia-southeast1' }, asy
   const jobRef = db.collection('jobs').doc(input.jobId);
 
   const result = await db.runTransaction(async (tx) => {
-    const [jobSnap, appSnap] = await Promise.all([tx.get(jobRef), tx.get(applicationRef)]);
+    const candidateRef = db.collection('candidates').doc(input.candidateId);
+    const [jobSnap, appSnap, candidateSnap] = await Promise.all([
+      tx.get(jobRef),
+      tx.get(applicationRef),
+      tx.get(candidateRef),
+    ]);
 
     if (!jobSnap.exists) {
       throw new HttpsError('not-found', 'Công việc không tồn tại.');
@@ -186,6 +191,14 @@ export const applyJob = onCall<ApplyJobInput>({ region: 'asia-southeast1' }, asy
 
     const employerId = String(jobData.employer_id ?? jobData.employerId ?? '');
 
+    // ─── Denormalize candidate snapshot ───
+    const candidateData = candidateSnap.exists ? (candidateSnap.data() || {}) : {};
+    const candidateName = String(candidateData.full_name ?? candidateData.fullName ?? candidateData.display_name ?? candidateData.displayName ?? '');
+    const candidateAvatar = String(candidateData.avatar_url ?? candidateData.avatarUrl ?? candidateData.photo_url ?? candidateData.photoURL ?? '');
+    const candidateSkills = (candidateData.skills as string[]) ?? [];
+    const candidateRating = Number(candidateData.reputation_score ?? candidateData.reputationScore ?? 0);
+    const candidateVerified = (candidateData.verification_status ?? candidateData.verificationStatus) === 'VERIFIED';
+
     tx.set(applicationRef, {
       job_id: input.jobId,
       shift_id: input.shiftId,
@@ -198,6 +211,12 @@ export const applyJob = onCall<ApplyJobInput>({ region: 'asia-southeast1' }, asy
       applied_at: FieldValue.serverTimestamp(),
       created_at: FieldValue.serverTimestamp(),
       updated_at: FieldValue.serverTimestamp(),
+      // ─── Denormalized candidate snapshot ───
+      candidate_name: candidateName,
+      candidate_avatar: candidateAvatar,
+      candidate_skills: candidateSkills,
+      candidate_rating: candidateRating,
+      candidate_verified: candidateVerified,
     });
 
     const nextRemaining = Math.max(capacity.remainingSlots - 1, 0);
