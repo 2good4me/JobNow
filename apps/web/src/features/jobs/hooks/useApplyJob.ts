@@ -13,7 +13,9 @@ export function useApplyJob() {
         mutationFn: async (payload) => {
             const idempotencyKey = createIdempotencyKey(payload.candidateId, payload.jobId, payload.shiftId);
             const precheck = await precheckApply({ ...payload, idempotencyKey });
+            console.log('Precheck result:', precheck);
             if (!precheck.canApply) {
+                console.error('Cannot apply due to reasons:', precheck.reasons);
                 throw new Error(`Không thể ứng tuyển: ${precheck.reasons.join(', ')}`);
             }
             return applyJob({ ...payload, idempotencyKey });

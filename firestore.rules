@@ -68,16 +68,22 @@ service cloud.firestore {
       allow create: if isSignedIn() 
                     && (getUserRole() == 'EMPLOYER' || getUserRole() == 'employer')
                     && isValidJobCreate();
-      allow update, delete: if isSignedIn()
-                            && (getUserRole() == 'EMPLOYER' || getUserRole() == 'employer')
-                            && resource.data.employer_id == request.auth.uid;
+      allow update: if isSignedIn()
+                    && (
+                      (getUserRole() == 'EMPLOYER' || getUserRole() == 'employer') && resource.data.employer_id == request.auth.uid
+                      || (getUserRole() == 'CANDIDATE' || getUserRole() == 'candidate') // Allow candidates to update slots when applying
+                    );
+      allow delete: if isSignedIn()
+                    && (getUserRole() == 'EMPLOYER' || getUserRole() == 'employer')
+                    && resource.data.employer_id == request.auth.uid;
     }
 
     // --- APPLICATIONS (writes via Cloud Functions only) ---
     match /applications/{applicationId} {
       allow read: if isSignedIn();
 
-      allow create, update, delete: if false;
+      allow create: if isSignedIn() && (getUserRole() == 'CANDIDATE' || getUserRole() == 'candidate');
+      allow update, delete: if false;
 
       match /checkins/{checkinId} {
         allow read: if isSignedIn() && (

@@ -1,12 +1,14 @@
-import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import {
-  Search, Bell, MapPin,
-  BadgeCheck, Star, Briefcase,
+  Bell, Briefcase,
   ChevronRight, Clock, FileText,
-  AlertCircle
+  AlertCircle, Heart
 } from 'lucide-react';
 import { useAllJobs } from '@/features/jobs/hooks/useAllJobs';
+import { useMyApplicationsRealtime } from '@/features/jobs/hooks/useMyApplicationsRealtime';
+import { useWishlistJobs } from '@/features/jobs/hooks/useWishlistJobs';
+import { JobCard } from '@/features/jobs/components/JobCard';
 
 export const Route = createFileRoute('/candidate/')({
   component: CandidateDashboard,
@@ -20,9 +22,21 @@ function getGreeting() {
 }
 
 function CandidateDashboard() {
-  const navigate = useNavigate();
   const { userProfile } = useAuth();
   const { data: jobs = [], isLoading, isError } = useAllJobs();
+
+  // Fetch real applications data
+  const { data: applications = [] } = useMyApplicationsRealtime({
+    candidateId: userProfile?.uid,
+    limit: 100,
+  });
+
+  const { data: wishlistJobs = [] } = useWishlistJobs(userProfile?.uid);
+
+  const activeShiftsCount = applications.filter((app) => app.status === 'APPROVED' || app.status === 'CHECKED_IN').length;
+  const totalAppliedCount = applications.length;
+  const totalWishlistCount = wishlistJobs.length;
+
   const greeting = getGreeting();
 
   const displayName = userProfile?.full_name || 'Ứng viên';
@@ -77,39 +91,37 @@ function CandidateDashboard() {
             {displayName}
           </h1>
         </div>
-        <button className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center border border-slate-100 relative hover:bg-slate-100 transition-colors">
-          <Bell className="w-5 h-5 text-slate-600" />
-          <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
-        </button>
+
       </header>
 
-      {/* ── 2. Search Section ── */}
-      <div className="px-5 mt-4">
-        <div
-          className="flex items-center gap-3 bg-white px-4 py-3.5 rounded-2xl shadow-sm border border-slate-100 cursor-pointer hover:border-indigo-200 transition-all group"
-          onClick={() => navigate({ to: '/jobs' })}
-        >
-          <Search className="w-5 h-5 text-slate-400 group-hover:text-indigo-500 transition-colors" />
-          <span className="text-slate-400 font-medium text-[15px]">Tìm kiếm việc làm ngay...</span>
-        </div>
-      </div>
-
-      {/* ── 3. Quick Stats (Mock for Candidate) ── */}
-      <div className="flex gap-3 px-5 py-4">
+      {/* ── 3. Quick Stats ── */}
+      <div className="grid grid-cols-3 gap-3 px-5 py-4 mt-2">
         <Link
           to="/candidate/shifts"
-          className="flex flex-1 flex-col gap-1.5 rounded-xl p-4 bg-indigo-50 border border-indigo-100 transition-colors hover:bg-indigo-100/60 active:scale-[0.98]"
+          className="flex flex-col gap-1.5 rounded-xl p-3.5 bg-indigo-50 border border-indigo-100 transition-colors hover:bg-indigo-100/60 active:scale-[0.98]"
         >
           <Clock className="w-5 h-5 text-indigo-700" />
-          <p className="text-indigo-700 text-[11px] font-bold uppercase tracking-wider">Lịch làm</p>
-          <p className="text-indigo-900 text-2xl font-extrabold leading-none">0</p>
+          <p className="text-indigo-700 text-[10px] font-bold uppercase tracking-wider line-clamp-1">Lịch làm</p>
+          <p className="text-indigo-900 text-xl font-extrabold leading-none">{activeShiftsCount}</p>
         </Link>
 
-        <div className="flex flex-1 flex-col gap-1.5 rounded-xl p-4 bg-emerald-50 border border-emerald-100">
+        <Link
+          to="/candidate/applications"
+          className="flex flex-col gap-1.5 rounded-xl p-3.5 bg-emerald-50 border border-emerald-100 transition-colors hover:bg-emerald-100/60 active:scale-[0.98]"
+        >
           <FileText className="w-5 h-5 text-emerald-700" />
-          <p className="text-emerald-700 text-[11px] font-bold uppercase tracking-wider">Đã ứng tuyển</p>
-          <p className="text-emerald-900 text-2xl font-extrabold leading-none">12</p>
-        </div>
+          <p className="text-emerald-700 text-[10px] font-bold uppercase tracking-wider line-clamp-1">Ứng tuyển</p>
+          <p className="text-emerald-900 text-xl font-extrabold leading-none">{totalAppliedCount}</p>
+        </Link>
+
+        <Link
+          to="/candidate/wishlist"
+          className="flex flex-col gap-1.5 rounded-xl p-3.5 bg-red-50 border border-red-100 transition-colors hover:bg-red-100/60 active:scale-[0.98]"
+        >
+          <Heart className="w-5 h-5 text-red-600" />
+          <p className="text-red-700 text-[10px] font-bold uppercase tracking-wider line-clamp-1">Đã lưu</p>
+          <p className="text-red-900 text-xl font-extrabold leading-none">{totalWishlistCount}</p>
+        </Link>
       </div>
 
       {/* ── 4. Main Activity / Recommended Jobs ── */}
@@ -133,43 +145,17 @@ function CandidateDashboard() {
             </div>
           ) : (
             jobs.slice(0, 10).map((job: any) => (
-              <Link
+              <JobCard
                 key={job.id}
-                to="/candidate/jobs/$jobId"
-                params={{ jobId: job.id }}
-                className="block bg-white rounded-2xl p-4 border border-slate-100 shadow-sm hover:border-indigo-100 hover:shadow-md transition-all active:scale-[0.99]"
-              >
-                <div className="flex gap-4">
-                  <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-slate-50 bg-slate-50">
-                    <img
-                      src={job.images?.[0] || `https://api.dicebear.com/7.x/initials/svg?seed=${job.title}`}
-                      alt={job.title}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start">
-                      <h3 className="font-bold text-[15px] text-slate-900 line-clamp-1 mb-0.5">{job.title}</h3>
-                      {job.isPremium && <BadgeCheck className="w-4 h-4 text-blue-500 shrink-0" />}
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5" />
-                        {job.location?.address?.split(',')[0] || job.address?.split(',')[0] || 'Toàn quốc'}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-indigo-600 font-bold text-sm">
-                        {job.salary?.toLocaleString()}đ<span className="text-[10px] opacity-70 font-medium">/{job.salaryType === 'PER_SHIFT' ? 'ca' : 'tháng'}</span>
-                      </span>
-                      <div className="flex items-center gap-1 text-[11px] text-amber-500 font-bold">
-                        <Star className="w-3 h-3 fill-amber-500" />
-                        4.5
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Link>
+                id={job.id}
+                companyName={job.employerName || 'Nhà tuyển dụng'}
+                title={job.title}
+                wage={job.salary ? `${job.salary.toLocaleString()}đ/${job.salaryType === 'PER_SHIFT' ? 'ca' : 'tháng'}` : 'Thỏa thuận'}
+                distance={job.location?.address?.split(',')[0] || job.address?.split(',')[0] || 'Toàn quốc'}
+                shift={job.employmentType === 'PART_TIME' ? 'Bán thời gian' : 'Toàn thời gian'}
+                logoUrl={job.images?.[0] || `https://api.dicebear.com/7.x/initials/svg?seed=${job.title}&backgroundColor=3b82f6`}
+                hasVerifiedBadge={job.isPremium || false}
+              />
             ))
           )}
         </div>

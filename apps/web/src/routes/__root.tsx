@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { CandidateBottomNav } from '../components/ui/CandidateBottomNav';
 import { EmployerBottomNav } from '../components/ui/EmployerBottomNav';
 import { GlobalHeader } from '../components/ui/GlobalHeader';
+import { Toaster } from 'sonner';
 
 export const Route = createRootRoute({
     component: RootLayout,
@@ -150,6 +151,8 @@ function RootLayout() {
                     </div>
                 </footer>
             )}
+
+            <Toaster position="top-center" richColors />
         </div>
     );
 }

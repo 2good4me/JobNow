@@ -5,9 +5,13 @@ import {
   UtensilsCrossed, Calendar, Clock, Users,
   Star, ShieldCheck, Heart, MessageSquare
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/config/firebase';
 import { useJob } from '@/features/jobs/hooks/useJob';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useApplyJob } from '@/features/jobs/hooks/useApplyJob';
+import { useIsJobWishlisted, useToggleWishlist } from '@/features/jobs/hooks/useWishlistJobs';
 import { toast } from 'sonner';
 
 export const Route = createFileRoute('/candidate/jobs/$jobId')({
@@ -22,6 +26,52 @@ function JobDetailPage() {
   const { data: job, isLoading } = useJob(jobId);
 
   const [selectedShiftId, setSelectedShiftId] = useState<string>('');
+
+  // Wishlist functionality
+  const { data: isWishlisted } = useIsJobWishlisted(userProfile?.uid, jobId);
+  const toggleWishlistMutation = useToggleWishlist();
+
+  const handleToggleWishlist = async () => {
+    if (!userProfile?.uid) {
+      toast.error('Vui lòng đăng nhập để lưu việc làm');
+      navigate({ to: '/login' });
+      return;
+    }
+
+    try {
+      await toggleWishlistMutation.mutateAsync({
+        userId: userProfile.uid,
+        jobId,
+        isCurrentlyWishlisted: !!isWishlisted
+      });
+      if (!isWishlisted) {
+        toast.success('Đã lưu việc làm vào danh sách yêu thích');
+      } else {
+        toast.success('Đã xóa khỏi danh sách yêu thích');
+      }
+    } catch (error) {
+      toast.error('Có lỗi xảy ra, vui lòng thử lại');
+    }
+  };
+
+  // Check if candidate has already applied to this shift
+  const { data: existingApplication } = useQuery({
+    queryKey: ['application', jobId, userProfile?.uid, selectedShiftId],
+    queryFn: async () => {
+      if (!userProfile?.uid || !selectedShiftId) return null;
+      const q = query(
+        collection(db, 'applications'),
+        where('candidate_id', '==', userProfile.uid),
+        where('job_id', '==', jobId),
+        where('shift_id', '==', selectedShiftId)
+      );
+      const snapshot = await getDocs(q);
+      return !snapshot.empty ? snapshot.docs[0].data() : null;
+    },
+    enabled: !!userProfile?.uid && !!selectedShiftId,
+  });
+
+  const hasApplied = !!existingApplication;
 
   // Initialize selectedShiftId when job data is loaded
   useEffect(() => {
@@ -104,8 +154,13 @@ function JobDetailPage() {
             <button className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 transition-colors">
               <Share2 className="w-5 h-5" />
             </button>
-            <button className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 transition-colors">
-              <Bookmark className="w-5 h-5" />
+            <button
+              onClick={handleToggleWishlist}
+              disabled={toggleWishlistMutation.isPending}
+              className={`w-10 h-10 rounded-full backdrop-blur-md flex items-center justify-center transition-colors ${isWishlisted ? 'bg-red-500/90 text-white' : 'bg-black/40 text-white hover:bg-black/60'
+                }`}
+            >
+              <Bookmark className={`w-5 h-5 ${isWishlisted ? 'fill-current' : ''}`} />
             </button>
           </div>
         </div>
@@ -262,18 +317,28 @@ function JobDetailPage() {
 
       {/* Bottom Action Bar */}
       <div className="fixed bottom-[72px] inset-x-0 bg-white border-t border-slate-200 p-4 pb-safe flex gap-3 z-[60]">
-        <button className="w-[52px] h-[52px] bg-slate-50 rounded-2xl flex items-center justify-center shrink-0 border border-slate-200 hover:bg-slate-100 transition-colors">
-          <Heart className="w-6 h-6 text-slate-400" />
+        <button
+          onClick={handleToggleWishlist}
+          disabled={toggleWishlistMutation.isPending}
+          className={`w-[52px] h-[52px] rounded-2xl flex items-center justify-center shrink-0 border transition-colors ${isWishlisted
+              ? 'bg-red-50 border-red-200 hover:bg-red-100'
+              : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+            }`}
+        >
+          <Heart className={`w-6 h-6 ${isWishlisted ? 'text-red-500 fill-red-500' : 'text-slate-400'}`} />
         </button>
         <button className="w-[52px] h-[52px] bg-blue-50 rounded-2xl flex items-center justify-center shrink-0 border border-blue-100 hover:bg-blue-100 transition-colors">
           <MessageSquare className="w-6 h-6 text-blue-600" />
         </button>
         <button
           onClick={handleApply}
-          disabled={applyMutation.isPending}
-          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[15px] rounded-2xl shadow-lg shadow-blue-200 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={applyMutation.isPending || hasApplied}
+          className={`flex-1 font-bold text-[15px] rounded-2xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${hasApplied
+            ? 'bg-slate-200 text-slate-500 shadow-none'
+            : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200'
+            }`}
         >
-          {applyMutation.isPending ? 'ĐANG XỬ LÝ...' : 'ỨNG TUYỂN NGAY'}
+          {applyMutation.isPending ? 'ĐANG XỬ LÝ...' : hasApplied ? 'ĐÃ ỨNG TUYỂN' : 'ỨNG TUYỂN NGAY'}
         </button>
       </div>
 

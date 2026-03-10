@@ -1,22 +1,69 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
+import { createFileRoute } from '@tanstack/react-router';
+import { useState, useMemo } from 'react';
+import { useAllJobs } from '@/features/jobs/hooks/useAllJobs';
 import {
   ArrowLeft, Search, Mic, Map as MapIcon,
-  List, Heart, CheckCircle2
+  List, CheckCircle2
 } from 'lucide-react';
+import { JobCard } from '@/features/jobs/components/JobCard';
 
 export const Route = createFileRoute('/jobs/')({
   component: CandidateSearchDashboard,
 });
 
 function CandidateSearchDashboard() {
+  const [searchText, setSearchText] = useState('');
   const [distance, setDistance] = useState(5);
-  const [minWage, setMinWage] = useState(35);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(['F&B']);
+  const [minWage, setMinWage] = useState(20);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [selectedShifts, setSelectedShifts] = useState<string[]>([]);
-  const [verifiedOnly, setVerifiedOnly] = useState(true);
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+
+  const { data: jobs = [], isLoading, isError } = useAllJobs();
+
+  const filteredJobs = useMemo(() => {
+    return jobs.filter((job: any) => {
+      // 1. Search text
+      if (searchText) {
+        const searchLower = searchText.toLowerCase();
+        const titleMatch = job.title?.toLowerCase().includes(searchLower);
+        const employerMatch = job.employerName?.toLowerCase().includes(searchLower);
+        if (!titleMatch && !employerMatch) return false;
+      }
+      // 2. Minimum wage (minWage is in 'k', job.salary is in absolute numbers)
+      if (job.salary && job.salary < minWage * 1000) {
+        return false;
+      }
+      // 3. Verified only
+      if (verifiedOnly && !job.isPremium) {
+        return false;
+      }
+      // 4. Categories (naive matching on title/description for now since we lack actual mapping)
+      if (selectedCategories.length > 0) {
+        const textToSearch = `${job.title} ${job.description}`.toLowerCase();
+        const matchesCategory = selectedCategories.some(cat => {
+          if (cat === 'F&B') return textToSearch.includes('phục vụ') || textToSearch.includes('pha chế') || textToSearch.includes('nhà hàng') || textToSearch.includes('bán thời gian');
+          if (cat === 'Giao hàng') return textToSearch.includes('giao hàng') || textToSearch.includes('shipper');
+          if (cat === 'Sự kiện') return textToSearch.includes('sự kiện') || textToSearch.includes('event') || textToSearch.includes('pg');
+          if (cat === 'Bán hàng') return textToSearch.includes('bán hàng') || textToSearch.includes('sale') || textToSearch.includes('thu ngân');
+          return true;
+        });
+        if (!matchesCategory) return false;
+      }
+      return true;
+    });
+  }, [jobs, searchText, minWage, verifiedOnly, selectedCategories]);
+
+  const handleResetFilters = () => {
+    setDistance(5);
+    setMinWage(20);
+    setSelectedCategories([]);
+    setSelectedTime('');
+    setSelectedShifts([]);
+    setVerifiedOnly(false);
+  };
 
   const toggleCategory = (cat: string) => {
     setSelectedCategories(prev =>
@@ -42,7 +89,9 @@ function CandidateSearchDashboard() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
               type="text"
-              defaultValue="Nhân viên"
+              placeholder="Tìm kiếm việc làm, công ty..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
               className="w-full bg-slate-100 text-slate-900 rounded-full py-2.5 pl-10 pr-10 border border-transparent focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
             />
             <button className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
@@ -70,7 +119,7 @@ function CandidateSearchDashboard() {
         <div className="mb-6 border-b border-slate-200 pb-6 bg-white p-4 rounded-3xl shadow-sm">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-[18px] font-bold text-slate-900">Bộ lọc nâng cao</h2>
-            <button className="text-blue-500 text-[14px]">Đặt lại</button>
+            <button onClick={handleResetFilters} className="text-blue-500 text-[14px]">Đặt lại</button>
           </div>
 
           {/* Distance Filter */}
@@ -192,7 +241,7 @@ function CandidateSearchDashboard() {
 
         {/* Results Header */}
         <div className="flex justify-between items-center mb-4 px-1">
-          <h3 className="text-slate-600 font-medium">Tìm thấy <span className="font-bold text-slate-900">24</span> việc làm</h3>
+          <h3 className="text-slate-600 font-medium">Tìm thấy <span className="font-bold text-slate-900">{isLoading ? '...' : filteredJobs.length}</span> việc làm</h3>
           <div className="bg-white border border-slate-200 rounded-lg p-1 flex shadow-sm">
             <button
               onClick={() => setViewMode('list')}
@@ -211,85 +260,29 @@ function CandidateSearchDashboard() {
 
         {/* Real Job Items / Mock items based on new design */}
         <div className="space-y-4">
-          <JobCard
-            id="job1"
-            companyName="The Coffee House"
-            title="Nhân viên Phục vụ"
-            wage="25k - 30k/h"
-            distance="0.5km"
-            shift="Ca chiều"
-            logoUrl="https://api.dicebear.com/7.x/initials/svg?seed=TCH&backgroundColor=3b82f6"
-          />
-          <JobCard
-            id="job2"
-            companyName="Pizza 4P's"
-            title="Phụ bếp Nhà hàng"
-            wage="35k/h"
-            distance="1.2km"
-            shift="Ca gãy"
-            logoUrl="https://api.dicebear.com/7.x/initials/svg?seed=4P&backgroundColor=ea580c"
-            hasVerifiedBadge
-          />
-          <JobCard
-            id="job3"
-            companyName="Galaxy Event"
-            title="PG Sự Kiện Ra Mắt"
-            wage="150k/ca"
-            distance="2.5km"
-            shift="Thời vụ"
-            logoUrl="https://api.dicebear.com/7.x/initials/svg?seed=GL&backgroundColor=10b981"
-          />
+          {isLoading ? (
+            <div className="text-center py-10 text-slate-500">Đang tải việc làm...</div>
+          ) : isError ? (
+            <div className="text-center py-10 text-red-500">Có lỗi xảy ra khi tải danh sách việc làm.</div>
+          ) : filteredJobs.length === 0 ? (
+            <div className="text-center py-10 text-slate-500">Không tìm thấy việc làm phù hợp.</div>
+          ) : (
+            filteredJobs.map((job: any) => (
+              <JobCard
+                key={job.id}
+                id={job.id}
+                companyName={job.employerName || 'Nhà tuyển dụng'}
+                title={job.title}
+                wage={job.salary ? `${job.salary.toLocaleString()}đ/${job.salaryType === 'PER_SHIFT' ? 'ca' : 'tháng'}` : 'Thỏa thuận'}
+                distance={job.location?.address?.split(',')[0] || job.address?.split(',')[0] || 'Toàn quốc'}
+                shift={job.employmentType === 'PART_TIME' ? 'Bán thời gian' : 'Toàn thời gian'}
+                logoUrl={job.images?.[0] || `https://api.dicebear.com/7.x/initials/svg?seed=${job.title}&backgroundColor=3b82f6`}
+                hasVerifiedBadge={job.isPremium || false}
+              />
+            ))
+          )}
         </div>
 
-      </div>
-    </div>
-  );
-}
-
-function JobCard({
-  id, companyName, title, wage, distance, shift, logoUrl, hasVerifiedBadge
-}: {
-  id: string, companyName: string, title: string, wage: string,
-  distance: string, shift: string, logoUrl: string, hasVerifiedBadge?: boolean
-}) {
-  const navigate = useNavigate();
-
-  return (
-    <div
-      onClick={() => {
-        navigate({ to: '/candidate/jobs/$jobId', params: { jobId: id } });
-      }}
-      className="bg-white rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:bg-slate-50 transition-colors shadow-sm border border-slate-100"
-    >
-      <div className="relative">
-        <div className="w-[60px] h-[60px] rounded-full overflow-hidden shrink-0 border border-slate-200">
-          <img src={logoUrl} alt={companyName} className="w-full h-full object-cover" />
-        </div>
-        {hasVerifiedBadge && (
-          <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full"></div>
-        )}
-      </div>
-
-      <div className="flex-1 min-w-0 py-1">
-        <div className="flex justify-between items-start mb-0.5">
-          <h3 className="font-bold text-[16px] text-slate-900 truncate pr-2">{title}</h3>
-          <button className="text-slate-400 hover:text-red-500 transition-colors shrink-0 bg-slate-50 p-1.5 rounded-full">
-            <Heart className="w-4 h-4" />
-          </button>
-        </div>
-
-        <p className="text-[13px] text-slate-500 mb-2 truncate">
-          {companyName} <span className="text-slate-300">•</span> {distance}
-        </p>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="bg-blue-50 border border-blue-100 text-blue-600 text-[12px] px-2.5 py-1 rounded-md font-medium">
-            {shift}
-          </div>
-          <div className="bg-emerald-50 border border-emerald-100 text-emerald-600 text-[12px] px-2.5 py-1 rounded-md font-medium">
-            {wage}
-          </div>
-        </div>
       </div>
     </div>
   );
