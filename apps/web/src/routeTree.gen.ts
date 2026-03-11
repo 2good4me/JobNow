@@ -40,7 +40,6 @@ import { Route as EmployerVerificationIndexRouteImport } from './routes/employer
 import { Route as EmployerProfileIndexRouteImport } from './routes/employer/profile/index'
 import { Route as CandidateVerificationIndexRouteImport } from './routes/candidate/verification/index'
 import { Route as CandidateProfileIndexRouteImport } from './routes/candidate/profile/index'
-import { Route as EmployerProfileSettingsRouteImport } from './routes/employer/profile/settings'
 import { Route as EmployerProfileReputationRouteImport } from './routes/employer/profile/reputation'
 import { Route as EmployerProfileEditRouteImport } from './routes/employer/profile/edit'
 import { Route as CandidateProfileVerifyRouteImport } from './routes/candidate/profile/verify'
@@ -48,6 +47,14 @@ import { Route as CandidateProfileSettingsRouteImport } from './routes/candidate
 import { Route as CandidateProfileEditRouteImport } from './routes/candidate/profile/edit'
 import { Route as CandidateJobsJobIdRouteImport } from './routes/candidate/jobs/$jobId'
 import { Route as CandidateEmployerEmployerIdRouteImport } from './routes/candidate/employer/$employerId'
+import { Route as EmployerProfileSettingsIndexRouteImport } from './routes/employer/profile/settings/index'
+import { Route as EmployerProfileSettingsTermsRouteImport } from './routes/employer/profile/settings/terms'
+import { Route as EmployerProfileSettingsPrivacyRouteImport } from './routes/employer/profile/settings/privacy'
+import { Route as EmployerProfileSettingsPhoneRouteImport } from './routes/employer/profile/settings/phone'
+import { Route as EmployerProfileSettingsPasswordRouteImport } from './routes/employer/profile/settings/password'
+import { Route as EmployerProfileSettingsDevicesRouteImport } from './routes/employer/profile/settings/devices'
+import { Route as EmployerProfileSettingsDeleteRouteImport } from './routes/employer/profile/settings/delete'
+import { Route as EmployerProfileSettingsDeactivateRouteImport } from './routes/employer/profile/settings/deactivate'
 
 const SupportCenterDataRoute = SupportCenterDataRouteImport.update({
   id: '/support-center-data',
@@ -206,11 +213,6 @@ const CandidateProfileIndexRoute = CandidateProfileIndexRouteImport.update({
   path: '/',
   getParentRoute: () => CandidateProfileRoute,
 } as any)
-const EmployerProfileSettingsRoute = EmployerProfileSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => EmployerProfileRoute,
-} as any)
 const EmployerProfileReputationRoute =
   EmployerProfileReputationRouteImport.update({
     id: '/reputation',
@@ -249,6 +251,54 @@ const CandidateEmployerEmployerIdRoute =
     path: '/candidate/employer/$employerId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const EmployerProfileSettingsIndexRoute =
+  EmployerProfileSettingsIndexRouteImport.update({
+    id: '/settings/',
+    path: '/settings/',
+    getParentRoute: () => EmployerProfileRoute,
+  } as any)
+const EmployerProfileSettingsTermsRoute =
+  EmployerProfileSettingsTermsRouteImport.update({
+    id: '/settings/terms',
+    path: '/settings/terms',
+    getParentRoute: () => EmployerProfileRoute,
+  } as any)
+const EmployerProfileSettingsPrivacyRoute =
+  EmployerProfileSettingsPrivacyRouteImport.update({
+    id: '/settings/privacy',
+    path: '/settings/privacy',
+    getParentRoute: () => EmployerProfileRoute,
+  } as any)
+const EmployerProfileSettingsPhoneRoute =
+  EmployerProfileSettingsPhoneRouteImport.update({
+    id: '/settings/phone',
+    path: '/settings/phone',
+    getParentRoute: () => EmployerProfileRoute,
+  } as any)
+const EmployerProfileSettingsPasswordRoute =
+  EmployerProfileSettingsPasswordRouteImport.update({
+    id: '/settings/password',
+    path: '/settings/password',
+    getParentRoute: () => EmployerProfileRoute,
+  } as any)
+const EmployerProfileSettingsDevicesRoute =
+  EmployerProfileSettingsDevicesRouteImport.update({
+    id: '/settings/devices',
+    path: '/settings/devices',
+    getParentRoute: () => EmployerProfileRoute,
+  } as any)
+const EmployerProfileSettingsDeleteRoute =
+  EmployerProfileSettingsDeleteRouteImport.update({
+    id: '/settings/delete',
+    path: '/settings/delete',
+    getParentRoute: () => EmployerProfileRoute,
+  } as any)
+const EmployerProfileSettingsDeactivateRoute =
+  EmployerProfileSettingsDeactivateRouteImport.update({
+    id: '/settings/deactivate',
+    path: '/settings/deactivate',
+    getParentRoute: () => EmployerProfileRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -285,11 +335,18 @@ export interface FileRoutesByFullPath {
   '/candidate/profile/verify': typeof CandidateProfileVerifyRoute
   '/employer/profile/edit': typeof EmployerProfileEditRoute
   '/employer/profile/reputation': typeof EmployerProfileReputationRoute
-  '/employer/profile/settings': typeof EmployerProfileSettingsRoute
   '/candidate/profile/': typeof CandidateProfileIndexRoute
   '/candidate/verification/': typeof CandidateVerificationIndexRoute
   '/employer/profile/': typeof EmployerProfileIndexRoute
   '/employer/verification/': typeof EmployerVerificationIndexRoute
+  '/employer/profile/settings/deactivate': typeof EmployerProfileSettingsDeactivateRoute
+  '/employer/profile/settings/delete': typeof EmployerProfileSettingsDeleteRoute
+  '/employer/profile/settings/devices': typeof EmployerProfileSettingsDevicesRoute
+  '/employer/profile/settings/password': typeof EmployerProfileSettingsPasswordRoute
+  '/employer/profile/settings/phone': typeof EmployerProfileSettingsPhoneRoute
+  '/employer/profile/settings/privacy': typeof EmployerProfileSettingsPrivacyRoute
+  '/employer/profile/settings/terms': typeof EmployerProfileSettingsTermsRoute
+  '/employer/profile/settings/': typeof EmployerProfileSettingsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -323,11 +380,18 @@ export interface FileRoutesByTo {
   '/candidate/profile/verify': typeof CandidateProfileVerifyRoute
   '/employer/profile/edit': typeof EmployerProfileEditRoute
   '/employer/profile/reputation': typeof EmployerProfileReputationRoute
-  '/employer/profile/settings': typeof EmployerProfileSettingsRoute
   '/candidate/profile': typeof CandidateProfileIndexRoute
   '/candidate/verification': typeof CandidateVerificationIndexRoute
   '/employer/profile': typeof EmployerProfileIndexRoute
   '/employer/verification': typeof EmployerVerificationIndexRoute
+  '/employer/profile/settings/deactivate': typeof EmployerProfileSettingsDeactivateRoute
+  '/employer/profile/settings/delete': typeof EmployerProfileSettingsDeleteRoute
+  '/employer/profile/settings/devices': typeof EmployerProfileSettingsDevicesRoute
+  '/employer/profile/settings/password': typeof EmployerProfileSettingsPasswordRoute
+  '/employer/profile/settings/phone': typeof EmployerProfileSettingsPhoneRoute
+  '/employer/profile/settings/privacy': typeof EmployerProfileSettingsPrivacyRoute
+  '/employer/profile/settings/terms': typeof EmployerProfileSettingsTermsRoute
+  '/employer/profile/settings': typeof EmployerProfileSettingsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -365,11 +429,18 @@ export interface FileRoutesById {
   '/candidate/profile/verify': typeof CandidateProfileVerifyRoute
   '/employer/profile/edit': typeof EmployerProfileEditRoute
   '/employer/profile/reputation': typeof EmployerProfileReputationRoute
-  '/employer/profile/settings': typeof EmployerProfileSettingsRoute
   '/candidate/profile/': typeof CandidateProfileIndexRoute
   '/candidate/verification/': typeof CandidateVerificationIndexRoute
   '/employer/profile/': typeof EmployerProfileIndexRoute
   '/employer/verification/': typeof EmployerVerificationIndexRoute
+  '/employer/profile/settings/deactivate': typeof EmployerProfileSettingsDeactivateRoute
+  '/employer/profile/settings/delete': typeof EmployerProfileSettingsDeleteRoute
+  '/employer/profile/settings/devices': typeof EmployerProfileSettingsDevicesRoute
+  '/employer/profile/settings/password': typeof EmployerProfileSettingsPasswordRoute
+  '/employer/profile/settings/phone': typeof EmployerProfileSettingsPhoneRoute
+  '/employer/profile/settings/privacy': typeof EmployerProfileSettingsPrivacyRoute
+  '/employer/profile/settings/terms': typeof EmployerProfileSettingsTermsRoute
+  '/employer/profile/settings/': typeof EmployerProfileSettingsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -408,11 +479,18 @@ export interface FileRouteTypes {
     | '/candidate/profile/verify'
     | '/employer/profile/edit'
     | '/employer/profile/reputation'
-    | '/employer/profile/settings'
     | '/candidate/profile/'
     | '/candidate/verification/'
     | '/employer/profile/'
     | '/employer/verification/'
+    | '/employer/profile/settings/deactivate'
+    | '/employer/profile/settings/delete'
+    | '/employer/profile/settings/devices'
+    | '/employer/profile/settings/password'
+    | '/employer/profile/settings/phone'
+    | '/employer/profile/settings/privacy'
+    | '/employer/profile/settings/terms'
+    | '/employer/profile/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -446,11 +524,18 @@ export interface FileRouteTypes {
     | '/candidate/profile/verify'
     | '/employer/profile/edit'
     | '/employer/profile/reputation'
-    | '/employer/profile/settings'
     | '/candidate/profile'
     | '/candidate/verification'
     | '/employer/profile'
     | '/employer/verification'
+    | '/employer/profile/settings/deactivate'
+    | '/employer/profile/settings/delete'
+    | '/employer/profile/settings/devices'
+    | '/employer/profile/settings/password'
+    | '/employer/profile/settings/phone'
+    | '/employer/profile/settings/privacy'
+    | '/employer/profile/settings/terms'
+    | '/employer/profile/settings'
   id:
     | '__root__'
     | '/'
@@ -487,11 +572,18 @@ export interface FileRouteTypes {
     | '/candidate/profile/verify'
     | '/employer/profile/edit'
     | '/employer/profile/reputation'
-    | '/employer/profile/settings'
     | '/candidate/profile/'
     | '/candidate/verification/'
     | '/employer/profile/'
     | '/employer/verification/'
+    | '/employer/profile/settings/deactivate'
+    | '/employer/profile/settings/delete'
+    | '/employer/profile/settings/devices'
+    | '/employer/profile/settings/password'
+    | '/employer/profile/settings/phone'
+    | '/employer/profile/settings/privacy'
+    | '/employer/profile/settings/terms'
+    | '/employer/profile/settings/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -746,13 +838,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CandidateProfileIndexRouteImport
       parentRoute: typeof CandidateProfileRoute
     }
-    '/employer/profile/settings': {
-      id: '/employer/profile/settings'
-      path: '/settings'
-      fullPath: '/employer/profile/settings'
-      preLoaderRoute: typeof EmployerProfileSettingsRouteImport
-      parentRoute: typeof EmployerProfileRoute
-    }
     '/employer/profile/reputation': {
       id: '/employer/profile/reputation'
       path: '/reputation'
@@ -802,6 +887,62 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CandidateEmployerEmployerIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/employer/profile/settings/': {
+      id: '/employer/profile/settings/'
+      path: '/settings'
+      fullPath: '/employer/profile/settings/'
+      preLoaderRoute: typeof EmployerProfileSettingsIndexRouteImport
+      parentRoute: typeof EmployerProfileRoute
+    }
+    '/employer/profile/settings/terms': {
+      id: '/employer/profile/settings/terms'
+      path: '/settings/terms'
+      fullPath: '/employer/profile/settings/terms'
+      preLoaderRoute: typeof EmployerProfileSettingsTermsRouteImport
+      parentRoute: typeof EmployerProfileRoute
+    }
+    '/employer/profile/settings/privacy': {
+      id: '/employer/profile/settings/privacy'
+      path: '/settings/privacy'
+      fullPath: '/employer/profile/settings/privacy'
+      preLoaderRoute: typeof EmployerProfileSettingsPrivacyRouteImport
+      parentRoute: typeof EmployerProfileRoute
+    }
+    '/employer/profile/settings/phone': {
+      id: '/employer/profile/settings/phone'
+      path: '/settings/phone'
+      fullPath: '/employer/profile/settings/phone'
+      preLoaderRoute: typeof EmployerProfileSettingsPhoneRouteImport
+      parentRoute: typeof EmployerProfileRoute
+    }
+    '/employer/profile/settings/password': {
+      id: '/employer/profile/settings/password'
+      path: '/settings/password'
+      fullPath: '/employer/profile/settings/password'
+      preLoaderRoute: typeof EmployerProfileSettingsPasswordRouteImport
+      parentRoute: typeof EmployerProfileRoute
+    }
+    '/employer/profile/settings/devices': {
+      id: '/employer/profile/settings/devices'
+      path: '/settings/devices'
+      fullPath: '/employer/profile/settings/devices'
+      preLoaderRoute: typeof EmployerProfileSettingsDevicesRouteImport
+      parentRoute: typeof EmployerProfileRoute
+    }
+    '/employer/profile/settings/delete': {
+      id: '/employer/profile/settings/delete'
+      path: '/settings/delete'
+      fullPath: '/employer/profile/settings/delete'
+      preLoaderRoute: typeof EmployerProfileSettingsDeleteRouteImport
+      parentRoute: typeof EmployerProfileRoute
+    }
+    '/employer/profile/settings/deactivate': {
+      id: '/employer/profile/settings/deactivate'
+      path: '/settings/deactivate'
+      fullPath: '/employer/profile/settings/deactivate'
+      preLoaderRoute: typeof EmployerProfileSettingsDeactivateRouteImport
+      parentRoute: typeof EmployerProfileRoute
+    }
   }
 }
 
@@ -825,15 +966,30 @@ const CandidateProfileRouteWithChildren =
 interface EmployerProfileRouteChildren {
   EmployerProfileEditRoute: typeof EmployerProfileEditRoute
   EmployerProfileReputationRoute: typeof EmployerProfileReputationRoute
-  EmployerProfileSettingsRoute: typeof EmployerProfileSettingsRoute
   EmployerProfileIndexRoute: typeof EmployerProfileIndexRoute
+  EmployerProfileSettingsDeactivateRoute: typeof EmployerProfileSettingsDeactivateRoute
+  EmployerProfileSettingsDeleteRoute: typeof EmployerProfileSettingsDeleteRoute
+  EmployerProfileSettingsDevicesRoute: typeof EmployerProfileSettingsDevicesRoute
+  EmployerProfileSettingsPasswordRoute: typeof EmployerProfileSettingsPasswordRoute
+  EmployerProfileSettingsPhoneRoute: typeof EmployerProfileSettingsPhoneRoute
+  EmployerProfileSettingsPrivacyRoute: typeof EmployerProfileSettingsPrivacyRoute
+  EmployerProfileSettingsTermsRoute: typeof EmployerProfileSettingsTermsRoute
+  EmployerProfileSettingsIndexRoute: typeof EmployerProfileSettingsIndexRoute
 }
 
 const EmployerProfileRouteChildren: EmployerProfileRouteChildren = {
   EmployerProfileEditRoute: EmployerProfileEditRoute,
   EmployerProfileReputationRoute: EmployerProfileReputationRoute,
-  EmployerProfileSettingsRoute: EmployerProfileSettingsRoute,
   EmployerProfileIndexRoute: EmployerProfileIndexRoute,
+  EmployerProfileSettingsDeactivateRoute:
+    EmployerProfileSettingsDeactivateRoute,
+  EmployerProfileSettingsDeleteRoute: EmployerProfileSettingsDeleteRoute,
+  EmployerProfileSettingsDevicesRoute: EmployerProfileSettingsDevicesRoute,
+  EmployerProfileSettingsPasswordRoute: EmployerProfileSettingsPasswordRoute,
+  EmployerProfileSettingsPhoneRoute: EmployerProfileSettingsPhoneRoute,
+  EmployerProfileSettingsPrivacyRoute: EmployerProfileSettingsPrivacyRoute,
+  EmployerProfileSettingsTermsRoute: EmployerProfileSettingsTermsRoute,
+  EmployerProfileSettingsIndexRoute: EmployerProfileSettingsIndexRoute,
 }
 
 const EmployerProfileRouteWithChildren = EmployerProfileRoute._addFileChildren(
