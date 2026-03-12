@@ -1,4 +1,3 @@
-import React from 'react';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import type { Message } from '@jobnow/types';

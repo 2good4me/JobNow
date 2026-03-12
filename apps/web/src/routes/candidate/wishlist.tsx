@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useWishlistJobs } from '@/features/jobs/hooks/useWishlistJobs';
-import { ArrowLeft, BookHeart, HeartOff } from 'lucide-react';
+import { ArrowLeft, BookHeart } from 'lucide-react';
 import { JobCard } from '@/features/jobs/components/JobCard';
 
 export const Route = createFileRoute('/candidate/wishlist')({

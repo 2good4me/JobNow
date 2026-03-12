@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Conversation } from '@jobnow/types';
 import { ChatList } from './ChatList';
 import { ChatRoom } from './ChatRoom';
+import { useSearch } from '@tanstack/react-router';
+import { useConversations } from '../hooks/useConversations';
 
 interface ChatPageProps {
     userId: string;
@@ -9,7 +11,19 @@ interface ChatPageProps {
 }
 
 export function ChatPage({ userId, role }: ChatPageProps) {
+    const search = useSearch({ strict: false }) as { applicationId?: string };
     const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+    const { data: conversations } = useConversations({ userId, role });
+
+    // Auto-select conversation based on applicationId in URL
+    useEffect(() => {
+        if (search.applicationId && conversations && !selectedConversation) {
+            const found = conversations.find(c => c.id === search.applicationId || c.applicationId === search.applicationId);
+            if (found) {
+                setSelectedConversation(found);
+            }
+        }
+    }, [search.applicationId, conversations, selectedConversation]);
 
     return (
         <div className="flex h-[calc(100vh-64px)] md:h-[calc(100vh-70px)] bg-white dark:bg-gray-950 overflow-hidden relative">

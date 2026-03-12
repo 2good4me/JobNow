@@ -1,0 +1,15 @@
+src/features/auth/components/ReputationBadge.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/features/auth/components/ReputationStatsCard.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/features/chat/components/ChatList.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/features/chat/components/ChatList.tsx(6,29): error TS6196: 'ChatPermission' is declared but never used.
+src/features/chat/components/MessageBubble.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/features/chat/services/chatService.ts(15,3): error TS6133: 'addDoc' is declared but its value is never read.
+src/features/chat/services/chatService.ts(45,6): error TS6196: 'MarkConversationReadResult' is declared but never used.
+src/features/jobs/services/applicationService.ts(1,52): error TS6133: 'orderBy' is declared but its value is never read.
+src/features/jobs/services/applicationService.ts(2,1): error TS6133: 'httpsCallable' is declared but its value is never read.
+src/features/jobs/services/applicationService.ts(3,14): error TS6133: 'functions' is declared but its value is never read.
+src/features/jobs/services/applicationService.ts(62,11): error TS6133: 'orderField' is declared but its value is never read.
+src/features/jobs/services/applicationService.ts(81,11): error TS6133: 'orderField' is declared but its value is never read.
+src/routes/candidate/index.tsx(4,3): error TS6133: 'Bell' is declared but its value is never read.
+src/routes/candidate/profile/index.tsx(6,3): error TS6133: 'Bell' is declared but its value is never read.
+src/routes/candidate/wishlist.tsx(4,32): error TS6133: 'HeartOff' is declared but its value is never read.

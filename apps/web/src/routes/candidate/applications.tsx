@@ -83,8 +83,14 @@ function CandidateApplications() {
                             >
                                 <div className="flex justify-between items-start mb-3">
                                     <div className="pr-4">
-                                        <h3 className="font-bold text-slate-900 mb-1 group-hover:text-blue-600 transition-colors">Ca làm: {app.shiftId}</h3>
-                                        <p className="text-sm text-slate-500 font-medium">Nhà tuyển dụng: {app.employerId}</p>
+                                        <h3 className="font-bold text-slate-900 mb-1 group-hover:text-blue-600 transition-colors line-clamp-1">
+                                            {app.jobTitle || 'Công việc đã ứng tuyển'}
+                                        </h3>
+                                        <div className="flex items-center gap-1.5 text-blue-600 font-semibold text-xs mb-1">
+                                            <Clock className="w-3.5 h-3.5" />
+                                            <span>Ca làm: {app.shiftTime || 'Chưa xác định'}</span>
+                                        </div>
+                                        <p className="text-[11px] text-slate-400 font-medium">Mã Đơn: #{app.id.slice(-6).toUpperCase()}</p>
                                     </div>
                                     <div className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${theme.bg} ${theme.text} ${theme.border}`}>
                                         <StatusIcon className="w-3.5 h-3.5" />

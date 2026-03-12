@@ -1,4 +1,3 @@
-import React from 'react';
 import { Users } from 'lucide-react';
 import { getReputationTier, getProgressToNextTier } from '../helpers/reputationHelper';
 import { ReputationBadge } from './ReputationBadge';

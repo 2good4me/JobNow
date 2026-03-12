@@ -129,7 +129,7 @@ export async function markAllNotificationsRead(userId: string): Promise<void> {
 }
 
 function mapNotification(docSnap: any): AppNotification {
-    const d = docSnap.data();
+    const d = docSnap.data({ serverTimestamps: 'estimate' });
     const type: NotificationType = d.type || 'SYSTEM';
     return {
         id: docSnap.id,

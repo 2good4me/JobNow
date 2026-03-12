@@ -1,6 +1,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { initializeApp } from 'firebase-admin/app';
 import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 
 initializeApp();
 
@@ -141,6 +142,23 @@ function normalizeMessageId(clientMessageId: string): string {
   return `msg_${Date.now()}`;
 }
 
+async function createNotification(tx: FirebaseFirestore.Transaction, userId: string, type: string, title: string, body: string, data: Record<string, string> = {}) {
+  const notifRef = db.collection('notifications').doc();
+  tx.set(notifRef, {
+    userId,
+    user_id: userId,
+    type,
+    category: 'APPLICATION',
+    title,
+    body,
+    data,
+    isRead: false,
+    is_read: false,
+    created_at: FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
+  });
+}
+
 export const applyJob = onCall<ApplyJobInput>({ region: 'asia-southeast1' }, async (request) => {
   const uid = assertAuth(request);
   const input = request.data;
@@ -158,7 +176,7 @@ export const applyJob = onCall<ApplyJobInput>({ region: 'asia-southeast1' }, asy
   const jobRef = db.collection('jobs').doc(input.jobId);
 
   const result = await db.runTransaction(async (tx) => {
-    const candidateRef = db.collection('candidates').doc(input.candidateId);
+    const candidateRef = db.collection('users').doc(input.candidateId);
     const [jobSnap, appSnap, candidateSnap] = await Promise.all([
       tx.get(jobRef),
       tx.get(applicationRef),
@@ -318,14 +336,37 @@ export const updateApplicationStatus = onCall<UpdateApplicationStatusInput>({ re
     const byEmployer = uid === employerId && ['APPROVED', 'REJECTED', 'COMPLETED'].includes(input.status);
     const byCandidate = uid === candidateId && input.status === 'CANCELLED';
 
+    console.log(`[updateApplicationStatus] Attempting to update application ${input.applicationId} to status ${input.status}`);
+    console.log(`[updateApplicationStatus] Caller UID: ${uid}, App EmployerId: ${employerId}, App CandidateId: ${candidateId}`);
+    console.log(`[updateApplicationStatus] Check result -> byEmployer: ${byEmployer}, byCandidate: ${byCandidate}`);
+
     if (!byEmployer && !byCandidate) {
-      throw new HttpsError('permission-denied', 'Bạn không có quyền cập nhật trạng thái này.');
+      throw new HttpsError('permission-denied', `Bạn không có quyền cập nhật trạng thái này. UID của bạn là ${uid}, nhưng cần là ${employerId} hoặc ${candidateId}.`);
     }
 
     tx.set(applicationRef, {
       status: input.status,
       updated_at: FieldValue.serverTimestamp(),
     }, { merge: true });
+
+    // ─── Notify Candidate ───
+    if (input.status === 'APPROVED' || input.status === 'REJECTED') {
+      const jobRef = db.collection('jobs').doc(String(appData.job_id ?? appData.jobId ?? ''));
+      const jobSnap = await tx.get(jobRef);
+      const jobData = jobSnap.exists ? jobSnap.data() : {};
+      const jobTitle = String(jobData?.title ?? 'Công việc');
+
+      const title = input.status === 'APPROVED' ? 'Ứng tuyển thành công' : 'Kết quả ứng tuyển';
+      const body = input.status === 'APPROVED' 
+        ? `Đơn ứng tuyển của bạn cho công việc "${jobTitle}" đã được duyệt.`
+        : `Rất tiếc, đơn ứng tuyển của bạn cho công việc "${jobTitle}" không được duyệt lần này.`;
+
+      await createNotification(tx, candidateId, `APPLICATION_${input.status}`, title, body, {
+        applicationId: appSnap.id,
+        jobId: String(appData.job_id ?? appData.jobId ?? ''),
+        status: input.status,
+      });
+    }
 
     const payload = {
       id: appSnap.id,
@@ -776,4 +817,44 @@ export const submitRating = onCall<RatingInput>({ region: 'asia-southeast1' }, a
     reviewId,
     updatedReputationScore: average,
   };
+});
+
+/* ── Firestore Triggers ────────────────────────── */
+
+export const onApplicationCreated = onDocumentCreated({
+  document: 'applications/{applicationId}',
+  region: 'asia-southeast1',
+}, async (event) => {
+  const snapshot = event.data;
+  if (!snapshot) return;
+
+  const appData = snapshot.data();
+  const employerId = String(appData.employer_id ?? appData.employerId ?? '');
+  const candidateName = String(appData.candidate_name ?? appData.candidateName ?? 'Ai đó');
+  const jobId = String(appData.job_id ?? appData.jobId ?? '');
+
+  if (!employerId || !jobId) return;
+
+  // Fetch job title
+  const jobSnap = await db.collection('jobs').doc(jobId).get();
+  const jobTitle = String(jobSnap.exists ? (jobSnap.data()?.title ?? 'Công việc') : 'Công việc');
+
+  const notifRef = db.collection('notifications').doc();
+  await notifRef.set({
+    userId: employerId,
+    user_id: employerId,
+    type: 'NEW_APPLICATION',
+    category: 'APPLICATION',
+    title: 'Đơn ứng tuyển mới',
+    body: `Bạn có đơn ứng tuyển mới từ ${candidateName} cho công việc: ${jobTitle}`,
+    data: {
+      applicationId: event.params.applicationId,
+      jobId,
+      candidateId: String(appData.candidate_id ?? appData.candidateId ?? ''),
+    },
+    isRead: false,
+    is_read: false,
+    created_at: FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
+  });
 });

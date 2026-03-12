@@ -1,9 +1,8 @@
-import React from 'react';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { useConversations } from '../hooks/useConversations';
 import { MessageCircle } from 'lucide-react';
-import type { Conversation, ChatPermission } from '@jobnow/types';
+import type { Conversation } from '@jobnow/types';
 import { getConversationUnreadCount } from '../services/chatService';
 
 interface ChatListProps {
