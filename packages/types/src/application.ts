@@ -31,6 +31,9 @@ export interface Application {
     candidateSkills?: string[];
     candidateRating?: number;
     candidateVerified?: boolean;
+    // ─── Denormalized job/shift info ───
+    jobTitle?: string;
+    shiftTime?: string;
 }
 
 /**
@@ -56,6 +59,9 @@ export interface ApplicationDoc {
     candidate_skills?: string[];
     candidate_rating?: number;
     candidate_verified?: boolean;
+    // ─── Denormalized job/shift info ───
+    job_title?: string;
+    shift_time?: string;
 }
 
 export interface ApplyJobInput {

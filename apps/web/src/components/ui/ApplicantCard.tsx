@@ -10,6 +10,7 @@ type ApplicantCardProps = {
   candidateId: string;
   status: Application['status'];
   jobTitle?: string;
+  shiftTime?: string;
   appliedAt?: Date;
   onApproved?: () => void;
   // ─── Denormalized candidate snapshot (preferred, skip fetch) ───
@@ -46,6 +47,7 @@ export function ApplicantCard({
   candidateId,
   status,
   jobTitle,
+  shiftTime,
   appliedAt,
   onApproved,
   candidateName: dnName,
@@ -90,23 +92,51 @@ export function ApplicantCard({
     )
     : 'Hôm nay';
 
-  const handleApprove = useCallback(() => {
+  const handleApprove = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setShowConfetti(true);
-    updateStatus({ id: applicationId, status: 'APPROVED' });
-    onApproved?.();
-    setTimeout(() => setShowConfetti(false), 1200);
+    updateStatus(
+      { id: applicationId, status: 'APPROVED' },
+      {
+        onSuccess: () => {
+          onApproved?.();
+          setTimeout(() => setShowConfetti(false), 1200);
+        },
+        onError: (err) => {
+          setShowConfetti(false);
+          alert(`Không thể duyệt: ${err.message}`);
+        }
+      }
+    );
   }, [applicationId, updateStatus, onApproved]);
 
-  const handleReject = useCallback(() => {
-    updateStatus({ id: applicationId, status: 'REJECTED' });
+  const handleReject = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    updateStatus(
+      { id: applicationId, status: 'REJECTED' },
+      {
+        onError: (err) => alert(`Không thể từ chối: ${err.message}`)
+      }
+    );
   }, [applicationId, updateStatus]);
 
-  const handleChat = useCallback(() => {
+  const handleChat = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     navigate({
       to: '/employer/chat',
       search: { applicationId }
     } as any);
   }, [navigate, applicationId]);
+
+  const handleCall = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const phone = (candidate as any)?.phone_number || (candidate as any)?.phoneNumber;
+    if (phone) window.open(`tel:${phone}`, '_self');
+  }, [candidate]);
 
   const canApprove = !['REVIEWED', 'APPROVED', 'COMPLETED', 'CANCELLED'].includes(status);
   const canReject = !['REJECTED', 'COMPLETED', 'CANCELLED'].includes(status);
@@ -165,7 +195,7 @@ export function ApplicantCard({
           </div>
           {jobTitle && (
             <p className="mt-1 flex items-center gap-1 text-[11px] text-slate-500 truncate">
-              <Briefcase className="h-3 w-3 shrink-0" /> {jobTitle}
+              <Briefcase className="h-3 w-3 shrink-0" /> {jobTitle} {shiftTime && `• Ca: ${shiftTime}`}
             </p>
           )}
         </div>
@@ -197,10 +227,7 @@ export function ApplicantCard({
         </button>
         <button
           type="button"
-          onClick={() => {
-            const phone = (candidate as any)?.phone_number || (candidate as any)?.phoneNumber;
-            if (phone) window.open(`tel:${phone}`, '_self');
-          }}
+          onClick={handleCall}
           disabled={!candidate}
           className="flex flex-1 items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-slate-500 transition-colors hover:bg-slate-50 active:bg-slate-100 disabled:opacity-40 border-r border-slate-50"
         >

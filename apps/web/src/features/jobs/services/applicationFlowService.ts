@@ -153,6 +153,12 @@ export async function applyJob(input: ApplyJobInput): Promise<ApplyJobResult> {
             throw new Error('Công việc đã đóng tuyển.');
         }
 
+        const targetShift = Array.isArray(jobData.shifts) 
+            ? jobData.shifts.find((item: any) => String(item.id) === input.shiftId) 
+            : null;
+        const shiftTime = targetShift ? `${targetShift.start_time || ''} - ${targetShift.end_time || ''}` : '';
+        const jobTitle = String(jobData.title || '');
+
         const shiftCapacity = (jobData.shift_capacity ?? {}) as Record<string, any>;
         let capacity = shiftCapacity[input.shiftId];
 
@@ -199,6 +205,9 @@ export async function applyJob(input: ApplyJobInput): Promise<ApplyJobResult> {
             candidate_skills: candidateSkills,
             candidate_rating: candidateRating,
             candidate_verified: candidateVerified,
+            // Denormalized job/shift info
+            job_title: jobTitle,
+            shift_time: shiftTime,
         });
 
         const nextRemaining = Math.max(Number(capacity.remaining_slots) - 1, 0);

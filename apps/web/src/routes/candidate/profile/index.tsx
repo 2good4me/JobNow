@@ -3,7 +3,6 @@ import { useAuth } from '@/features/auth/context/AuthContext';
 import { useState } from 'react';
 import {
   BadgeCheck,
-  Bell,
   Briefcase,
   ChevronRight,
   FileCheck2,

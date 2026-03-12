@@ -68,22 +68,31 @@ service cloud.firestore {
       allow create: if isSignedIn() 
                     && (getUserRole() == 'EMPLOYER' || getUserRole() == 'employer')
                     && isValidJobCreate();
-      allow update: if isSignedIn()
-                    && (
-                      (getUserRole() == 'EMPLOYER' || getUserRole() == 'employer') && resource.data.employer_id == request.auth.uid
-                      || (getUserRole() == 'CANDIDATE' || getUserRole() == 'candidate') // Allow candidates to update slots when applying
-                    );
+      allow update: if isSignedIn();
       allow delete: if isSignedIn()
                     && (getUserRole() == 'EMPLOYER' || getUserRole() == 'employer')
                     && resource.data.employer_id == request.auth.uid;
     }
 
-    // --- APPLICATIONS (writes via Cloud Functions only) ---
+    // --- APPLICATIONS ---
     match /applications/{applicationId} {
       allow read: if isSignedIn();
-
-      allow create: if isSignedIn() && (getUserRole() == 'CANDIDATE' || getUserRole() == 'candidate');
-      allow update, delete: if false;
+      allow create: if isSignedIn();
+      
+      // Cho phép cập nhật trực tiếp trên Client (Không dùng Cloud Functions nữa)
+      function isApplicationEmployer() {
+        return resource.data.employer_id == request.auth.uid 
+            || resource.data.employerId == request.auth.uid;
+      }
+      function isApplicationCandidate() {
+        return resource.data.candidate_id == request.auth.uid 
+            || resource.data.candidateId == request.auth.uid;
+      }
+      
+      // Candidate: Hủy đơn, Employer: Duyệt/Từ chối/Đánh dấu xong
+      allow update: if isSignedIn() && (isApplicationEmployer() || isApplicationCandidate());
+      
+      allow delete: if false;
 
       match /checkins/{checkinId} {
         allow read: if isSignedIn() && (
@@ -97,8 +106,7 @@ service cloud.firestore {
       }
     }
 
-    // --- CONVERSATIONS / MESSAGES (writes via Cloud Functions only) ---
-    // --- CONVERSATIONS / MESSAGES (writes via Cloud Functions only) ---
+    // --- CONVERSATIONS / MESSAGES ---
     match /conversations/{conversationId} {
       allow read: if isSignedIn() && (
         resource.data.candidate_id == request.auth.uid ||
@@ -106,7 +114,21 @@ service cloud.firestore {
         resource.data.candidateId == request.auth.uid ||
         resource.data.employerId == request.auth.uid
       );
-      allow create, update, delete: if false;
+      
+      // Cho phép tạo/cập nhật hội thoại từ Frontend khi bắt đầu chat
+      allow create: if isSignedIn() && (
+        request.resource.data.candidate_id == request.auth.uid ||
+        request.resource.data.employer_id == request.auth.uid ||
+        request.resource.data.candidateId == request.auth.uid ||
+        request.resource.data.employerId == request.auth.uid
+      );
+      allow update: if isSignedIn() && (
+        resource.data.candidate_id == request.auth.uid ||
+        resource.data.employer_id == request.auth.uid ||
+        resource.data.candidateId == request.auth.uid ||
+        resource.data.employerId == request.auth.uid
+      );
+      allow delete: if false;
 
       match /messages/{messageId} {
         allow read: if isSignedIn() && (
@@ -115,7 +137,14 @@ service cloud.firestore {
           get(/databases/$(database)/documents/conversations/$(conversationId)).data.candidateId == request.auth.uid ||
           get(/databases/$(database)/documents/conversations/$(conversationId)).data.employerId == request.auth.uid
         );
-        allow create, update, delete: if false;
+        allow create: if isSignedIn() && (
+          get(/databases/$(database)/documents/conversations/$(conversationId)).data.candidate_id == request.auth.uid ||
+          get(/databases/$(database)/documents/conversations/$(conversationId)).data.employer_id == request.auth.uid ||
+          get(/databases/$(database)/documents/conversations/$(conversationId)).data.candidateId == request.auth.uid ||
+          get(/databases/$(database)/documents/conversations/$(conversationId)).data.employerId == request.auth.uid
+        ) && request.resource.data.sender_id == request.auth.uid;
+        
+        allow update, delete: if false;
       }
     }
 
@@ -141,7 +170,8 @@ service cloud.firestore {
     match /notifications/{notificationId} {
       allow read: if isSignedIn() && (resource.data.user_id == request.auth.uid || resource.data.userId == request.auth.uid);
       allow update: if isSignedIn() && (resource.data.user_id == request.auth.uid || resource.data.userId == request.auth.uid);
-      allow create, delete: if false;
+      allow create: if isSignedIn();
+      allow delete: if false;
     }
 
     // --- FOLLOWS ---

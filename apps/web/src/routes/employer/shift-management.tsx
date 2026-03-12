@@ -71,7 +71,7 @@ function ShiftManagementPage() {
               <p className="text-sm text-slate-500">Chưa có tin tuyển dụng nào có ca làm</p>
               <button
                 type="button"
-                onClick={() => navigate({ to: '/employer/post-job' })}
+                onClick={() => navigate({ to: '/employer/post-job', search: { editJobId: undefined } })}
                 className="mt-4 text-sm font-medium text-blue-600 hover:text-blue-700 cursor-pointer"
               >
                 Đăng tin mới →

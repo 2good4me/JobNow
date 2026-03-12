@@ -1,0 +1,15 @@
+src/features/auth/components/ReputationBadge.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/features/auth/components/ReputationStatsCard.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/features/chat/components/ChatList.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/features/chat/components/ChatList.tsx(6,29): error TS6196: 'ChatPermission' is declared but never used.
+src/features/chat/components/MessageBubble.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/features/jobs/services/applicationService.ts(1,52): error TS6133: 'orderBy' is declared but its value is never read.
+src/features/jobs/services/applicationService.ts(62,11): error TS6133: 'orderField' is declared but its value is never read.
+src/features/jobs/services/applicationService.ts(81,11): error TS6133: 'orderField' is declared but its value is never read.
+src/routes/candidate/index.tsx(4,3): error TS6133: 'Bell' is declared but its value is never read.
+src/routes/candidate/profile/index.tsx(6,3): error TS6133: 'Bell' is declared but its value is never read.
+src/routes/candidate/wishlist.tsx(4,32): error TS6133: 'HeartOff' is declared but its value is never read.
+src/routes/employer/profile/index.tsx(19,3): error TS6133: 'Star' is declared but its value is never read.
+src/routes/employer/profile/index.tsx(20,3): error TS6133: 'Users' is declared but its value is never read.
+src/routes/employer/shift-management.tsx(74,41): error TS2345: Argument of type '{ to: "/employer/post-job"; }' is not assignable to parameter of type 'NavigateOptions<RouterCore<Route<Register, any, "/", "/", string, "__root__", undefined, {}, {}, AnyContext, AnyContext, {}, undefined, RootRouteChildren, FileRouteTypes, unknown, unknown, undefined>, "never", false, RouterHistory, Record<...>>, string, "/employer/post-job", string, "">'.
+  Property 'search' is missing in type '{ to: "/employer/post-job"; }' but required in type 'MakeRequiredSearchParams<RouterCore<Route<Register, any, "/", "/", string, "__root__", undefined, {}, {}, AnyContext, AnyContext, {}, undefined, RootRouteChildren, FileRouteTypes, unknown, unknown, undefined>, "never", false, RouterHistory, Record<...>>, string, "/employer/post-job">'.

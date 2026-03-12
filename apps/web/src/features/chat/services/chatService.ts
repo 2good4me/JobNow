@@ -11,8 +11,10 @@ import {
   where,
   type QueryDocumentSnapshot,
   type Unsubscribe,
+  setDoc,
+  updateDoc,
+  serverTimestamp,
 } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
 import type {
   ChatPermission,
   Conversation,
@@ -23,7 +25,7 @@ import type {
   SendMessageInput,
   StartConversationInput,
 } from '@jobnow/types';
-import { db, functions } from '@/config/firebase';
+import { auth, db } from '@/config/firebase';
 
 type ChatRole = 'CANDIDATE' | 'EMPLOYER';
 
@@ -39,9 +41,7 @@ type SendMessageResult = {
   createdAt?: string;
 };
 
-type MarkConversationReadResult = {
-  success: boolean;
-};
+
 
 function toConversation(id: string, data: Record<string, unknown>): Conversation {
   return {
@@ -167,23 +167,144 @@ export function subscribeMessages(
 }
 
 export async function startConversation(input: StartConversationInput): Promise<StartConversationResult> {
-  const callable = httpsCallable<StartConversationInput, StartConversationResult>(functions, 'startConversation');
-  const { data } = await callable(input);
-  return data;
+  const conversationId = input.applicationId;
+  const convRef = doc(db, 'conversations', conversationId);
+  const snap = await getDoc(convRef);
+  
+  if (snap.exists()) {
+    const data = snap.data() as Record<string, unknown>;
+    return {
+      conversationId: snap.id,
+      status: (data.status as ConversationStatus) || 'PENDING',
+      chatPermission: (data.chat_permission as ChatPermission) || 'EMPLOYER_ONLY'
+    };
+  }
+
+  const appRef = doc(db, 'applications', input.applicationId);
+  const appSnap = await getDoc(appRef);
+  if (!appSnap.exists()) {
+    throw new Error('Đơn ứng tuyển không tồn tại.');
+  }
+
+  const appData = appSnap.data() as Record<string, unknown>;
+  const candidateId = String(appData?.candidate_id || appData?.candidateId || '');
+  const employerId = String(appData?.employer_id || appData?.employerId || '');
+  const jobId = String(appData?.job_id || appData?.jobId || '');
+  const status = String(appData?.status || 'NEW').toUpperCase();
+
+  let chatPermission: ChatPermission = 'EMPLOYER_ONLY';
+  if (['APPROVED', 'CHECKED_IN', 'COMPLETED'].includes(status)) chatPermission = 'TWO_WAY';
+  if (['REJECTED', 'CANCELLED'].includes(status)) chatPermission = 'NONE';
+
+  let conversationStatus: ConversationStatus = 'PENDING';
+  if (chatPermission === 'NONE') conversationStatus = 'CLOSED';
+  if (chatPermission === 'TWO_WAY') conversationStatus = 'ACTIVE';
+
+  await setDoc(convRef, {
+    application_id: input.applicationId,
+    job_id: jobId,
+    candidate_id: candidateId,
+    employer_id: employerId,
+    status: conversationStatus,
+    chat_permission: chatPermission,
+    candidate_unread_count: 0,
+    employer_unread_count: 0,
+    created_at: serverTimestamp(),
+    updated_at: serverTimestamp()
+  });
+
+  return { conversationId, status: conversationStatus, chatPermission };
 }
 
 export async function sendMessage(input: SendMessageInput): Promise<SendMessageResult> {
-  const callable = httpsCallable<SendMessageInput, SendMessageResult>(functions, 'sendChatMessage');
-  const { data } = await callable(input);
-  return data;
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error('Yêu cầu đăng nhập để gửi tin nhắn.');
+
+  const conversationId = input.conversationId || input.applicationId || '';
+  if (!conversationId) throw new Error('Thiếu conversationId để gửi tin nhắn.');
+  
+  const text = input.text.trim();
+  if (!text) throw new Error('Nội dung tin nhắn không được để trống.');
+
+  const convRef = doc(db, 'conversations', conversationId);
+  let convSnap = await getDoc(convRef);
+
+  if (!convSnap.exists()) {
+    if (input.applicationId) {
+      await startConversation({ applicationId: input.applicationId });
+      convSnap = await getDoc(convRef);
+    }
+  }
+
+  if (!convSnap.exists()) throw new Error('Hội thoại không tồn tại.');
+
+  const convData = convSnap.data() as Record<string, unknown>;
+  
+  const candidateId = String(convData.candidate_id || '');
+  const employerId = String(convData.employer_id || '');
+  const chatPermission = String(convData.chat_permission || 'EMPLOYER_ONLY');
+  const conversationStatus = String(convData.status || 'PENDING');
+
+  if (uid !== candidateId && uid !== employerId) {
+    throw new Error('Bạn không thuộc hội thoại này.');
+  }
+
+  if (conversationStatus === 'CLOSED' || conversationStatus === 'BLOCKED' || chatPermission === 'NONE') {
+    throw new Error('Hội thoại đã bị khóa.');
+  }
+
+  if (chatPermission === 'EMPLOYER_ONLY' && uid !== employerId) {
+    throw new Error('Ứng viên chưa được phép gửi tin nhắn lúc này (Cần nhà tuyển dụng duyệt trước).');
+  }
+
+  const senderRole = uid === employerId ? 'EMPLOYER' : 'CANDIDATE';
+  const clientMessageId = input.clientMessageId || `msg_${Date.now()}`;
+  const msgData = {
+    conversation_id: conversationId,
+    application_id: String(convData.application_id || ''),
+    sender_id: uid,
+    sender_role: senderRole,
+    message_type: 'TEXT',
+    text,
+    client_message_id: clientMessageId,
+    created_at: serverTimestamp(),
+  };
+
+  const msgsRef = collection(convRef, 'messages');
+  const newMsgRef = doc(msgsRef, clientMessageId);
+  
+  await setDoc(newMsgRef, msgData);
+
+  const candidateUnreadCount = Number(convData.candidate_unread_count || 0);
+  const employerUnreadCount = Number(convData.employer_unread_count || 0);
+
+  await updateDoc(convRef, {
+    status: chatPermission === 'TWO_WAY' ? 'ACTIVE' : conversationStatus,
+    last_message_text: text,
+    last_message_at: serverTimestamp(),
+    last_message_by: uid,
+    candidate_unread_count: senderRole === 'EMPLOYER' ? candidateUnreadCount + 1 : candidateUnreadCount,
+    employer_unread_count: senderRole === 'CANDIDATE' ? employerUnreadCount + 1 : employerUnreadCount,
+    updated_at: serverTimestamp(),
+  });
+
+  return { conversationId, messageId: newMsgRef.id, createdAt: new Date().toISOString() };
 }
 
 export async function markConversationRead(conversationId: string): Promise<void> {
-  const callable = httpsCallable<{ conversationId: string }, MarkConversationReadResult>(
-    functions,
-    'markConversationRead'
-  );
-  await callable({ conversationId });
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
+
+  const convRef = doc(db, 'conversations', conversationId);
+  const convSnap = await getDoc(convRef);
+  if (!convSnap.exists()) return;
+
+  const data = convSnap.data() as Record<string, unknown>;
+  if (uid === String(data.candidate_id || '')) {
+    await updateDoc(convRef, { candidate_unread_count: 0, updated_at: serverTimestamp() });
+  } else if (uid === String(data.employer_id || '')) {
+    await updateDoc(convRef, { employer_unread_count: 0, updated_at: serverTimestamp() });
+  }
 }
 
 export async function ensureConversationForApplication(applicationId: string): Promise<Conversation> {

@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import {
-  Bell, Briefcase,
+  Briefcase,
   ChevronRight, Clock, FileText,
   AlertCircle, Heart
 } from 'lucide-react';

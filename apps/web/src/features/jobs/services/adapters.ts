@@ -109,5 +109,8 @@ export function mapApplicationDocToApplication(id: string, data: Partial<Applica
         candidateSkills: getValue(data, ['candidate_skills', 'candidateSkills']) as string[] | undefined,
         candidateRating: getValue(data, ['candidate_rating', 'candidateRating']) as number | undefined,
         candidateVerified: getValue(data, ['candidate_verified', 'candidateVerified']) as boolean | undefined,
+        // ─── Denormalized job/shift info ───
+        jobTitle: getValue(data, ['job_title', 'jobTitle']) as string | undefined,
+        shiftTime: getValue(data, ['shift_time', 'shiftTime']) as string | undefined,
     };
 }
