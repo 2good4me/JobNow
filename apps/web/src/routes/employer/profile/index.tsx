@@ -16,8 +16,6 @@ import {
   Phone,
   Settings,
   ShieldCheck,
-  Star,
-  Users,
 } from 'lucide-react';
 import { ReputationStatsCard } from '@/features/auth/components/ReputationStatsCard';
 import { AchievementBadges, PREDEFINED_ACHIEVEMENTS } from '@/features/auth/components/AchievementBadges';
