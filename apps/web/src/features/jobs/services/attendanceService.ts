@@ -1,5 +1,11 @@
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '@/config/firebase';
+import {
+    collection,
+    doc,
+    getDoc,
+    writeBatch,
+    serverTimestamp,
+} from 'firebase/firestore';
+import { db } from '@/config/firebase';
 import type { CheckInInput, CheckInResult, CheckOutInput } from '@jobnow/types';
 
 export interface GpsValidationInput {
@@ -30,8 +36,8 @@ function calculateDistanceMeters(lat1: number, lng1: number, lat2: number, lng2:
 }
 
 export function validateGpsClientSide(input: GpsValidationInput): GpsValidationResult {
-    const radius = input.radiusMeters ?? 100;
-    const maxAccuracy = input.maxAccuracyMeters ?? 50;
+    const radius = input.radiusMeters ?? 200; // Tăng bán kính lên 200m cho linh hoạt
+    const maxAccuracy = input.maxAccuracyMeters ?? 100; // Chấp nhận độ chính xác thấp hơn một chút
 
     if (input.accuracy > maxAccuracy) {
         return {
@@ -57,14 +63,93 @@ export function validateGpsClientSide(input: GpsValidationInput): GpsValidationR
     };
 }
 
+/**
+ * Performs check-in directly using Firestore SDK.
+ * Validates GPS location against the job location before writing.
+ */
 export async function checkIn(input: CheckInInput): Promise<CheckInResult> {
-    const callable = httpsCallable<CheckInInput, CheckInResult>(functions, 'checkIn');
-    const { data } = await callable(input);
-    return data;
+    try {
+        const appRef = doc(db, 'applications', input.applicationId);
+        const appSnap = await getDoc(appRef);
+        if (!appSnap.exists()) throw new Error('Đơn ứng tuyển không tồn tại.');
+
+        const appData = appSnap.data();
+        const jobId = appData.job_id || appData.jobId;
+        if (!jobId) throw new Error('Không tìm thấy thông tin công việc.');
+
+        const jobSnap = await getDoc(doc(db, 'jobs', jobId));
+        if (!jobSnap.exists()) throw new Error('Công việc không tồn tại.');
+        const jobData = jobSnap.data();
+
+        // Validate GPS
+        const validation = validateGpsClientSide({
+            userLat: input.latitude,
+            userLng: input.longitude,
+            targetLat: jobData.location.latitude,
+            targetLng: jobData.location.longitude,
+            accuracy: input.accuracy,
+        });
+
+        if (!validation.valid) {
+            if (validation.reason === 'out_of_radius') {
+                throw new Error(`Bạn đang ở cách địa điểm làm việc ${Math.round(validation.distanceMeters)}m, vui lòng đến gần hơn.`);
+            }
+            throw new Error('Vị trí GPS không chính xác hoặc không hợp lệ.');
+        }
+
+        const batch = writeBatch(db);
+        
+        // Update application status
+        batch.update(appRef, {
+            status: 'CHECKED_IN',
+            updated_at: serverTimestamp(),
+        });
+
+        // Add check-in record
+        const checkinRef = doc(collection(appRef, 'checkins'));
+        batch.set(checkinRef, {
+            type: 'GPS',
+            check_in_time: serverTimestamp(),
+            status: 'CHECKED_IN',
+            gps_location: {
+                latitude: input.latitude,
+                longitude: input.longitude,
+            },
+            created_at: serverTimestamp(),
+            distance_meters: validation.distanceMeters,
+        });
+
+        await batch.commit();
+
+        return {
+            checkinId: checkinRef.id,
+            status: 'CHECKED_IN',
+            method: 'GPS',
+            distanceMeters: validation.distanceMeters,
+        };
+    } catch (error: any) {
+        console.error('Error in checkIn:', error);
+        throw error; // Ném lỗi gốc để giữ lại error.code
+    }
 }
 
+/**
+ * Performs check-out directly using Firestore SDK.
+ */
 export async function checkOut(input: CheckOutInput): Promise<{ success: boolean }> {
-    const callable = httpsCallable<CheckOutInput, { success: boolean }>(functions, 'checkOut');
-    const { data } = await callable(input);
-    return data;
+    try {
+        const appRef = doc(db, 'applications', input.applicationId);
+        
+        await writeBatch(db)
+            .update(appRef, {
+                status: 'COMPLETED',
+                updated_at: serverTimestamp(),
+            })
+            .commit();
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error in checkOut:', error);
+        throw new Error('Không thể check-out. Vui lòng thử lại.');
+    }
 }
