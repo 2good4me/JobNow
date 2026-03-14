@@ -129,3 +129,46 @@ export const PREDEFINED_ACHIEVEMENTS: Achievement[] = [
     unlocked: false,
   },
 ];
+
+export const CANDIDATE_ACHIEVEMENTS: Achievement[] = [
+  {
+    id: 'active-worker',
+    name: '💪 Ong Chăm Chỉ',
+    description: 'Hoàn thành 10 ca làm việc đầu tiên',
+    icon: Zap,
+    color: 'amber',
+    unlocked: true,
+  },
+  {
+    id: 'top-rated-candidate',
+    name: '🌟 Ngôi Sao Sáng',
+    description: 'Đạt đánh giá trung bình 5.0 từ 5 nhà tuyển dụng',
+    icon: Trophy,
+    color: 'rose',
+    unlocked: true,
+  },
+  {
+    id: 'verified-candidate',
+    name: '🛡️ Hồ Sơ Tin Cậy',
+    description: 'Đã hoàn thành xác minh CCCD/eKYC',
+    icon: Shield,
+    color: 'blue',
+    unlocked: true,
+  },
+  {
+    id: 'fast-learner',
+    name: '⚡ Tiếp Thu Nhanh',
+    description: 'Được nhà tuyển dụng đánh giá cao khả năng thích nghi',
+    icon: Flame,
+    color: 'purple',
+    unlocked: false,
+  },
+  {
+    id: 'reliable-partner',
+    name: '🤝 Đối Tác Tin Cậy',
+    description: 'Không bao giờ bỏ ca hoặc đi muộn',
+    icon: Check,
+    color: 'emerald',
+    unlocked: false,
+  },
+];

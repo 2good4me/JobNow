@@ -67,6 +67,25 @@ function JobDetailPage() {
     }
   };
 
+  const handleShare = async () => {
+    const shareData = {
+      title: job?.title || 'Việc làm trên JobNow',
+      text: `Ứng tuyển ngay: ${job?.title} tại ${job?.employerName}`,
+      url: window.location.href,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        toast.success('Đã sao chép liên kết vào bộ nhớ tạm');
+      }
+    } catch (err) {
+      console.error('Error sharing:', err);
+    }
+  };
+
   // Check if candidate has already applied to this shift
   const { data: existingApplication } = useQuery({
     queryKey: ['application', jobId, userProfile?.uid, selectedShiftId],
@@ -164,7 +183,10 @@ function JobDetailPage() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-3">
-            <button className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 transition-colors">
+            <button 
+              onClick={handleShare}
+              className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 transition-colors"
+            >
               <Share2 className="w-5 h-5" />
             </button>
             <button

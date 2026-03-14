@@ -46,6 +46,7 @@ import { Route as EmployerProfileEditRouteImport } from './routes/employer/profi
 import { Route as EmployerCandidateCandidateIdRouteImport } from './routes/employer/candidate.$candidateId'
 import { Route as CandidateProfileVerifyRouteImport } from './routes/candidate/profile/verify'
 import { Route as CandidateProfileSettingsRouteImport } from './routes/candidate/profile/settings'
+import { Route as CandidateProfileReputationRouteImport } from './routes/candidate/profile/reputation'
 import { Route as CandidateProfileEditRouteImport } from './routes/candidate/profile/edit'
 import { Route as CandidateJobsJobIdRouteImport } from './routes/candidate/jobs/$jobId'
 import { Route as CandidateEmployerEmployerIdRouteImport } from './routes/candidate/employer/$employerId'
@@ -248,6 +249,12 @@ const CandidateProfileSettingsRoute =
     path: '/settings',
     getParentRoute: () => CandidateProfileRoute,
   } as any)
+const CandidateProfileReputationRoute =
+  CandidateProfileReputationRouteImport.update({
+    id: '/reputation',
+    path: '/reputation',
+    getParentRoute: () => CandidateProfileRoute,
+  } as any)
 const CandidateProfileEditRoute = CandidateProfileEditRouteImport.update({
   id: '/edit',
   path: '/edit',
@@ -345,6 +352,7 @@ export interface FileRoutesByFullPath {
   '/candidate/employer/$employerId': typeof CandidateEmployerEmployerIdRoute
   '/candidate/jobs/$jobId': typeof CandidateJobsJobIdRoute
   '/candidate/profile/edit': typeof CandidateProfileEditRoute
+  '/candidate/profile/reputation': typeof CandidateProfileReputationRoute
   '/candidate/profile/settings': typeof CandidateProfileSettingsRoute
   '/candidate/profile/verify': typeof CandidateProfileVerifyRoute
   '/employer/candidate/$candidateId': typeof EmployerCandidateCandidateIdRoute
@@ -392,6 +400,7 @@ export interface FileRoutesByTo {
   '/candidate/employer/$employerId': typeof CandidateEmployerEmployerIdRoute
   '/candidate/jobs/$jobId': typeof CandidateJobsJobIdRoute
   '/candidate/profile/edit': typeof CandidateProfileEditRoute
+  '/candidate/profile/reputation': typeof CandidateProfileReputationRoute
   '/candidate/profile/settings': typeof CandidateProfileSettingsRoute
   '/candidate/profile/verify': typeof CandidateProfileVerifyRoute
   '/employer/candidate/$candidateId': typeof EmployerCandidateCandidateIdRoute
@@ -443,6 +452,7 @@ export interface FileRoutesById {
   '/candidate/employer/$employerId': typeof CandidateEmployerEmployerIdRoute
   '/candidate/jobs/$jobId': typeof CandidateJobsJobIdRoute
   '/candidate/profile/edit': typeof CandidateProfileEditRoute
+  '/candidate/profile/reputation': typeof CandidateProfileReputationRoute
   '/candidate/profile/settings': typeof CandidateProfileSettingsRoute
   '/candidate/profile/verify': typeof CandidateProfileVerifyRoute
   '/employer/candidate/$candidateId': typeof EmployerCandidateCandidateIdRoute
@@ -495,6 +505,7 @@ export interface FileRouteTypes {
     | '/candidate/employer/$employerId'
     | '/candidate/jobs/$jobId'
     | '/candidate/profile/edit'
+    | '/candidate/profile/reputation'
     | '/candidate/profile/settings'
     | '/candidate/profile/verify'
     | '/employer/candidate/$candidateId'
@@ -542,6 +553,7 @@ export interface FileRouteTypes {
     | '/candidate/employer/$employerId'
     | '/candidate/jobs/$jobId'
     | '/candidate/profile/edit'
+    | '/candidate/profile/reputation'
     | '/candidate/profile/settings'
     | '/candidate/profile/verify'
     | '/employer/candidate/$candidateId'
@@ -592,6 +604,7 @@ export interface FileRouteTypes {
     | '/candidate/employer/$employerId'
     | '/candidate/jobs/$jobId'
     | '/candidate/profile/edit'
+    | '/candidate/profile/reputation'
     | '/candidate/profile/settings'
     | '/candidate/profile/verify'
     | '/employer/candidate/$candidateId'
@@ -907,6 +920,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CandidateProfileSettingsRouteImport
       parentRoute: typeof CandidateProfileRoute
     }
+    '/candidate/profile/reputation': {
+      id: '/candidate/profile/reputation'
+      path: '/reputation'
+      fullPath: '/candidate/profile/reputation'
+      preLoaderRoute: typeof CandidateProfileReputationRouteImport
+      parentRoute: typeof CandidateProfileRoute
+    }
     '/candidate/profile/edit': {
       id: '/candidate/profile/edit'
       path: '/edit'
@@ -989,6 +1009,7 @@ declare module '@tanstack/react-router' {
 
 interface CandidateProfileRouteChildren {
   CandidateProfileEditRoute: typeof CandidateProfileEditRoute
+  CandidateProfileReputationRoute: typeof CandidateProfileReputationRoute
   CandidateProfileSettingsRoute: typeof CandidateProfileSettingsRoute
   CandidateProfileVerifyRoute: typeof CandidateProfileVerifyRoute
   CandidateProfileIndexRoute: typeof CandidateProfileIndexRoute
@@ -996,6 +1017,7 @@ interface CandidateProfileRouteChildren {
 
 const CandidateProfileRouteChildren: CandidateProfileRouteChildren = {
   CandidateProfileEditRoute: CandidateProfileEditRoute,
+  CandidateProfileReputationRoute: CandidateProfileReputationRoute,
   CandidateProfileSettingsRoute: CandidateProfileSettingsRoute,
   CandidateProfileVerifyRoute: CandidateProfileVerifyRoute,
   CandidateProfileIndexRoute: CandidateProfileIndexRoute,

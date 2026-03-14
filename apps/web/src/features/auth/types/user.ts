@@ -18,6 +18,8 @@ export interface UserProfile {
     skills: string[];
     achievements?: string[];
     identity_images: string[];
+    birthday?: string;
+    experience?: string;
     created_at: Date;
     updated_at: Date;
 

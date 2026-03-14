@@ -188,21 +188,12 @@ export async function startConversation(input: StartConversationInput): Promise<
   let employerId = input.employerId || '';
   let candidateId = '';
   let jobId = input.jobId || '';
-  let chatPermission: ChatPermission = 'EMPLOYER_ONLY';
-  let conversationStatus: ConversationStatus = 'PENDING';
 
   if (input.applicationId) {
     const appRef = doc(db, 'applications', input.applicationId);
     const appSnap = await getDoc(appRef);
     if (appSnap.exists()) {
-      const appData = appSnap.data() as Record<string, unknown>;
-      jobId = jobId || String(appData?.job_id || appData?.jobId || '');
-      employerId = employerId || String(appData?.employer_id || appData?.employerId || '');
-      candidateId = String(appData?.candidate_id || appData?.candidateId || '');
-      const appStatus = String(appData?.status || 'NEW').toUpperCase();
-      
-      if (['APPROVED', 'CHECKED_IN', 'COMPLETED'].includes(appStatus)) chatPermission = 'TWO_WAY';
-      if (['REJECTED', 'CANCELLED'].includes(appStatus)) chatPermission = 'NONE';
+      // Logic for chatPermission and conversationStatus is now handled globally below
     }
   }
 
@@ -258,16 +249,16 @@ export async function startConversation(input: StartConversationInput): Promise<
 
     // Priority 4: Search by Candidate + Employer (Unified Chat)
     if (!conversationId && candidateId && employerId) {
-       const q = query(
-         collection(db, 'conversations'),
-         where('candidate_id', '==', candidateId),
-         where('employer_id', '==', employerId),
-         limit(1)
-       );
-       const qSnap = await getDocs(q);
-       if (!qSnap.empty) {
-         conversationId = qSnap.docs[0].id;
-       }
+      const q = query(
+        collection(db, 'conversations'),
+        where('candidate_id', '==', candidateId),
+        where('employer_id', '==', employerId),
+        limit(1)
+      );
+      const qSnap = await getDocs(q);
+      if (!qSnap.empty) {
+        conversationId = qSnap.docs[0].id;
+      }
     }
 
   // Final identity to use for creation or return
@@ -278,22 +269,61 @@ export async function startConversation(input: StartConversationInput): Promise<
 
   const convRef = doc(db, 'conversations', finalId);
   const snap = await getDoc(convRef);
-  
+
+  // Helper to fetch/refresh names
+  const fetchParticipantNames = async () => {
+    let cName = '';
+    let cAvatar = '';
+    let eName = '';
+    let eAvatar = '';
+    try {
+      const [cSnap, eSnap] = await Promise.all([
+        getDoc(doc(db, 'users', candidateId)),
+        getDoc(doc(db, 'users', employerId))
+      ]);
+      if (cSnap.exists()) {
+        const d = cSnap.data();
+        cName = d.fullName || d.full_name || '';
+        cAvatar = d.avatarUrl || d.avatar_url || '';
+      }
+      if (eSnap.exists()) {
+        const d = eSnap.data();
+        eName = d.fullName || d.full_name || '';
+        eAvatar = d.avatarUrl || d.avatar_url || '';
+      }
+    } catch (e) {
+      console.warn('Error fetching participant names:', e);
+    }
+    return { cName, cAvatar, eName, eAvatar };
+  };
+
   if (snap.exists()) {
     const data = snap.data() as Record<string, unknown>;
-    let currentStatus = (data.status as ConversationStatus) || 'PENDING';
-    let currentPermission = (data.chat_permission ?? data.chatPermission ?? 'EMPLOYER_ONLY') as ChatPermission;
+    
+    // Always upgrade to ACTIVE and TWO_WAY as requested
+    let currentStatus = 'ACTIVE';
+    let currentPermission = 'TWO_WAY';
 
-    // REACTIVATION LOGIC:
-    // If the conversation is currently locked (CLOSED/NONE) but being re-started via jobId
-    // we should potentially unlock it if the context warrants it.
     let needsUpdate = false;
-    if (currentStatus === 'CLOSED' || currentPermission === 'NONE') {
-      if (!input.applicationId || currentPermission === 'TWO_WAY') {
-        currentStatus = 'ACTIVE';
-        currentPermission = 'TWO_WAY';
+    if (data.status !== 'ACTIVE' || (data.chat_permission || data.chatPermission) !== 'TWO_WAY') {
         needsUpdate = true;
-      }
+    }
+
+    // Refresh names if they are generic or missing
+    const candName = String(data.candidate_name || '');
+    const hasGenericNames = !candName || candName.toLowerCase() === 'người dùng' || candName === 'Ứng viên' || 
+                           !data.employer_name || data.employer_name === 'Nhà tuyển dụng';
+    
+    let nameUpdates = {};
+    if (hasGenericNames) {
+        const { cName, cAvatar, eName, eAvatar } = await fetchParticipantNames();
+        nameUpdates = {
+            candidate_name: cName || data.candidate_name || 'Ứng viên',
+            candidate_avatar: cAvatar || data.candidate_avatar || '',
+            employer_name: eName || data.employer_name || 'Nhà tuyển dụng',
+            employer_avatar: eAvatar || data.employer_avatar || '',
+        };
+        needsUpdate = true;
     }
 
     if (needsUpdate || (input.applicationId && data.application_id !== input.applicationId)) {
@@ -305,13 +335,16 @@ export async function startConversation(input: StartConversationInput): Promise<
         applicationId: input.applicationId || data.applicationId || '',
         job_id: jobId || data.job_id || '',
         jobId: jobId || data.jobId || '',
+        updated_at: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        ...nameUpdates
       });
     }
 
     return {
       conversationId: snap.id,
-      status: currentStatus,
-      chatPermission: currentPermission
+      status: currentStatus as ConversationStatus,
+      chatPermission: currentPermission as ChatPermission
     };
   }
 
@@ -319,69 +352,38 @@ export async function startConversation(input: StartConversationInput): Promise<
     throw new Error('Không tìm thấy thông tin nhà tuyển dụng cho bài đăng này.');
   }
 
-  // 3. Fetch User profile details for better UI
-  let candidateName = 'Người dùng';
-  let candidateAvatar = '';
-  let employerName = 'Nhà tuyển dụng';
-  let employerAvatar = '';
-
-  try {
-    const [cSnap, eSnap] = await Promise.all([
-      getDoc(doc(db, 'users', candidateId)),
-      getDoc(doc(db, 'users', employerId))
-    ]);
-
-    if (cSnap.exists()) {
-      const cData = cSnap.data();
-      candidateName = cData.fullName || cData.full_name || 'Ứng viên';
-      candidateAvatar = cData.avatarUrl || cData.avatar_url || '';
-    }
-    if (eSnap.exists()) {
-      const eData = eSnap.data();
-      employerName = eData.fullName || eData.full_name || 'Nhà tuyển dụng';
-      employerAvatar = eData.avatarUrl || eData.avatar_url || '';
-    }
-  } catch (err) {
-    console.warn('Could not fetch profile details for conversation:', err);
-  }
+  // 3. Fetch User profile details for new creation
+  const { cName, cAvatar, eName, eAvatar } = await fetchParticipantNames();
 
   // Double check that the current user is a participant
   if (uid !== candidateId && uid !== employerId) {
     throw new Error('Bạn không có quyền tham gia hội thoại này.');
   }
 
-  // For Job-based chat or approved applications, allow 2-way
-  if (!input.applicationId) {
-    chatPermission = 'TWO_WAY';
-    conversationStatus = 'ACTIVE';
-  } else if (chatPermission === 'TWO_WAY') {
-    conversationStatus = 'ACTIVE';
-  }
-
+  // Always TWO_WAY and ACTIVE for everyone
   const newDoc = {
     application_id: input.applicationId || '',
     job_id: jobId,
     candidate_id: candidateId,
     employer_id: employerId,
-    status: conversationStatus,
-    chat_permission: chatPermission,
-    chatPermission: chatPermission, // Consistency
+    status: 'ACTIVE',
+    chat_permission: 'TWO_WAY',
+    chatPermission: 'TWO_WAY',
     candidate_unread_count: 0,
     employer_unread_count: 0,
-    candidate_name: candidateName,
-    candidate_avatar: candidateAvatar,
-    employer_name: employerName,
-    employer_avatar: employerAvatar,
+    candidate_name: cName || 'Ứng viên',
+    candidate_avatar: cAvatar || '',
+    employer_name: eName || 'Nhà tuyển dụng',
+    employer_avatar: eAvatar || '',
     created_at: serverTimestamp(),
     updated_at: serverTimestamp(),
-    // Standard fields for consistent queries
     candidateId: candidateId,
     employerId: employerId
   };
 
   await setDoc(convRef, newDoc);
 
-  return { conversationId, status: conversationStatus, chatPermission };
+  return { conversationId: finalId, status: 'ACTIVE' as ConversationStatus, chatPermission: 'TWO_WAY' as ChatPermission };
 }
 
 export async function sendMessage(input: SendMessageInput): Promise<SendMessageResult> {
@@ -413,7 +415,6 @@ export async function sendMessage(input: SendMessageInput): Promise<SendMessageR
   
   const candidateId = String(convData.candidate_id || convData.candidateId || '');
   const employerId = String(convData.employer_id || convData.employerId || '');
-  const chatPermission = String(convData.chat_permission || convData.chatPermission || 'EMPLOYER_ONLY');
   const conversationStatus = String(convData.status || 'PENDING');
 
   const senderRole = uid === employerId ? 'EMPLOYER' : 'CANDIDATE';
@@ -427,25 +428,14 @@ export async function sendMessage(input: SendMessageInput): Promise<SendMessageR
     throw new Error('Hội thoại đã bị khóa.');
   }
 
-  if (senderRole === 'CANDIDATE') {
-    // Candidates are restricted by more states
-    if (conversationStatus === 'CLOSED' || chatPermission === 'NONE') {
-      throw new Error('Hội thoại đã bị khóa.');
-    }
-    if (chatPermission === 'EMPLOYER_ONLY') {
-      throw new Error('Ứng viên chưa được phép gửi tin nhắn lúc này (Cần nhà tuyển dụng duyệt trước).');
-    }
-  }
-  // Employers can proceed even if CLOSED or chatPermission === 'NONE'
-  // (We will auto-activate the status in the update block below)
-
+  // Everyone can send messages if they are in the conversation.
   const clientMessageId = input.clientMessageId || `msg_${Date.now()}`;
   
   const msgData = {
     conversation_id: conversationId,
     application_id: String(convData.application_id || convData.applicationId || ''),
-    sender_id: uid, // rule check
-    senderId: uid,  // UI/Queries consistency
+    sender_id: uid, 
+    senderId: uid, 
     sender_role: senderRole,
     message_type: 'TEXT',
     text,
@@ -462,19 +452,11 @@ export async function sendMessage(input: SendMessageInput): Promise<SendMessageR
     const candidateUnreadCount = Number(convData.candidate_unread_count || convData.candidateUnreadCount || 0);
     const employerUnreadCount = Number(convData.employer_unread_count || convData.employerUnreadCount || 0);
 
-    const nextStatus = (senderRole === 'EMPLOYER' || chatPermission === 'TWO_WAY' || conversationStatus === 'PENDING') 
-      ? 'ACTIVE' 
-      : conversationStatus;
-
-    // If employer sends to a NONE chat, we should upgrade permission to TWO_WAY or at least something active
-    const nextPermission = (senderRole === 'EMPLOYER' && chatPermission === 'NONE') 
-      ? 'TWO_WAY' 
-      : chatPermission;
-
+    // Always ensure ACTIVE status and TWO_WAY permission on every message
     const updateData: Record<string, any> = {
-      status: nextStatus,
-      chat_permission: nextPermission,
-      chatPermission: nextPermission, // Consistency
+      status: 'ACTIVE',
+      chat_permission: 'TWO_WAY',
+      chatPermission: 'TWO_WAY',
       last_message_text: text,
       last_message_at: serverTimestamp(),
       last_message_by: uid,

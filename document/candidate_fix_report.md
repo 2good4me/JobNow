@@ -6,27 +6,27 @@
 
 ## 🔴 CRITICAL – Phải sửa ngay
 
-### 1. Rating hardcoded = 4.8 (2 nơi)
+### 1. [DONE] Rating hardcoded = 4.8 (2 nơi)
 - **File:** `routes/candidate/profile/index.tsx` dòng 61
 - **File:** `routes/candidate/jobs/$jobId.tsx` dòng 182
 - **Vấn đề:** Điểm đánh giá luôn hiển thị 4.8, không lấy từ database
 - **Hướng sửa:** Lấy từ Firestore hoặc hiển thị "Chưa có đánh giá"
 
-### 2. Employer score hardcoded = 98
+### 2. [DONE] Employer score hardcoded = 98
 - **File:** `routes/candidate/jobs/$jobId.tsx` dòng 313
 - **Vấn đề:** Điểm uy tín nhà tuyển dụng luôn là 98
 - **Hướng sửa:** Lấy `reputation_score` từ employer document
 
-### 3. Badge "ĐÃ XÁC THỰC" luôn hiện
+### 3. [DONE] Badge "ĐÃ XÁC THỰC" luôn hiện
 - **File:** `routes/candidate/jobs/$jobId.tsx` dòng 169
 - **Vấn đề:** Tất cả tin tuyển dụng đều hiển thị badge xác thực
 - **Hướng sửa:** Kiểm tra `employer.verification_status === 'VERIFIED'`
 
-### 4. Wallet chưa có trang UI
+### 4. [DONE] Wallet chưa có trang UI
 - **Trạng thái:** Có hooks (`features/wallet/hooks/useWallet.ts`) nhưng chưa có route
 - **Hướng sửa:** Tạo `/candidate/wallet` với UI số dư + lịch sử giao dịch
 
-### 5. Hệ thống Review/Rating chưa tồn tại
+### 5. [DONE] Hệ thống Review/Rating chưa tồn tại
 - **Vấn đề:** Không có collection `reviews` trong Firestore, không có UI đánh giá
 - **Hướng sửa:** Thiết kế flow: Candidate đánh giá employer sau hoàn thành ca
 
@@ -34,32 +34,32 @@
 
 ## 🟠 HIGH – Nên sửa sớm
 
-### 6. Nút Share không hoạt động
+### 6. [DONE] Nút Share không hoạt động
 - **File:** `routes/candidate/jobs/$jobId.tsx` dòng 154
 - **Vấn đề:** Nút `Share2` chỉ là placeholder, không có `onClick`
 - **Hướng sửa:** Dùng Web Share API hoặc copy link to clipboard
 
-### 7. Nút Chat trong Job Detail không hoạt động
+### 7. [DONE] Nút Chat trong Job Detail không hoạt động
 - **File:** `routes/candidate/jobs/$jobId.tsx` dòng 330
 - **Vấn đề:** Nút `MessageSquare` trong bottom action bar không có logic
 - **Hướng sửa:** Navigate đến `/candidate/chat` với context của employer
 
-### 8. Profile Edit thiếu upload avatar
+### 8. [DONE] Profile Edit thiếu upload avatar
 - **File:** `routes/candidate/profile/edit.tsx`
 - **Vấn đề:** Không có cách tải ảnh đại diện
 - **Hướng sửa:** Thêm Firebase Storage upload + crop
 
-### 9. Profile Edit thiếu nhiều trường
+### 9. [DONE] Profile Edit thiếu nhiều trường
 - **File:** `routes/candidate/profile/edit.tsx`
 - **Thiếu:** Ngày sinh, email, kỹ năng, kinh nghiệm làm việc
 - **Hướng sửa:** Thêm các input field + select/multi-select
 
-### 10. Shift cards hiển thị ID thay vì tên việc
+### 10. [DONE] Shift cards hiển thị ID thay vì tên việc
 - **File:** `routes/candidate/shifts.tsx` dòng 54, 100
 - **Vấn đề:** Hiển thị "Đơn #abc12345" thay vì tên job + employer
 - **Hướng sửa:** Query `jobTitle` từ application hoặc job document
 
-### 11. Dashboard load tất cả jobs
+### 11. [DONE] Dashboard load tất cả jobs
 - **File:** `routes/candidate/index.tsx` dòng 26
 - **Vấn đề:** `useAllJobs()` load toàn bộ, không recommend theo vị trí/ngành
 - **Hướng sửa:** Implement thuật toán đề xuất hoặc filter theo gần nhất
@@ -122,8 +122,8 @@
 
 | Mức độ | Số lượng | Tình trạng |
 |--------|----------|-----------|
-| 🔴 Critical | 5 | Phải xử lý Sprint 1 |
-| 🟠 High | 6 | Nên làm Sprint 1-2 |
-| 🟡 Medium | 7 | Sprint 2-3 |
+| 🔴 Critical | 5 | ✅ Đã xong |
+| 🟠 High | 6 | ✅ Đã xong (6/6) |
+| 🟡 Medium | 7 | 0/7 Đang xử lý |
 | 🟢 Low | 5 | Backlog |
-| **Tổng** | **23 items** | |
+| **Tổng** | **23 items** | **11/23 completed** |
