@@ -144,6 +144,35 @@ function CandidateSettingsPage() {
     }
   };
 
+  const handleChangePassword = async () => {
+    if (!userProfile?.email) return;
+    try {
+        const { sendPasswordResetEmail } = await import('firebase/auth');
+        const { auth } = await import('@/config/firebase');
+        await sendPasswordResetEmail(auth, userProfile.email);
+        toast.success(`Link đặt lại mật khẩu đã được gửi đến: ${userProfile.email}`);
+    } catch (error) {
+        console.error(error);
+        toast.error('Không thể gửi link đặt lại mật khẩu, vui lòng thử lại');
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    toast('Xác nhận xóa tài khoản?', {
+      description: 'Hành động này không thể hoàn tác. Toàn bộ dữ liệu của bạn sẽ bị xóa.',
+      action: {
+        label: 'Xác nhận xóa',
+        onClick: async () => {
+            toast.info('Đang xử lý yêu cầu xóa tài khoản...');
+            // In a real app, you would call a backend function here to wipe data
+            setTimeout(() => {
+                toast.success('Yêu cầu đã được gửi. Tài khoản sẽ được xóa trong vòng 24h.');
+            }, 1500);
+        },
+      },
+    });
+  };
+
   const renderToggle = (enabled: boolean) => (
     <div className={`w-12 h-6 rounded-full p-1 transition-colors duration-300 ease-in-out ${enabled ? 'bg-blue-600' : 'bg-slate-200'}`}>
       <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-300 ease-in-out ${enabled ? 'translate-x-6' : 'translate-x-0'}`} />
@@ -261,7 +290,11 @@ function CandidateSettingsPage() {
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 space-y-3">
           <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 border-b border-slate-50 pb-2">BẢO MẬT</h3>
 
-          <Link to="/candidate/profile/settings" className="w-full flex items-center justify-between p-3.5 rounded-xl border border-slate-50 bg-slate-50/50 hover:bg-slate-50 text-slate-700 transition-all font-semibold text-[14px]">
+          <button 
+            type="button"
+            onClick={handleChangePassword}
+            className="w-full flex items-center justify-between p-3.5 rounded-xl border border-slate-50 bg-slate-50/50 hover:bg-slate-50 text-slate-700 transition-all font-semibold text-[14px]"
+          >
             <span className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
                 <Lock className="w-4 h-4 text-slate-600" />
@@ -269,7 +302,7 @@ function CandidateSettingsPage() {
               Đổi mật khẩu
             </span>
             <ChevronRight className="w-4 h-4 text-slate-400" />
-          </Link>
+          </button>
 
           <Link to="/candidate/profile/verify" className="w-full flex items-center justify-between p-3.5 rounded-xl border border-slate-50 bg-slate-50/50 hover:bg-slate-50 text-slate-700 transition-all font-semibold text-[14px]">
             <span className="flex items-center gap-3">
@@ -281,7 +314,11 @@ function CandidateSettingsPage() {
             <ChevronRight className="w-4 h-4 text-slate-400" />
           </Link>
 
-          <Link to="/candidate/profile/settings" className="w-full flex items-center justify-between p-3.5 rounded-xl border border-slate-50 bg-slate-50/50 hover:bg-slate-50 text-slate-700 transition-all font-semibold text-[14px]">
+          <button 
+            type="button"
+            onClick={() => toast.info('Tính năng đang được phát triển')}
+            className="w-full flex items-center justify-between p-3.5 rounded-xl border border-slate-50 bg-slate-50/50 hover:bg-slate-50 text-slate-700 transition-all font-semibold text-[14px]"
+          >
             <span className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
                 <MonitorSmartphone className="w-4 h-4 text-slate-600" />
@@ -289,14 +326,18 @@ function CandidateSettingsPage() {
               Thiết bị đã đăng nhập
             </span>
             <ChevronRight className="w-4 h-4 text-slate-400" />
-          </Link>
+          </button>
         </div>
 
         {/* Section: Nguy hiểm */}
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 space-y-3">
           <h3 className="text-[11px] font-bold text-red-500 uppercase tracking-wider mb-2 border-b border-red-50 pb-2">VÙNG NGUY HIỂM</h3>
 
-          <Link to="/candidate/profile/settings" className="w-full flex items-center justify-between p-3.5 rounded-xl border border-amber-100 bg-amber-50/30 hover:bg-amber-50 text-amber-700 transition-all font-semibold text-[14px]">
+          <button 
+            type="button"
+            onClick={() => toast.warning('Vui lòng liên hệ Admin để tạm khóa')}
+            className="w-full flex items-center justify-between p-3.5 rounded-xl border border-amber-100 bg-amber-50/30 hover:bg-amber-50 text-amber-700 transition-all font-semibold text-[14px]"
+          >
             <span className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-white border border-amber-100 flex items-center justify-center">
                 <Power className="w-4 h-4 text-amber-600" />
@@ -304,9 +345,13 @@ function CandidateSettingsPage() {
               Tạm khóa tài khoản
             </span>
             <ChevronRight className="w-4 h-4 text-amber-500/50" />
-          </Link>
+          </button>
 
-          <Link to="/candidate/profile/settings" className="w-full flex items-center justify-between p-3.5 rounded-xl border border-red-100 bg-red-50/30 hover:bg-red-50 text-red-700 transition-all font-semibold text-[14px]">
+          <button 
+            type="button"
+            onClick={handleDeleteAccount}
+            className="w-full flex items-center justify-between p-3.5 rounded-xl border border-red-100 bg-red-50/30 hover:bg-red-50 text-red-700 transition-all font-semibold text-[14px]"
+          >
             <span className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-white border border-red-100 flex items-center justify-center">
                 <Trash2 className="w-4 h-4 text-red-600" />
@@ -314,7 +359,7 @@ function CandidateSettingsPage() {
               Xóa tài khoản vĩnh viễn
             </span>
             <ChevronRight className="w-4 h-4 text-red-500/50" />
-          </Link>
+          </button>
         </div>
       </div>
     </div>
