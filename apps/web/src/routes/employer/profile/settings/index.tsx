@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   Check,
@@ -15,20 +15,134 @@ import {
   Sun,
   Trash2,
 } from 'lucide-react';
+import { useAuth } from '@/features/auth/context/AuthContext';
+import { updateUserDocument } from '@/lib/firestore';
+import { toast } from 'sonner';
 
 export const Route = createFileRoute('/employer/profile/settings/')({
   component: EmployerSettingsIndexPage,
 });
 
+const DARK_MODE_STORAGE_KEY = 'employer_settings_dark_mode';
+const LANGUAGE_STORAGE_KEY = 'employer_settings_language';
+
+const languageOptions = [
+  { value: 'vi', label: 'Tiếng Việt' },
+  { value: 'en', label: 'English' },
+] as const;
+
+type LanguageCode = (typeof languageOptions)[number]['value'];
+
 function EmployerSettingsIndexPage() {
   const navigate = useNavigate();
+  const { userProfile, refreshProfile } = useAuth();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isPushEnabled, setIsPushEnabled] = useState(true);
   const [isEmailEnabled, setIsEmailEnabled] = useState(true);
   const [isLanguageListOpen, setIsLanguageListOpen] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState('Tiếng Việt');
+  const [selectedLanguage, setSelectedLanguage] = useState<LanguageCode>('vi');
 
-  const languageOptions = ['Tiếng Việt', 'English'];
+  // Sync initial state from user profile
+  useEffect(() => {
+    if (userProfile) {
+      setIsPushEnabled(userProfile.notification_push ?? true);
+      setIsEmailEnabled(userProfile.notification_email ?? true);
+      const profileTheme = userProfile.theme_mode;
+      if (profileTheme === 'dark' || profileTheme === 'light') {
+        setIsDarkMode(profileTheme === 'dark');
+      }
+      const profileLanguage = userProfile.preferred_language;
+      if (profileLanguage === 'vi' || profileLanguage === 'en') {
+        setSelectedLanguage(profileLanguage);
+      }
+    }
+  }, [userProfile]);
+
+  useEffect(() => {
+    const storedDarkMode = localStorage.getItem(DARK_MODE_STORAGE_KEY);
+    if (storedDarkMode === 'true' || storedDarkMode === 'false') {
+      setIsDarkMode(storedDarkMode === 'true');
+    }
+    const storedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    if (storedLanguage === 'vi' || storedLanguage === 'en') {
+      setSelectedLanguage(storedLanguage);
+    }
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDarkMode);
+    document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
+
+  useEffect(() => {
+    document.documentElement.lang = selectedLanguage;
+  }, [selectedLanguage]);
+
+  const selectedLanguageLabel = languageOptions.find(item => item.value === selectedLanguage)?.label || 'Tiếng Việt';
+
+  const handleToggleDarkMode = async () => {
+    const nextState = !isDarkMode;
+    setIsDarkMode(nextState);
+    localStorage.setItem(DARK_MODE_STORAGE_KEY, String(nextState));
+
+    if (!userProfile?.uid) return;
+    try {
+      await updateUserDocument(userProfile.uid, { theme_mode: nextState ? 'dark' : 'light' });
+      await refreshProfile();
+      toast.success('Đã cập nhật chế độ xem');
+    } catch (error) {
+      console.error(error);
+      setIsDarkMode(!nextState);
+      localStorage.setItem(DARK_MODE_STORAGE_KEY, String(!nextState));
+      toast.error('Không thể lưu chế độ xem, vui lòng thử lại');
+    }
+  };
+
+  const handleTogglePush = async () => {
+    if (!userProfile?.uid) return;
+    const nextState = !isPushEnabled;
+    setIsPushEnabled(nextState);
+    try {
+      await updateUserDocument(userProfile.uid, { notification_push: nextState });
+      await refreshProfile();
+      toast.success('Đã cập nhật cài đặt thông báo');
+    } catch (error) {
+      console.error(error);
+      setIsPushEnabled(!nextState); // Revert on failure
+      toast.error('Có lỗi xảy ra, vui lòng thử lại sau');
+    }
+  };
+
+  const handleToggleEmail = async () => {
+    if (!userProfile?.uid) return;
+    const nextState = !isEmailEnabled;
+    setIsEmailEnabled(nextState);
+    try {
+      await updateUserDocument(userProfile.uid, { notification_email: nextState });
+      await refreshProfile();
+      toast.success('Đã cập nhật cài đặt email');
+    } catch (error) {
+      console.error(error);
+      setIsEmailEnabled(!nextState); // Revert on failure
+      toast.error('Có lỗi xảy ra, vui lòng thử lại sau');
+    }
+  };
+
+  const handleLanguageSelect = async (language: LanguageCode) => {
+    setSelectedLanguage(language);
+    setIsLanguageListOpen(false);
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+
+    if (!userProfile?.uid) return;
+    try {
+      await updateUserDocument(userProfile.uid, { preferred_language: language });
+      await refreshProfile();
+      toast.success('Đã cập nhật ngôn ngữ');
+    } catch (error) {
+      console.error(error);
+      toast.error('Không thể lưu ngôn ngữ, vui lòng thử lại');
+    }
+  };
 
   const renderToggle = (enabled: boolean) => (
     <div className={`w-12 h-6 rounded-full p-1 transition-colors duration-300 ease-in-out ${enabled ? 'bg-blue-600' : 'bg-slate-200'}`}>
@@ -51,7 +165,7 @@ function EmployerSettingsIndexPage() {
 
           <button
             type="button"
-            onClick={() => setIsDarkMode(prev => !prev)}
+            onClick={handleToggleDarkMode}
             className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 text-slate-700 transition-colors"
           >
             <span className="flex items-center gap-2.5 text-sm font-semibold">
@@ -69,7 +183,7 @@ function EmployerSettingsIndexPage() {
               <Languages className="w-4 h-4 text-slate-500" /> Ngôn ngữ
             </span>
             <span className="flex items-center gap-2 text-sm text-slate-500">
-              {selectedLanguage}
+              {selectedLanguageLabel}
               <ChevronRight className={`w-4 h-4 transition-transform ${isLanguageListOpen ? 'rotate-90' : ''}`} />
             </span>
           </button>
@@ -78,16 +192,13 @@ function EmployerSettingsIndexPage() {
             <div className="rounded-xl border border-slate-100 bg-slate-50 p-1.5">
               {languageOptions.map(language => (
                 <button
-                  key={language}
+                  key={language.value}
                   type="button"
-                  onClick={() => {
-                    setSelectedLanguage(language);
-                    setIsLanguageListOpen(false);
-                  }}
+                  onClick={() => handleLanguageSelect(language.value)}
                   className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-white transition-colors"
                 >
-                  <span>{language}</span>
-                  {selectedLanguage === language ? <Check className="w-4 h-4 text-blue-600" /> : <span className="w-4 h-4" />}
+                  <span>{language.label}</span>
+                  {selectedLanguage === language.value ? <Check className="w-4 h-4 text-blue-600" /> : <span className="w-4 h-4" />}
                 </button>
               ))}
             </div>
@@ -99,7 +210,7 @@ function EmployerSettingsIndexPage() {
 
           <button
             type="button"
-            onClick={() => setIsPushEnabled(prev => !prev)}
+            onClick={handleTogglePush}
             className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 text-slate-700 transition-colors"
           >
             <span className="flex items-center gap-2.5 text-sm font-semibold">
@@ -113,7 +224,7 @@ function EmployerSettingsIndexPage() {
 
           <button
             type="button"
-            onClick={() => setIsEmailEnabled(prev => !prev)}
+            onClick={handleToggleEmail}
             className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 text-slate-700 transition-colors"
           >
             <span className="flex items-center gap-2.5 text-sm font-semibold">

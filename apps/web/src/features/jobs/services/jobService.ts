@@ -9,6 +9,7 @@ import {
     serverTimestamp,
     updateDoc,
     deleteDoc,
+    increment,
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import type { Job } from '@jobnow/types';
@@ -265,3 +266,40 @@ export async function deleteJob(jobId: string): Promise<void> {
         throw new Error('Không thể xoá tin tuyển dụng.');
     }
 }
+
+/**
+ * Increment the view count for a job posting.
+ */
+export async function incrementJobView(jobId: string): Promise<void> {
+    try {
+        const jobRef = doc(db, 'jobs', jobId);
+        await updateDoc(jobRef, {
+            viewCount: increment(1),
+            view_count: increment(1) // update both fields just in case
+        });
+    } catch (error) {
+        console.error('Error in incrementJobView:', error);
+        // We don't throw here to avoid disrupting the UI if tracking fails
+    }
+}
+
+/**
+ * Fetch all job categories from Firestore.
+ */
+export async function fetchCategories(): Promise<string[]> {
+    try {
+        const categoriesRef = collection(db, 'categories');
+        const snapshot = await getDocs(categoriesRef);
+
+        const categories = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return data.name as string || doc.id;
+        }).filter(Boolean);
+
+        return categories;
+    } catch (error) {
+        console.error('Error in fetchCategories:', error);
+        return [];
+    }
+}
+

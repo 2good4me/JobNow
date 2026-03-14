@@ -12,6 +12,7 @@ import { useJob } from '@/features/jobs/hooks/useJob';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useApplyJob } from '@/features/jobs/hooks/useApplyJob';
 import { useIsJobWishlisted, useToggleWishlist } from '@/features/jobs/hooks/useWishlistJobs';
+import { incrementJobView } from '@/features/jobs/services/jobService';
 import { toast } from 'sonner';
 
 export const Route = createFileRoute('/candidate/jobs/$jobId')({
@@ -26,6 +27,14 @@ function JobDetailPage() {
   const { data: job, isLoading } = useJob(jobId);
 
   const [selectedShiftId, setSelectedShiftId] = useState<string>('');
+
+  // Increment job view count on open
+  useEffect(() => {
+    if (jobId) {
+      // Fire and forget, don't block render
+      incrementJobView(jobId).catch(console.error);
+    }
+  }, [jobId]);
 
   // Wishlist functionality
   const { data: isWishlisted } = useIsJobWishlisted(userProfile?.uid, jobId);

@@ -1,4 +1,4 @@
-import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, getDocs, doc, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { getUserDocument } from '@/lib/firestore';
 
@@ -56,6 +56,78 @@ export async function requestPayment(
     // Placeholder: Log the intent
     console.log('[Wallet] Payment request:', { employerId, candidateId, amount, jobId, applicationId });
     throw new Error('Cloud Function chưa được triển khai. Vui lòng liên hệ admin.');
+}
+
+/**
+ * Simulate a Deposit Cloud Function using client-side Firestore transactions.
+ * NOTE: This is for demonstration until the backend functions are ready.
+ */
+export async function processDeposit(userId: string, amount: number, method: string): Promise<void> {
+    if (amount <= 0) throw new Error('Số tiền phải lớn hơn 0');
+
+    const userRef = doc(db, 'users', userId);
+    const newTxRef = doc(collection(db, 'transactions'));
+
+    await runTransaction(db, async (transaction) => {
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists()) {
+            throw new Error('User does not exist');
+        }
+
+        const currentBalance = userDoc.data().balance || 0;
+        const newBalance = currentBalance + amount;
+
+        // Update balance
+        transaction.update(userRef, { balance: newBalance });
+
+        // Add transaction log
+        transaction.set(newTxRef, {
+            userId,
+            type: 'DEPOSIT',
+            amount,
+            description: `Nạp tiền qua ${method}`,
+            status: 'COMPLETED',
+            created_at: serverTimestamp(),
+        });
+    });
+}
+
+/**
+ * Simulate a Withdrawal Cloud Function using client-side Firestore transactions.
+ * NOTE: This is for demonstration until the backend functions are ready.
+ */
+export async function processWithdrawal(userId: string, amount: number, bankAccount: string): Promise<void> {
+    if (amount <= 0) throw new Error('Số tiền phải lớn hơn 0');
+
+    const userRef = doc(db, 'users', userId);
+    const newTxRef = doc(collection(db, 'transactions'));
+
+    await runTransaction(db, async (transaction) => {
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists()) {
+            throw new Error('User does not exist');
+        }
+
+        const currentBalance = userDoc.data().balance || 0;
+        if (currentBalance < amount) {
+            throw new Error('Số dư không đủ để thực hiện giao dịch');
+        }
+
+        const newBalance = currentBalance - amount;
+
+        // Update balance
+        transaction.update(userRef, { balance: newBalance });
+
+        // Add transaction log
+        transaction.set(newTxRef, {
+            userId,
+            type: 'WITHDRAW',
+            amount,
+            description: `Rút tiền về ${bankAccount}`,
+            status: 'COMPLETED', // usually PENDING in real world
+            created_at: serverTimestamp(),
+        });
+    });
 }
 
 function mapTransaction(docSnap: any): TransactionRecord {

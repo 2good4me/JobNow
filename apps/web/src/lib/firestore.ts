@@ -81,6 +81,8 @@ export async function getUserDocument(uid: string): Promise<UserProfile | null> 
         verification_status: data.verification_status || 'UNVERIFIED',
         notification_push: data.notification_push ?? true,
         notification_email: data.notification_email ?? true,
+        theme_mode: data.theme_mode === 'dark' ? 'dark' : 'light',
+        preferred_language: data.preferred_language === 'en' ? 'en' : 'vi',
     } as UserProfile;
 }
 

@@ -4,10 +4,34 @@ import { useUpdateEmployerProfile, useUploadCompanyLogo } from '@/features/auth/
 import { useState, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, Building2, Globe, MapPin, Phone, Save, Camera, FileText, Hash, Briefcase } from 'lucide-react';
+import { toast } from 'sonner';
+import { z } from 'zod';
 
 
 export const Route = createFileRoute('/employer/profile/edit')({
   component: EmployerEditProfilePage,
+});
+
+const profileEditSchema = z.object({
+  phone: z.string().trim().regex(/^(0|\+84)\d{9,10}$/, 'Số điện thoại không hợp lệ').or(z.literal('')),
+  companyWebsite: z
+    .string()
+    .trim()
+    .refine((value) => {
+      if (!value) return true;
+      try {
+        const url = new URL(value);
+        return url.protocol === 'http:' || url.protocol === 'https:';
+      } catch {
+        return false;
+      }
+    }, 'Website phải là URL hợp lệ (http/https)')
+    .or(z.literal('')),
+  companyTaxId: z
+    .string()
+    .trim()
+    .regex(/^\d{10}(\d{3})?$/, 'Mã số thuế phải gồm 10 hoặc 13 chữ số')
+    .or(z.literal('')),
 });
 
 function EmployerEditProfilePage() {
@@ -36,13 +60,25 @@ function EmployerEditProfilePage() {
     if (!file) return;
     try {
       await uploadLogo(file);
+      toast.success('Tải logo thành công');
     } catch (err) {
-      alert('Lỗi khi tải lên logo');
+      toast.error('Lỗi khi tải lên logo');
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const validationResult = profileEditSchema.safeParse({
+      phone: formData.phone,
+      companyWebsite: formData.companyWebsite,
+      companyTaxId: formData.companyTaxId,
+    });
+
+    if (!validationResult.success) {
+      toast.error(validationResult.error.issues[0]?.message || 'Dữ liệu không hợp lệ');
+      return;
+    }
+
     try {
       await updateProfile({
         company_name: formData.companyName,
@@ -53,9 +89,10 @@ function EmployerEditProfilePage() {
         address_text: formData.address,
         phone_number: formData.phone,
       });
+      toast.success('Cập nhật hồ sơ thành công');
       navigate({ to: '/employer/profile' });
     } catch (err) {
-      alert('Lỗi cập nhật hồ sơ');
+      toast.error('Lỗi cập nhật hồ sơ');
     }
   };
 

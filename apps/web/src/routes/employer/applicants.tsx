@@ -147,7 +147,7 @@ function EmployerApplicantsRoute() {
 
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(a => a.candidateId.toLowerCase().includes(term));
+      filtered = filtered.filter(a => (a.candidateName || a.candidateId || '').toLowerCase().includes(term));
     }
     return filtered;
   }, [activeTab, applicants, searchTerm]);

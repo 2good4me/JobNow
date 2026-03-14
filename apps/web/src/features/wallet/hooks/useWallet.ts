@@ -1,8 +1,10 @@
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     getWalletBalance,
     fetchTransactions,
     requestPayment,
+    processDeposit,
+    processWithdrawal,
     type TransactionRecord,
 } from '../services/walletService';
 
@@ -43,5 +45,33 @@ export function useRequestPayment() {
     }>({
         mutationFn: ({ employerId, candidateId, amount, jobId, applicationId }) =>
             requestPayment(employerId, candidateId, amount, jobId, applicationId),
+    });
+}
+
+/**
+ * Hook to deposit money into wallet
+ */
+export function useDeposit() {
+    const queryClient = useQueryClient();
+    return useMutation<void, Error, { userId: string; amount: number; method: string }>({
+        mutationFn: ({ userId, amount, method }) => processDeposit(userId, amount, method),
+        onSuccess: (_, { userId }) => {
+            queryClient.invalidateQueries({ queryKey: ['wallet', 'balance', userId] });
+            queryClient.invalidateQueries({ queryKey: ['wallet', 'transactions', userId] });
+        },
+    });
+}
+
+/**
+ * Hook to withdraw money from wallet
+ */
+export function useWithdraw() {
+    const queryClient = useQueryClient();
+    return useMutation<void, Error, { userId: string; amount: number; bankAccount: string }>({
+        mutationFn: ({ userId, amount, bankAccount }) => processWithdrawal(userId, amount, bankAccount),
+        onSuccess: (_, { userId }) => {
+            queryClient.invalidateQueries({ queryKey: ['wallet', 'balance', userId] });
+            queryClient.invalidateQueries({ queryKey: ['wallet', 'transactions', userId] });
+        },
     });
 }

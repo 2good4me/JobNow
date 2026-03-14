@@ -79,6 +79,8 @@ function JobManagementRoute() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabValue>('active');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const tabs = [
     { value: 'active', label: 'Đang mở' },
@@ -122,8 +124,14 @@ function JobManagementRoute() {
       return getTimestamp(b) - getTimestamp(a);
     });
 
+    // Filter by search term
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(job => job.title.toLowerCase().includes(term));
+    }
+
     return filtered;
-  }, [jobs, activeTab]);
+  }, [jobs, activeTab, searchTerm]);
 
   const getJobAppCount = (jobId: string) => {
     return applications.filter(app => app.jobId === jobId || (app as any).job_id === jobId).length;
@@ -156,10 +164,8 @@ function JobManagementRoute() {
   };
 
   const handleEdit = (jobId: string) => {
-    // Keep jobId to prevent warning, or omit if unused.
-    console.log('Edit job', jobId);
     setOpenMenuId(null);
-    toast.info('Tính năng Sửa tin đang được phát triển');
+    navigate({ to: '/employer/post-job', search: { editJobId: jobId } });
   };
 
   const formatSalary = (salary?: string | number, type?: string) => {
@@ -176,7 +182,7 @@ function JobManagementRoute() {
   }, []);
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#F8FAFC] pb-24">
+    <div className="flex flex-col min-h-screen bg-[#F8FAFC] pb-24 max-w-lg mx-auto w-full">
       {/* Header */}
       <header className="sticky top-0 z-30 flex items-center bg-white/90 backdrop-blur-xl px-4 py-4 border-b border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)]">
         <div className="flex-1" />
@@ -184,11 +190,38 @@ function JobManagementRoute() {
           Quản lý tin đăng
         </h1>
         <div className="flex flex-1 items-center justify-end gap-2 text-slate-500">
-          <button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 active:scale-95 transition-all">
-            <Search className="w-5 h-5 text-slate-600" />
+          <button
+            onClick={() => setIsSearchOpen(prev => !prev)}
+            className={`w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 active:scale-95 transition-all ${
+              isSearchOpen ? 'bg-slate-100 text-indigo-600' : ''
+            }`}
+          >
+            <Search className="w-5 h-5" />
           </button>
         </div>
       </header>
+
+      {/* Search Bar (slide-down) */}
+      <div className={`overflow-hidden transition-all duration-300 ease-in-out bg-white border-b border-slate-100 ${
+        isSearchOpen ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'
+      }`}>
+        <div className="px-4 py-3 flex items-center gap-2">
+          <Search className="w-4 h-4 text-slate-400 shrink-0" />
+          <input
+            className="w-full border-none bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:ring-0 focus:outline-none"
+            placeholder="Tìm theo tên tin đăng..."
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            autoFocus={isSearchOpen}
+          />
+          {searchTerm && (
+            <button type="button" onClick={() => setSearchTerm('')} className="text-slate-400 hover:text-slate-600 text-lg leading-none">
+              ×
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Tabs Section */}
       <div className="sticky top-[60px] z-20 px-4 py-3 bg-[#F8FAFC]/90 backdrop-blur-md">
@@ -337,6 +370,17 @@ function JobManagementRoute() {
           })
         )}
       </main>
+
+      {jobs.length > 0 && (
+        <button
+          type="button"
+          onClick={() => navigate({ to: '/employer/post-job', search: {} as any })}
+          className="fixed bottom-24 right-5 z-30 inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/30 transition hover:bg-emerald-700 active:scale-[0.97]"
+        >
+          <Plus className="w-4 h-4" />
+          Tạo tin
+        </button>
+      )}
     </div>
   );
 }

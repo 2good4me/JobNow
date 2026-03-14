@@ -3,6 +3,7 @@ import { useAuth } from '@/features/auth/context/AuthContext';
 import { useGetEmployerJobs } from '@/features/jobs/hooks/useEmployerJobs';
 import { useGetEmployerApplications } from '@/features/jobs/hooks/useManageApplicants';
 import { useMemo, useState } from 'react';
+import type { ComponentType } from 'react';
 import {
   BadgeCheck,
   Bell,
@@ -23,6 +24,15 @@ import { AchievementBadges, PREDEFINED_ACHIEVEMENTS } from '@/features/auth/comp
 export const Route = createFileRoute('/employer/profile/')({
   component: EmployerProfilePage,
 });
+
+type ProfileAchievement = {
+  id: string;
+  name: string;
+  description: string;
+  icon?: ComponentType<{ className?: string }>;
+  color?: 'blue' | 'amber' | 'emerald' | 'purple' | 'rose';
+  unlocked?: boolean;
+};
 
 /* ── Skeleton placeholder ── */
 function ProfileSkeleton() {
@@ -115,6 +125,23 @@ function EmployerProfilePage() {
 
   const displayName = userProfile.company_name || userProfile.full_name || 'Doanh nghiệp';
   const avatarInitial = (userProfile.company_name?.[0] || userProfile.full_name?.[0] || 'D').toUpperCase();
+  const profileAchievements = ((userProfile as any).achievementBadges || (userProfile as any).achievementsData || []) as ProfileAchievement[];
+  const achievements = profileAchievements.length > 0
+    ? profileAchievements.map((achievement) => {
+      const fallback = PREDEFINED_ACHIEVEMENTS.find(item => item.id === achievement.id);
+      return {
+        id: achievement.id,
+        name: achievement.name || fallback?.name || achievement.id,
+        description: achievement.description || fallback?.description || '',
+        icon: achievement.icon || fallback?.icon || PREDEFINED_ACHIEVEMENTS[0].icon,
+        color: achievement.color || fallback?.color || 'blue',
+        unlocked: achievement.unlocked ?? true,
+      };
+    })
+    : PREDEFINED_ACHIEVEMENTS.map(item => ({
+      ...item,
+      unlocked: userProfile.achievements?.includes(item.id) ?? false,
+    }));
 
   return (
     <div className="pb-24 bg-slate-50 min-h-[100dvh]">
@@ -126,7 +153,11 @@ function EmployerProfilePage() {
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-lg font-bold text-white/90 tracking-tight">Tài khoản</h1>
-            <button className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-md hover:bg-white/20 transition-colors">
+            <button
+              type="button"
+              onClick={() => navigate({ to: '/employer/notifications' })}
+              className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-md hover:bg-white/20 transition-colors"
+            >
               <Bell className="w-5 h-5 text-white" />
             </button>
           </div>
@@ -248,7 +279,7 @@ function EmployerProfilePage() {
             </Link>
           </div>
           <AchievementBadges
-            achievements={PREDEFINED_ACHIEVEMENTS}
+            achievements={achievements}
             maxDisplay={6}
             size="md"
           />

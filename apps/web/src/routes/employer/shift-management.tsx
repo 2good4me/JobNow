@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { ArrowLeft, QrCode, Clock, CheckCircle2, AlertCircle, Users, ChevronRight } from 'lucide-react';
+import { ArrowLeft, QrCode, Clock, CheckCircle2, AlertCircle, Users, ChevronRight, UserCheck, XCircle } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useGetEmployerJobs } from '@/features/jobs/hooks/useEmployerJobs';
 import { useGetEmployerApplications } from '@/features/jobs/hooks/useManageApplicants';
+import type { Application } from '@jobnow/types';
 
 export const Route = createFileRoute('/employer/shift-management')({
   component: ShiftManagementPage,
@@ -36,6 +37,26 @@ function ShiftManagementPage() {
     });
     return map;
   }, [applications]);
+
+  // Group applications by shift for attendance tracking
+  const getShiftAttendance = (jobId: string, shiftId: string): Application[] => {
+    return applications.filter(app =>
+      app.jobId === jobId &&
+      app.shiftId === shiftId &&
+      (app.status === 'APPROVED' || app.status === 'CHECKED_IN' || app.status === 'COMPLETED')
+    );
+  };
+
+  const getShiftStatus = (startTime: string, endTime: string) => {
+    const now = new Date();
+    const today = now.toISOString().slice(0, 10);
+    const start = new Date(`${today}T${startTime}:00`);
+    const end = new Date(`${today}T${endTime}:00`);
+
+    if (now < start) return { label: 'Chưa bắt đầu', color: 'text-slate-500', icon: Clock, bg: '' };
+    if (now >= start && now <= end) return { label: 'Đang diễn ra', color: 'text-emerald-600', icon: CheckCircle2, bg: 'bg-emerald-50' };
+    return { label: 'Đã kết thúc', color: 'text-slate-400', icon: XCircle, bg: '' };
+  };
 
   const formatTime = (time: string) => {
     if (!time) return '--:--';
@@ -127,21 +148,68 @@ function ShiftManagementPage() {
 
               <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">Danh sách ca</h3>
 
-              {selectedJob?.shifts?.map((shift, index) => (
+              {selectedJob?.shifts?.map((shift, index) => {
+                const attendance = getShiftAttendance(selectedJobId, shift.id);
+                const shiftStatus = getShiftStatus(shift.startTime, shift.endTime);
+                const StatusIcon = shiftStatus.icon;
+                const checkedInCount = attendance.filter(a => a.status === 'CHECKED_IN' || a.status === 'COMPLETED').length;
+
+                return (
                 <div key={index} className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm mb-3">
                   <div className="flex items-center justify-between mb-3">
                     <div>
-                      <p className="text-sm font-bold text-slate-900">Ca {index + 1}</p>
+                      <p className="text-sm font-bold text-slate-900">Ca {index + 1}: {shift.name || ''}</p>
                       <p className="text-xs text-slate-500 mt-0.5">
                         <Clock className="inline h-3 w-3 mr-1" />
                         {formatTime(shift.startTime)} — {formatTime(shift.endTime)}
                       </p>
                     </div>
                     <div className="flex items-center gap-1 text-xs">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                      <span className="text-emerald-600 font-medium">Đang mở</span>
+                      <StatusIcon className={`h-3.5 w-3.5 ${shiftStatus.color}`} />
+                      <span className={`font-medium ${shiftStatus.color}`}>{shiftStatus.label}</span>
                     </div>
                   </div>
+
+                  {/* Attendance Summary */}
+                  <div className="flex items-center gap-2 mb-3 bg-slate-50 rounded-lg px-3 py-2">
+                    <UserCheck className="h-4 w-4 text-blue-500" />
+                    <span className="text-xs font-semibold text-slate-600">
+                      {checkedInCount}/{attendance.length} đã check-in
+                    </span>
+                  </div>
+
+                  {/* Employee List */}
+                  {attendance.length > 0 && (
+                    <div className="space-y-2 mb-3">
+                      {attendance.map((app) => (
+                        <div key={app.id} className="flex items-center gap-3 rounded-lg border border-slate-100 px-3 py-2">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 overflow-hidden">
+                            {app.candidateAvatar ? (
+                              <img src={app.candidateAvatar} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-xs font-bold text-blue-600">
+                                {(app.candidateName || '?').charAt(0).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-slate-800 truncate">{app.candidateName || app.candidateId}</p>
+                          </div>
+                          <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                            app.status === 'CHECKED_IN' ? 'bg-emerald-100 text-emerald-700' :
+                            app.status === 'COMPLETED' ? 'bg-blue-100 text-blue-700' :
+                            'bg-amber-100 text-amber-700'
+                          }`}>
+                            {app.status === 'CHECKED_IN' ? 'Đã vào' : app.status === 'COMPLETED' ? 'Hoàn thành' : 'Đã duyệt'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {attendance.length === 0 && (
+                    <p className="text-xs text-slate-400 mb-3 italic">Chưa có nhân viên nào được duyệt cho ca này.</p>
+                  )}
 
                   <div className="flex gap-2">
                     <button
@@ -156,7 +224,8 @@ function ShiftManagementPage() {
                     </button>
                   </div>
                 </div>
-              ))}
+              );
+              })}
 
               {(!selectedJob?.shifts || selectedJob.shifts.length === 0) && (
                 <div className="py-8 text-center text-sm text-slate-400">

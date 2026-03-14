@@ -83,3 +83,18 @@ export function useDeleteJob() {
         },
     });
 }
+
+/**
+ * Hook to fetch all categories from firestore.
+ */
+import { fetchCategories } from '../services/jobService';
+
+export function useGetCategories() {
+    return useQuery<string[], Error>({
+        queryKey: ['categories'],
+        queryFn: async () => {
+            return await fetchCategories();
+        },
+        staleTime: 60 * 60 * 1000, // 1 hour
+    });
+}

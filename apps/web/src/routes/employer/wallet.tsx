@@ -1,7 +1,10 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, Wallet, ArrowUpRight, ArrowDownLeft, CreditCard, TrendingUp, Plus } from 'lucide-react';
+import { useState } from 'react';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useWalletBalance, useTransactionHistory } from '@/features/wallet/hooks/useWallet';
+import { DepositBottomSheet } from './-components/wallet/DepositBottomSheet';
+import { WithdrawBottomSheet } from './-components/wallet/WithdrawBottomSheet';
 
 
 export const Route = createFileRoute('/employer/wallet')({
@@ -12,6 +15,9 @@ function EmployerWalletPage() {
   const navigate = useNavigate();
   const { userProfile } = useAuth();
   const userId = userProfile?.uid;
+  
+  const [showDepositSheet, setShowDepositSheet] = useState(false);
+  const [showWithdrawSheet, setShowWithdrawSheet] = useState(false);
   const { data: balance = 0, isLoading: isBalanceLoading } = useWalletBalance(userId);
   const { data: transactions = [], isLoading: isTxLoading } = useTransactionHistory(userId);
 
@@ -69,14 +75,14 @@ function EmployerWalletPage() {
           <div className="flex gap-3 px-6 mt-5">
             <button
               type="button"
-              onClick={() => alert('Tính năng nạp tiền đang phát triển')}
+              onClick={() => setShowDepositSheet(true)}
               className="flex-1 flex items-center justify-center gap-2 bg-white/15 hover:bg-white/25 backdrop-blur-sm rounded-xl py-3 text-sm font-semibold transition cursor-pointer"
             >
               <Plus className="h-4 w-4" /> Nạp tiền
             </button>
             <button
               type="button"
-              onClick={() => alert('Tính năng rút tiền đang phát triển')}
+              onClick={() => setShowWithdrawSheet(true)}
               className="flex-1 flex items-center justify-center gap-2 bg-white/15 hover:bg-white/25 backdrop-blur-sm rounded-xl py-3 text-sm font-semibold transition cursor-pointer"
             >
               <ArrowUpRight className="h-4 w-4" /> Rút tiền
@@ -128,6 +134,23 @@ function EmployerWalletPage() {
           )}
         </section>
       </div>
+
+      {/* Bottom Sheets */}
+      {userId && (
+        <>
+          <DepositBottomSheet
+            isOpen={showDepositSheet}
+            onClose={() => setShowDepositSheet(false)}
+            userId={userId}
+          />
+          <WithdrawBottomSheet
+            isOpen={showWithdrawSheet}
+            onClose={() => setShowWithdrawSheet(false)}
+            userId={userId}
+            balance={balance}
+          />
+        </>
+      )}
     </div>
   );
 }

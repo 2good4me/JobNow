@@ -16,6 +16,7 @@ export interface UserProfile {
     average_rating?: number;          // Average rating từ evaluations
     total_ratings?: number;           // Số lượt đánh giá
     skills: string[];
+    achievements?: string[];
     identity_images: string[];
     created_at: Date;
     updated_at: Date;
@@ -31,4 +32,6 @@ export interface UserProfile {
     verification_status?: VerificationStatus;
     notification_push?: boolean;
     notification_email?: boolean;
+    theme_mode?: 'light' | 'dark';
+    preferred_language?: 'vi' | 'en';
 }

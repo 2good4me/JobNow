@@ -6,7 +6,7 @@ import {
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/features/auth/context/AuthContext';
-import { useCreateJob, useUpdateJob, useJobDetail } from '@/features/jobs/hooks/useEmployerJobs';
+import { useCreateJob, useUpdateJob, useJobDetail, useGetCategories } from '@/features/jobs/hooks/useEmployerJobs';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/config/firebase';
 import type { Job, SalaryType, GenderPreference as GenderPref } from '@jobnow/types';
@@ -40,7 +40,7 @@ export type JobFormState = Omit<JobFormSchemaState, 'latitude' | 'longitude'> & 
 export type { PayType, GenderPreference, Shift };
 
 /* ── Constants ───────────────────────────────── */
-export const categories = ['F&B Service', 'Retail', 'Delivery', 'Event Helper'];
+export const FALLBACK_CATEGORIES = ['F&B Service', 'Retail', 'Delivery', 'Event Helper'];
 export const payTypes: PayType[] = ['Theo giờ', 'Theo ca', 'Theo ngày'];
 export const genderOptions: GenderPreference[] = ['Nam', 'Nữ', 'Cả hai'];
 
@@ -124,6 +124,9 @@ function EmployerPostJobRoute() {
   const { mutateAsync: createJob, isPending: isCreating } = useCreateJob();
   const { mutateAsync: updateJob, isPending: isUpdating } = useUpdateJob();
   const { data: existingJob, isLoading: isLoadingJob } = useJobDetail(editJobId);
+  const { data: remoteCategories } = useGetCategories();
+  
+  const displayCategories = remoteCategories && remoteCategories.length > 0 ? remoteCategories : FALLBACK_CATEGORIES;
   const fileInputId = useId();
   const isSubmitting = isCreating || isUpdating;
 
@@ -519,7 +522,7 @@ function EmployerPostJobRoute() {
       <CategoryBottomSheet
         isOpen={showCategoryBottomSheet}
         onClose={() => setShowCategoryBottomSheet(false)}
-        categories={categories}
+        categories={displayCategories}
         selectedCategory={form.category}
         onSelect={(cat) => setForm(prev => ({ ...prev, category: cat }))}
       />

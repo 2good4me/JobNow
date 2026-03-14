@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { Briefcase, ChevronRight, Users, Clock, AlertCircle, Plus, FileText } from 'lucide-react';
 import { useDashboardMetrics } from '@/features/dashboard/hooks/useDashboardMetrics';
@@ -18,6 +18,7 @@ function getGreeting() {
 
 function EmployerDashboard() {
   const { userProfile } = useAuth();
+  const navigate = useNavigate();
   const employerId = userProfile?.uid;
 
   const { metrics, isLoading, isError, errorMessage } = useDashboardMetrics(employerId);
@@ -155,10 +156,21 @@ function EmployerDashboard() {
           <RecentPostedJobs
             jobs={employerJobs}
             isLoading={jobsLoading}
-            onViewAll={() => { }}
+            onViewAll={() => navigate({ to: '/employer/job-list' })}
           />
         )}
       </div>
+
+      {hasJobs && (
+        <button
+          type="button"
+          onClick={() => navigate({ to: '/employer/post-job', search: {} as any })}
+          className="fixed bottom-24 right-5 z-30 inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-slate-900/30 transition hover:bg-slate-800 active:scale-[0.97]"
+        >
+          <Plus className="w-4 h-4" />
+          Tạo tin mới
+        </button>
+      )}
     </div>
   );
 }

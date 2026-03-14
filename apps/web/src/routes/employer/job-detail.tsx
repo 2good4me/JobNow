@@ -254,7 +254,7 @@ function JobDetailPage() {
             {/* Workers */}
             <div className="flex items-center gap-1.5 text-slate-600">
               <Users className="w-3.5 h-3.5 text-blue-500" />
-              <span className="font-medium">{job.vacancies || 0} người — Cả hai</span>
+              <span className="font-medium">{job.vacancies || 0} người — {(job as any).genderPreference === 'MALE' ? 'Nam' : (job as any).genderPreference === 'FEMALE' ? 'Nữ' : 'Cả hai'}</span>
             </div>
 
             {/* Work date */}
@@ -343,7 +343,7 @@ function JobDetailPage() {
           <div className="grid grid-cols-3 gap-2 mb-4">
             <div className="bg-blue-50 rounded-2xl p-3 text-center border border-blue-100">
               <Eye className="w-5 h-5 text-blue-500 mx-auto mb-1" />
-              <p className="text-xl font-extrabold text-blue-700">—</p>
+              <p className="text-xl font-extrabold text-blue-700">{(job as any).viewCount || (job as any).view_count || 0}</p>
               <p className="text-[10px] font-semibold text-blue-500 uppercase tracking-wider">Lượt xem</p>
             </div>
             <div className="bg-indigo-50 rounded-2xl p-3 text-center border border-indigo-100">
@@ -414,7 +414,7 @@ function JobDetailPage() {
             <ul className="space-y-2">
               {job.requirements.map((req, idx) => (
                 <li key={idx} className="flex items-start gap-2 text-sm text-slate-700">
-                  <span className="text-emerald-600 font-bold mt-0.5 text-base">✓</span>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
                   <span className="flex-1">{req}</span>
                 </li>
               ))}
