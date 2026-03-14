@@ -87,7 +87,7 @@ function JobDetailPage() {
 
   if (!jobId) {
     return (
-      <div className="min-h-screen bg-slate-50 pb-24">
+      <div className="flex flex-col min-h-screen bg-slate-50 pb-24 max-w-lg mx-auto w-full relative shadow-sm">
         <div className="max-w-[420px] mx-auto px-4 py-4">
           <button
             onClick={() => navigate({ to: '/employer' })}
@@ -107,7 +107,7 @@ function JobDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 pb-24">
+      <div className="flex flex-col min-h-screen bg-slate-50 pb-24 max-w-lg mx-auto w-full relative shadow-sm">
         <div className="max-w-[420px] mx-auto px-4 py-4">
           <div className="flex items-center gap-2 mb-4 animate-pulse">
             <div className="w-8 h-8 bg-slate-200 rounded-lg"></div>
@@ -132,7 +132,7 @@ function JobDetailPage() {
 
   if (isError || !job) {
     return (
-      <div className="min-h-screen bg-slate-50 pb-24">
+      <div className="flex flex-col min-h-screen bg-slate-50 pb-24 max-w-lg mx-auto w-full relative shadow-sm">
         <div className="max-w-[420px] mx-auto px-4 py-4">
           <button
             onClick={() => navigate({ to: '/employer' })}
@@ -185,7 +185,7 @@ function JobDetailPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-24">
+    <div className="flex flex-col min-h-screen bg-slate-50 pb-24 max-w-lg mx-auto w-full relative shadow-sm">
       <div className="max-w-[420px] mx-auto px-4 py-4">
         {/* Header with back button */}
         <div className="flex items-center justify-between mb-4">

@@ -295,7 +295,7 @@ function EmployerVerificationRoute() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-24">
+    <div className="flex flex-col min-h-screen bg-slate-50 pb-24 max-w-lg mx-auto w-full relative shadow-sm">
       <div className="mx-auto w-full max-w-md">
         <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/90 px-4 py-3 backdrop-blur-md">
           <div className="flex items-center justify-between">

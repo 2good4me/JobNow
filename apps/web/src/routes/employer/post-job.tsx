@@ -434,7 +434,7 @@ function EmployerPostJobRoute() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-blue-50/40 pb-24">
+    <div className="flex flex-col min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-blue-50/40 pb-24 max-w-lg mx-auto w-full relative shadow-sm">
       <div className="mx-auto w-full max-w-md px-4 pt-4">
 
         {/* Loading state when fetching job data for editing */}
@@ -451,13 +451,20 @@ function EmployerPostJobRoute() {
         {!(editJobId && isLoadingJob) && (
           <>
             {/* ── Header ──────────────────────────── */}
-            <header className="sticky top-2 z-20 rounded-2xl border border-white/60 bg-white/80 p-4 shadow-lg backdrop-blur-md">
-              <div className="mb-3 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Job Wizard</p>
-                  <h1 className="text-xl font-bold text-slate-900">{editJobId ? 'Chỉnh sửa tin tuyển dụng' : 'Đăng tin tuyển dụng'}</h1>
+            <header className="sticky top-0 z-40 bg-white/90 p-4 shadow-sm border-b border-slate-100 backdrop-blur-md">
+              <div className="mb-3 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigate({ to: '/employer/job-list' })}
+                  className="w-10 h-10 shrink-0 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 truncate">Job Wizard</p>
+                  <h1 className="text-lg font-bold text-slate-900 truncate">{editJobId ? 'Chỉnh sửa tin' : 'Đăng tin tuyển dụng'}</h1>
                 </div>
-                <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
+                <span className="shrink-0 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
                   Bước {step}/{STEP_LABELS.length}
                 </span>
               </div>

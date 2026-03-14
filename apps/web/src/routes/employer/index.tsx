@@ -31,7 +31,7 @@ function EmployerDashboard() {
   /* ── Loading skeleton ──────────────────────────── */
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 pb-24">
+      <div className="flex flex-col min-h-screen bg-slate-50 pb-24 max-w-lg mx-auto w-full relative shadow-sm">
         <div className="px-5 pt-8 pb-5 bg-white animate-pulse">
           <div className="space-y-2">
             <div className="h-4 w-24 bg-slate-200 rounded" />
@@ -165,7 +165,8 @@ function EmployerDashboard() {
         <button
           type="button"
           onClick={() => navigate({ to: '/employer/post-job', search: {} as any })}
-          className="fixed bottom-24 right-5 z-30 inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-slate-900/30 transition hover:bg-slate-800 active:scale-[0.97]"
+          className="fixed bottom-24 z-30 inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-slate-900/30 transition hover:bg-slate-800 active:scale-[0.97]"
+          style={{ right: 'max(1.25rem, calc(50vw - 256px + 1.25rem))' }}
         >
           <Plus className="w-4 h-4" />
           Tạo tin mới

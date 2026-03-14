@@ -50,7 +50,7 @@ function EmployerWalletPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-24">
+    <div className="flex flex-col min-h-screen bg-slate-50 pb-24 max-w-lg mx-auto w-full relative shadow-sm">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-white shadow-xl">
         {/* Header with balance */}
         <header className="bg-gradient-to-br from-[#1e3a5f] to-[#2d5a8e] text-white pb-6">

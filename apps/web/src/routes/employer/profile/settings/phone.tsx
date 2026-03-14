@@ -9,7 +9,7 @@ function EmployerSettingsPhonePage() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-24">
+    <div className="flex flex-col min-h-screen bg-slate-50 pb-24 max-w-lg mx-auto w-full relative shadow-sm">
       <div className="bg-[#1e3a5f] text-white p-4 sticky top-0 z-10 flex items-center">
         <button onClick={() => navigate({ to: '/employer/profile/settings' })} className="p-2 -ml-2 rounded-full hover:bg-white/10 transition">
           <ArrowLeft className="w-5 h-5" />

@@ -144,7 +144,7 @@ function EmployerProfilePage() {
     }));
 
   return (
-    <div className="pb-24 bg-slate-50 min-h-[100dvh]">
+    <div className="flex flex-col min-h-[100dvh] bg-slate-50 pb-24 max-w-lg mx-auto w-full relative shadow-sm">
       {/* ── Navy Header ── */}
       <div className="bg-gradient-to-br from-[#1e3a5f] to-[#0f172a] pt-12 pb-16 px-5 rounded-b-[2.5rem] shadow-xl relative overflow-hidden">
         <div className="absolute -top-20 -right-20 w-64 h-64 bg-blue-400/10 rounded-full blur-3xl" />

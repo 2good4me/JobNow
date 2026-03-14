@@ -375,7 +375,8 @@ function JobManagementRoute() {
         <button
           type="button"
           onClick={() => navigate({ to: '/employer/post-job', search: {} as any })}
-          className="fixed bottom-24 right-5 z-30 inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/30 transition hover:bg-emerald-700 active:scale-[0.97]"
+          className="fixed bottom-24 z-30 inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/30 transition hover:bg-emerald-700 active:scale-[0.97]"
+          style={{ right: 'max(1.25rem, calc(50vw - 256px + 1.25rem))' }}
         >
           <Plus className="w-4 h-4" />
           Tạo tin

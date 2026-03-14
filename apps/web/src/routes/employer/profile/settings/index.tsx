@@ -151,13 +151,16 @@ function EmployerSettingsIndexPage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-24">
-      <div className="bg-[#1e3a5f] text-white p-4 sticky top-0 z-10 flex items-center">
-        <button onClick={() => navigate({ to: '/employer/profile' })} className="p-2 -ml-2 rounded-full hover:bg-white/10 transition">
+    <div className="flex flex-col min-h-screen bg-slate-50 pb-24 max-w-lg mx-auto w-full relative shadow-sm">
+      <header className="sticky top-0 z-40 flex h-14 items-center justify-between bg-white/90 px-4 backdrop-blur-md border-b border-slate-100">
+        <button
+          onClick={() => navigate({ to: '/employer/profile' })}
+          className="flex h-10 w-10 items-center justify-center -ml-2 rounded-full text-slate-700 hover:bg-slate-100 active:bg-slate-200 transition-colors"
+        >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h1 className="text-lg font-bold ml-2">Cài đặt & Bảo mật</h1>
-      </div>
+        <span className="font-bold text-slate-900 text-base flex-1 text-center pr-8 truncate">Cài đặt & Bảo mật</span>
+      </header>
 
       <div className="max-w-md mx-auto p-4 space-y-4">
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-1.5">

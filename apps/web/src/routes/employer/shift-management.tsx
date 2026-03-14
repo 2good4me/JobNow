@@ -64,9 +64,9 @@ function ShiftManagementPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-24">
-      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-white shadow-xl">
-        <header className="sticky top-0 z-20 bg-[#1e3a5f] text-white">
+    <div className="flex flex-col min-h-screen bg-slate-50 pb-24 max-w-lg mx-auto w-full relative shadow-sm">
+      <div className="flex-1 flex flex-col w-full bg-white">
+        <header className="sticky top-0 z-40 bg-[#1e3a5f] text-white">
           <div className="flex items-center justify-between p-4">
             <div className="flex items-center">
               <button

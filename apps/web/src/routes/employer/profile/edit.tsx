@@ -97,7 +97,7 @@ function EmployerEditProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20 font-sans">
+    <div className="flex flex-col min-h-screen bg-slate-50 pb-24 font-sans max-w-lg mx-auto w-full relative shadow-sm">
       <div className="bg-[#1e3a5f] text-white p-4 sticky top-0 z-10 flex items-center justify-between shadow-md">
         <div className="flex items-center">
           <button onClick={() => navigate({ to: '/employer/profile' })} className="p-2 -ml-2 rounded-full hover:bg-white/10 transition">

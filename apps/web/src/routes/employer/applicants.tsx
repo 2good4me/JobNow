@@ -163,8 +163,8 @@ function EmployerApplicantsRoute() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-24">
-      <div className="mx-auto w-full max-w-lg">
+    <div className="flex flex-col min-h-screen bg-slate-50 pb-24 max-w-lg mx-auto w-full relative shadow-sm">
+      <div className="w-full">
 
         {/* ── Gradient Header ── */}
         <div className="bg-gradient-to-br from-[#1e3a5f] to-[#0f172a] px-5 pt-12 pb-8 relative overflow-hidden">
