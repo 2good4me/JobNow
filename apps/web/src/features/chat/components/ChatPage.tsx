@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Conversation } from '@jobnow/types';
 import { ChatList } from './ChatList';
 import { ChatRoom } from './ChatRoom';
-import { useSearch } from '@tanstack/react-router';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useConversations } from '../hooks/useConversations';
 
 interface ChatPageProps {
@@ -11,6 +11,7 @@ interface ChatPageProps {
 }
 
 export function ChatPage({ userId, role }: ChatPageProps) {
+    const navigate = useNavigate();
     const search = useSearch({ strict: false }) as { applicationId?: string; jobId?: string };
     const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
     const [isStarting, setIsStarting] = useState(false);
@@ -32,14 +33,19 @@ export function ChatPage({ userId, role }: ChatPageProps) {
                 found = conversations.find(c => c.jobId === search.jobId);
             }
 
-            // Fallback: If still not found by ID, try finding by participant pair (Unified Chat)
-            // Note: We'd need the other party's ID which might require a bit more context, 
-            // but usually startConversation will handle the back-end merge.
-            // On the front-end, we can at least ensure we don't start a duplicate.
-
             if (found) {
                 if (selectedConversation?.id !== found.id) {
                     setSelectedConversation(found);
+                }
+                
+                // Clear the URL params after finding, so user can switch chats
+                if (search.applicationId || search.jobId) {
+                    // Use a simpler approach that avoids TanStack typing issues with functional updates
+                    // if the route schema is strict.
+                    navigate({ 
+                        search: {} as any, 
+                        replace: true 
+                    });
                 }
                 return;
             }
@@ -58,6 +64,11 @@ export function ChatPage({ userId, role }: ChatPageProps) {
                     const conv = await getConversationById(conversationId);
                     if (conv) {
                         setSelectedConversation(conv);
+                        // Clear the URL params after starting
+                        navigate({ 
+                            search: {} as any, 
+                            replace: true 
+                        });
                     } else {
                         throw new Error('Không thể tải thông tin hội thoại sau khi khởi tạo.');
                     }
@@ -71,7 +82,7 @@ export function ChatPage({ userId, role }: ChatPageProps) {
         };
 
         initChat();
-    }, [search.applicationId, search.jobId, conversations, isStarting, selectedConversation?.id]);
+    }, [search.applicationId, search.jobId, conversations, isStarting, selectedConversation?.id, navigate]);
 
     return (
         <div className="flex h-[calc(100vh-64px)] md:h-[calc(100vh-70px)] bg-white dark:bg-gray-950 overflow-hidden relative">

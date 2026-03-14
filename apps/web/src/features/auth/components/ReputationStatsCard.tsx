@@ -1,22 +1,31 @@
-import { Users } from 'lucide-react';
+import { Users, type LucideIcon } from 'lucide-react';
 import { getReputationTier, getProgressToNextTier } from '../helpers/reputationHelper';
 import { ReputationBadge } from './ReputationBadge';
 
 interface ReputationStatsCardProps {
   reputationScore: number;
   averageRating: number;
-  totalApplicants: number;
+  statValue?: number | string;
+  statLabel?: string;
+  statIcon?: LucideIcon;
+  // Deprecated: used for backward compatibility with employer profile until updated
+  totalApplicants?: number;
   onViewDetails?: () => void;
 }
 
 export function ReputationStatsCard({
   reputationScore,
   averageRating,
+  statValue,
+  statLabel = 'Ứng Viên',
+  statIcon: StatIcon = Users,
   totalApplicants,
   onViewDetails,
 }: ReputationStatsCardProps) {
   const tierInfo = getReputationTier(reputationScore);
   const progress = getProgressToNextTier(reputationScore);
+
+  const displayStatValue = statValue !== undefined ? statValue : (totalApplicants || 0);
 
   return (
     <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
@@ -69,14 +78,14 @@ export function ReputationStatsCard({
           <p className="text-[10px] text-slate-400 mt-1">/5.0</p>
         </div>
 
-        {/* Applicants */}
+        {/* Dynamic Third Stat */}
         <div className="text-center px-2">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-            Ứng Viên
+            {statLabel}
           </p>
           <div className="flex items-center justify-center gap-1">
-            <Users className="w-4 h-4 text-blue-600" />
-            <span className="text-2xl font-extrabold text-blue-600">{totalApplicants}</span>
+            <StatIcon className="w-4 h-4 text-blue-600" />
+            <span className="text-2xl font-extrabold text-blue-600">{displayStatValue}</span>
           </div>
         </div>
       </div>
