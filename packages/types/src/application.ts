@@ -153,6 +153,10 @@ export interface Conversation {
     lastMessageBy?: string;
     candidateUnreadCount: number;
     employerUnreadCount: number;
+    candidateName?: string;
+    candidateAvatar?: string;
+    employerName?: string;
+    employerAvatar?: string;
     createdAt?: any;
     updatedAt?: any;
 }
@@ -169,6 +173,10 @@ export interface ConversationDoc {
     last_message_by?: string;
     candidate_unread_count?: number;
     employer_unread_count?: number;
+    candidate_name?: string;
+    candidate_avatar?: string;
+    employer_name?: string;
+    employer_avatar?: string;
     created_at?: any;
     updated_at?: any;
 }
@@ -209,12 +217,15 @@ export interface ChatSummary {
 }
 
 export interface StartConversationInput {
-    applicationId: string;
+    applicationId?: string;
+    jobId?: string;
+    employerId?: string;
 }
 
 export interface SendMessageInput {
     conversationId?: string;
     applicationId?: string;
+    jobId?: string;
     text: string;
     clientMessageId: string;
 }

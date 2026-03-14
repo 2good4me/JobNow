@@ -4,6 +4,8 @@ import { useUpdateApplicationStatus } from '@/features/jobs/hooks/useManageAppli
 import { useCandidateProfile } from '@/features/jobs/hooks/useCandidateProfile';
 import { useState, useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import { ReviewModal } from '@/features/jobs/components/ReviewModal';
+import { useAuth } from '@/features/auth/context/AuthContext';
 
 type ApplicantCardProps = {
   applicationId: string;
@@ -138,8 +140,12 @@ export function ApplicantCard({
     if (phone) window.open(`tel:${phone}`, '_self');
   }, [candidate]);
 
+  const { user } = useAuth();
+  const [reviewOpen, setReviewOpen] = useState(false);
+
   const canApprove = !['REVIEWED', 'APPROVED', 'COMPLETED', 'CANCELLED'].includes(status);
   const canReject = !['REJECTED', 'COMPLETED', 'CANCELLED'].includes(status);
+  const canReview = status === 'COMPLETED';
 
   return (
     <article className="group relative rounded-2xl border border-slate-100 bg-white shadow-sm transition-all hover:shadow-md active:scale-[0.99]">
@@ -257,7 +263,28 @@ export function ApplicantCard({
             <Check className="h-4 w-4" /> Duyệt
           </button>
         )}
+
+        {/* Review (Employer rates Candidate) */}
+        {canReview && (
+          <button
+            type="button"
+            onClick={() => setReviewOpen(true)}
+            className="flex flex-[1.5] items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-amber-600 bg-amber-50/50 transition-colors hover:bg-amber-100 active:bg-amber-200"
+          >
+            <Star className="h-4 w-4 fill-amber-500 text-amber-500" /> Đánh giá
+          </button>
+        )}
       </div>
+
+      <ReviewModal
+        isOpen={reviewOpen}
+        onClose={() => setReviewOpen(false)}
+        applicationId={applicationId}
+        reviewerId={user?.uid || ''}
+        revieweeId={candidateId}
+        revieweeName={fullName}
+        jobTitle={jobTitle || 'Công việc'}
+      />
     </article>
   );
 }

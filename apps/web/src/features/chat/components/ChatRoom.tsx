@@ -5,6 +5,8 @@ import { useMessages } from '../hooks/useMessages';
 import { useSendMessage } from '../hooks/useSendMessage';
 import { markConversationRead } from '../services/chatService';
 import { MessageBubble } from './MessageBubble';
+import { useUserProfile } from '../hooks/useUserProfile';
+import { useNavigate } from '@tanstack/react-router';
 
 interface ChatRoomProps {
     conversation: Conversation;
@@ -15,6 +17,12 @@ interface ChatRoomProps {
 export function ChatRoom({ conversation, currentUserId, onBack }: ChatRoomProps) {
     const [inputText, setInputText] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const navigate = useNavigate();
+
+    const isEmployer = conversation.employerId === currentUserId;
+    const participantId = isEmployer ? conversation.candidateId : conversation.employerId;
+    
+    const { data: participantProfile } = useUserProfile(participantId);
 
     const { data: messages, isLoading } = useMessages({
         conversationId: conversation.id,
@@ -54,36 +62,64 @@ export function ChatRoom({ conversation, currentUserId, onBack }: ChatRoomProps)
                 clientMessageId,
             },
             {
-                onError: () => {
+                onError: (err: any) => {
                     setInputText(messageText); // Restore on error
+                    alert(err.message || 'Gửi tin nhắn thất bại. Vui lòng thử lại.');
                 }
             }
         );
     };
 
-    const isEmployer = conversation.employerId === currentUserId;
-    const title = isEmployer ? 'Ứng viên' : 'Nhà tuyển dụng';
+    const displayName = participantProfile?.fullName || (isEmployer 
+        ? (conversation.candidateName || 'Ứng viên')
+        : (conversation.employerName || 'Nhà tuyển dụng'));
+    const avatar = participantProfile?.avatarUrl || (isEmployer ? conversation.candidateAvatar : conversation.employerAvatar);
+
+    const handleNavigateToProfile = () => {
+        if (isEmployer) {
+            // Employer navigates to Candidate detail
+            navigate({ to: `/employer/candidate/${conversation.candidateId}` as any });
+        } else {
+            // Candidate navigates to Employer detail
+            navigate({ to: `/candidate/employer/${conversation.employerId}` as any });
+        }
+    };
 
     return (
-        <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900 w-full">
+        <div className="flex flex-col h-full relative overflow-hidden bg-white dark:bg-gray-950">
             {/* Header */}
-            <div className="flex items-center px-4 py-3 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 sticky top-0 z-10 shadow-sm">
-                <button
-                    onClick={onBack}
-                    className="p-2 mr-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                >
-                    <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                </button>
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-blue-600 font-semibold border border-white/50 mr-3">
-                    {title.charAt(0)}
-                </div>
-                <div className="flex flex-col">
-                    <h2 className="font-semibold text-gray-900 dark:text-white leading-tight">
-                        {title}
-                    </h2>
-                    <span className="text-xs text-blue-500 font-medium">Đang hoạt động</span>
+            <div className="flex items-center justify-between px-4 py-3 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800/60 sticky top-0 z-10">
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={onBack}
+                        className="md:hidden p-2 -ml-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-500"
+                    >
+                        <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    
+                    <div className="relative cursor-pointer" onClick={handleNavigateToProfile}>
+                        <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+                            {avatar ? (
+                                <img src={avatar} alt={displayName} className="w-full h-full object-cover" />
+                            ) : (
+                                displayName.charAt(0).toUpperCase()
+                            )}
+                        </div>
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white dark:border-gray-950 rounded-full"></div>
+                    </div>
+
+                    <div className="flex flex-col cursor-pointer" onClick={handleNavigateToProfile}>
+                        <h3 className="font-bold text-gray-900 dark:text-white leading-tight">
+                            {displayName}
+                        </h3>
+                        <div className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                            <span className="text-[11px] text-gray-400 font-medium uppercase tracking-wider">Đang trực tuyến</span>
+                        </div>
+                    </div>
                 </div>
             </div>
+
 
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
@@ -114,6 +150,7 @@ export function ChatRoom({ conversation, currentUserId, onBack }: ChatRoomProps)
                             <MessageBubble
                                 key={msg.id || msg.clientMessageId || idx}
                                 message={msg}
+                                conversation={conversation}
                                 isCurrentUser={isCurrentUser}
                                 showAvatar={showAvatar}
                             />

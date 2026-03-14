@@ -178,6 +178,7 @@ export async function applyJob(input: ApplyJobInput): Promise<ApplyJobResult> {
         }
 
         const employerId = String(jobData.employer_id ?? jobData.employerId ?? '');
+        const employerName = String(jobData.employer_name ?? jobData.employerName ?? '');
 
         // Denormalize candidate snapshot
         const candidateData = candidateSnap.exists() ? (candidateSnap.data() || {}) : {};
@@ -191,6 +192,7 @@ export async function applyJob(input: ApplyJobInput): Promise<ApplyJobResult> {
             job_id: input.jobId,
             shift_id: input.shiftId,
             employer_id: employerId,
+            employerId: employerId, // Standardize duplicate field for robust triggers
             candidate_id: input.candidateId,
             status: 'NEW',
             payment_status: 'UNPAID',
@@ -208,6 +210,8 @@ export async function applyJob(input: ApplyJobInput): Promise<ApplyJobResult> {
             // Denormalized job/shift info
             job_title: jobTitle,
             shift_time: shiftTime,
+            employer_name: employerName,
+            employerName: employerName,
         });
 
         const nextRemaining = Math.max(Number(capacity.remaining_slots) - 1, 0);
@@ -222,6 +226,26 @@ export async function applyJob(input: ApplyJobInput): Promise<ApplyJobResult> {
             },
             updated_at: serverTimestamp(),
         }, { merge: true });
+
+        // Create Notification for Employer
+        const notificationRef = doc(collection(db, 'notifications'));
+        tx.set(notificationRef, {
+            userId: employerId,
+            user_id: employerId,
+            type: 'NEW_APPLICATION',
+            category: 'APPLICATION',
+            title: 'Đơn ứng tuyển mới',
+            body: `Bạn có đơn ứng tuyển mới từ ${candidateName} cho công việc: ${jobTitle}`,
+            data: {
+                applicationId,
+                jobId: input.jobId,
+                candidateId: input.candidateId,
+            },
+            isRead: false,
+            is_read: false,
+            created_at: serverTimestamp(),
+            createdAt: serverTimestamp(),
+        });
 
         return {
             applicationId,

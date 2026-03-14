@@ -826,21 +826,54 @@ export const onApplicationCreated = onDocumentCreated({
   region: 'asia-southeast1',
 }, async (event) => {
   const snapshot = event.data;
-  if (!snapshot) return;
+  if (!snapshot) {
+    console.error(`[onApplicationCreated] No snapshot data for application ${event.params.applicationId}`);
+    return;
+  }
 
   const appData = snapshot.data();
-  const employerId = String(appData.employer_id ?? appData.employerId ?? '');
-  const candidateName = String(appData.candidate_name ?? appData.candidateName ?? 'Ai đó');
+  console.log(`[onApplicationCreated] Triggered for application: ${event.params.applicationId}`, appData);
+
+  let employerId = String(appData.employer_id ?? appData.employerId ?? '');
+  const candidateName = String(appData.candidate_name ?? appData.candidateName ?? 'Ứng viên');
+  const candidateId = String(appData.candidate_id ?? appData.candidateId ?? '');
   const jobId = String(appData.job_id ?? appData.jobId ?? '');
 
-  if (!employerId || !jobId) return;
+  if (!jobId) {
+    console.error(`[onApplicationCreated] Missing jobId for application ${event.params.applicationId}`);
+    return;
+  }
 
-  // Fetch job title
-  const jobSnap = await db.collection('jobs').doc(jobId).get();
-  const jobTitle = String(jobSnap.exists ? (jobSnap.data()?.title ?? 'Công việc') : 'Công việc');
+  // ─── Recover jobTitle and employerId if missing ───
+  let jobTitle = String(appData.job_title ?? appData.jobTitle ?? 'Công việc');
+  
+  try {
+    const jobSnap = await db.collection('jobs').doc(jobId).get();
+    if (jobSnap.exists) {
+      const jobData = jobSnap.data();
+      if (jobData?.title) {
+        jobTitle = String(jobData.title);
+      }
+      if (!employerId) {
+        employerId = String(jobData?.employer_id ?? jobData?.employerId ?? '');
+        console.log(`[onApplicationCreated] Recovered employerId ${employerId} from job ${jobId}`);
+      }
+    } else {
+      console.warn(`[onApplicationCreated] Job ${jobId} not found in Firestore`);
+    }
+  } catch (err) {
+    console.error(`[onApplicationCreated] Error fetching job ${jobId}:`, err);
+  }
+
+  if (!employerId) {
+    console.error(`[onApplicationCreated] Still missing employerId for application ${event.params.applicationId}`);
+    return;
+  }
 
   const notifRef = db.collection('notifications').doc();
-  await notifRef.set({
+  const timestamp = FieldValue.serverTimestamp();
+  
+  const notificationPayload = {
     userId: employerId,
     user_id: employerId,
     type: 'NEW_APPLICATION',
@@ -850,11 +883,15 @@ export const onApplicationCreated = onDocumentCreated({
     data: {
       applicationId: event.params.applicationId,
       jobId,
-      candidateId: String(appData.candidate_id ?? appData.candidateId ?? ''),
+      candidateId,
     },
     isRead: false,
     is_read: false,
-    created_at: FieldValue.serverTimestamp(),
-    createdAt: FieldValue.serverTimestamp(),
-  });
+    created_at: timestamp,
+    createdAt: timestamp,
+  };
+
+  await notifRef.set(notificationPayload);
+
+  console.log(`[onApplicationCreated] Notification created for employer ${employerId} on application ${event.params.applicationId}`, notificationPayload);
 });

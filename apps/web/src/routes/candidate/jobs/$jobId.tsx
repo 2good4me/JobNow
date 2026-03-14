@@ -11,6 +11,7 @@ import { db } from '@/config/firebase';
 import { useJob } from '@/features/jobs/hooks/useJob';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useApplyJob } from '@/features/jobs/hooks/useApplyJob';
+import { useUserProfile } from '@/features/auth/hooks/useUserProfile';
 import { useIsJobWishlisted, useToggleWishlist } from '@/features/jobs/hooks/useWishlistJobs';
 import { toast } from 'sonner';
 
@@ -24,6 +25,9 @@ function JobDetailPage() {
   const { user, userProfile } = useAuth();
   const applyMutation = useApplyJob();
   const { data: job, isLoading } = useJob(jobId);
+
+  // Fetch employer details for dynamic rating/reputation/verification
+  const { data: employerProfile } = useUserProfile(job?.employerId);
 
   const [selectedShiftId, setSelectedShiftId] = useState<string>('');
 
@@ -166,9 +170,11 @@ function JobDetailPage() {
         </div>
 
         {/* Verified Badge Overlay */}
-        <div className="absolute bottom-4 right-4 bg-emerald-500 text-white font-bold text-[12px] px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg">
-          <ShieldCheck className="w-4 h-4" /> ĐÃ XÁC THỰC
-        </div>
+        {employerProfile?.verification_status === 'VERIFIED' && (
+          <div className="absolute bottom-4 right-4 bg-emerald-500 text-white font-bold text-[12px] px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg">
+            <ShieldCheck className="w-4 h-4" /> ĐÃ XÁC THỰC
+          </div>
+        )}
       </div>
 
       {/* Main Content Body */}
@@ -179,7 +185,11 @@ function JobDetailPage() {
             <h1 className="text-2xl font-bold text-slate-900 leading-tight pr-4">{job.title}</h1>
             <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-100 px-2 py-1 rounded-lg shrink-0">
               <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-              <span className="font-bold text-amber-600 text-[13px]">4.8</span>
+              <span className="font-bold text-amber-600 text-[13px]">
+                {employerProfile?.average_rating && employerProfile.average_rating > 0 
+                  ? employerProfile.average_rating.toFixed(1) 
+                  : 'Mới'}
+              </span>
             </div>
           </div>
 
@@ -310,7 +320,9 @@ function JobDetailPage() {
             <p className="text-slate-500 text-[12px]">Hoạt động tích cực</p>
           </div>
           <div className="w-12 h-12 rounded-full border-2 border-emerald-500 bg-emerald-50 flex items-center justify-center shrink-0">
-            <span className="text-emerald-600 font-bold text-[14px]">98</span>
+            <span className="text-emerald-600 font-bold text-[14px]">
+              {employerProfile?.reputation_score || 0}
+            </span>
           </div>
         </div>
       </div>
@@ -327,7 +339,10 @@ function JobDetailPage() {
         >
           <Heart className={`w-6 h-6 ${isWishlisted ? 'text-red-500 fill-red-500' : 'text-slate-400'}`} />
         </button>
-        <button className="w-[52px] h-[52px] bg-blue-50 rounded-2xl flex items-center justify-center shrink-0 border border-blue-100 hover:bg-blue-100 transition-colors">
+        <button 
+          onClick={() => navigate({ to: '/candidate/chat', search: { jobId } })}
+          className="w-[52px] h-[52px] bg-blue-50 rounded-2xl flex items-center justify-center shrink-0 border border-blue-100 hover:bg-blue-100 transition-colors"
+        >
           <MessageSquare className="w-6 h-6 text-blue-600" />
         </button>
         <button

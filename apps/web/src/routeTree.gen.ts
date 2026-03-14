@@ -31,6 +31,7 @@ import { Route as EmployerJobDetailRouteImport } from './routes/employer/job-det
 import { Route as EmployerChatRouteImport } from './routes/employer/chat'
 import { Route as EmployerApplicantsRouteImport } from './routes/employer/applicants'
 import { Route as CandidateWishlistRouteImport } from './routes/candidate/wishlist'
+import { Route as CandidateWalletRouteImport } from './routes/candidate/wallet'
 import { Route as CandidateShiftsRouteImport } from './routes/candidate/shifts'
 import { Route as CandidateProfileRouteImport } from './routes/candidate/profile'
 import { Route as CandidateNotificationsRouteImport } from './routes/candidate/notifications'
@@ -42,6 +43,7 @@ import { Route as CandidateVerificationIndexRouteImport } from './routes/candida
 import { Route as CandidateProfileIndexRouteImport } from './routes/candidate/profile/index'
 import { Route as EmployerProfileReputationRouteImport } from './routes/employer/profile/reputation'
 import { Route as EmployerProfileEditRouteImport } from './routes/employer/profile/edit'
+import { Route as EmployerCandidateCandidateIdRouteImport } from './routes/employer/candidate.$candidateId'
 import { Route as CandidateProfileVerifyRouteImport } from './routes/candidate/profile/verify'
 import { Route as CandidateProfileSettingsRouteImport } from './routes/candidate/profile/settings'
 import { Route as CandidateProfileEditRouteImport } from './routes/candidate/profile/edit'
@@ -166,6 +168,11 @@ const CandidateWishlistRoute = CandidateWishlistRouteImport.update({
   path: '/candidate/wishlist',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CandidateWalletRoute = CandidateWalletRouteImport.update({
+  id: '/candidate/wallet',
+  path: '/candidate/wallet',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CandidateShiftsRoute = CandidateShiftsRouteImport.update({
   id: '/candidate/shifts',
   path: '/candidate/shifts',
@@ -224,6 +231,12 @@ const EmployerProfileEditRoute = EmployerProfileEditRouteImport.update({
   path: '/edit',
   getParentRoute: () => EmployerProfileRoute,
 } as any)
+const EmployerCandidateCandidateIdRoute =
+  EmployerCandidateCandidateIdRouteImport.update({
+    id: '/employer/candidate/$candidateId',
+    path: '/employer/candidate/$candidateId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const CandidateProfileVerifyRoute = CandidateProfileVerifyRouteImport.update({
   id: '/verify',
   path: '/verify',
@@ -313,6 +326,7 @@ export interface FileRoutesByFullPath {
   '/candidate/notifications': typeof CandidateNotificationsRoute
   '/candidate/profile': typeof CandidateProfileRouteWithChildren
   '/candidate/shifts': typeof CandidateShiftsRoute
+  '/candidate/wallet': typeof CandidateWalletRoute
   '/candidate/wishlist': typeof CandidateWishlistRoute
   '/employer/applicants': typeof EmployerApplicantsRoute
   '/employer/chat': typeof EmployerChatRoute
@@ -333,6 +347,7 @@ export interface FileRoutesByFullPath {
   '/candidate/profile/edit': typeof CandidateProfileEditRoute
   '/candidate/profile/settings': typeof CandidateProfileSettingsRoute
   '/candidate/profile/verify': typeof CandidateProfileVerifyRoute
+  '/employer/candidate/$candidateId': typeof EmployerCandidateCandidateIdRoute
   '/employer/profile/edit': typeof EmployerProfileEditRoute
   '/employer/profile/reputation': typeof EmployerProfileReputationRoute
   '/candidate/profile/': typeof CandidateProfileIndexRoute
@@ -360,6 +375,7 @@ export interface FileRoutesByTo {
   '/candidate/chat': typeof CandidateChatRoute
   '/candidate/notifications': typeof CandidateNotificationsRoute
   '/candidate/shifts': typeof CandidateShiftsRoute
+  '/candidate/wallet': typeof CandidateWalletRoute
   '/candidate/wishlist': typeof CandidateWishlistRoute
   '/employer/applicants': typeof EmployerApplicantsRoute
   '/employer/chat': typeof EmployerChatRoute
@@ -378,6 +394,7 @@ export interface FileRoutesByTo {
   '/candidate/profile/edit': typeof CandidateProfileEditRoute
   '/candidate/profile/settings': typeof CandidateProfileSettingsRoute
   '/candidate/profile/verify': typeof CandidateProfileVerifyRoute
+  '/employer/candidate/$candidateId': typeof EmployerCandidateCandidateIdRoute
   '/employer/profile/edit': typeof EmployerProfileEditRoute
   '/employer/profile/reputation': typeof EmployerProfileReputationRoute
   '/candidate/profile': typeof CandidateProfileIndexRoute
@@ -407,6 +424,7 @@ export interface FileRoutesById {
   '/candidate/notifications': typeof CandidateNotificationsRoute
   '/candidate/profile': typeof CandidateProfileRouteWithChildren
   '/candidate/shifts': typeof CandidateShiftsRoute
+  '/candidate/wallet': typeof CandidateWalletRoute
   '/candidate/wishlist': typeof CandidateWishlistRoute
   '/employer/applicants': typeof EmployerApplicantsRoute
   '/employer/chat': typeof EmployerChatRoute
@@ -427,6 +445,7 @@ export interface FileRoutesById {
   '/candidate/profile/edit': typeof CandidateProfileEditRoute
   '/candidate/profile/settings': typeof CandidateProfileSettingsRoute
   '/candidate/profile/verify': typeof CandidateProfileVerifyRoute
+  '/employer/candidate/$candidateId': typeof EmployerCandidateCandidateIdRoute
   '/employer/profile/edit': typeof EmployerProfileEditRoute
   '/employer/profile/reputation': typeof EmployerProfileReputationRoute
   '/candidate/profile/': typeof CandidateProfileIndexRoute
@@ -457,6 +476,7 @@ export interface FileRouteTypes {
     | '/candidate/notifications'
     | '/candidate/profile'
     | '/candidate/shifts'
+    | '/candidate/wallet'
     | '/candidate/wishlist'
     | '/employer/applicants'
     | '/employer/chat'
@@ -477,6 +497,7 @@ export interface FileRouteTypes {
     | '/candidate/profile/edit'
     | '/candidate/profile/settings'
     | '/candidate/profile/verify'
+    | '/employer/candidate/$candidateId'
     | '/employer/profile/edit'
     | '/employer/profile/reputation'
     | '/candidate/profile/'
@@ -504,6 +525,7 @@ export interface FileRouteTypes {
     | '/candidate/chat'
     | '/candidate/notifications'
     | '/candidate/shifts'
+    | '/candidate/wallet'
     | '/candidate/wishlist'
     | '/employer/applicants'
     | '/employer/chat'
@@ -522,6 +544,7 @@ export interface FileRouteTypes {
     | '/candidate/profile/edit'
     | '/candidate/profile/settings'
     | '/candidate/profile/verify'
+    | '/employer/candidate/$candidateId'
     | '/employer/profile/edit'
     | '/employer/profile/reputation'
     | '/candidate/profile'
@@ -550,6 +573,7 @@ export interface FileRouteTypes {
     | '/candidate/notifications'
     | '/candidate/profile'
     | '/candidate/shifts'
+    | '/candidate/wallet'
     | '/candidate/wishlist'
     | '/employer/applicants'
     | '/employer/chat'
@@ -570,6 +594,7 @@ export interface FileRouteTypes {
     | '/candidate/profile/edit'
     | '/candidate/profile/settings'
     | '/candidate/profile/verify'
+    | '/employer/candidate/$candidateId'
     | '/employer/profile/edit'
     | '/employer/profile/reputation'
     | '/candidate/profile/'
@@ -599,6 +624,7 @@ export interface RootRouteChildren {
   CandidateNotificationsRoute: typeof CandidateNotificationsRoute
   CandidateProfileRoute: typeof CandidateProfileRouteWithChildren
   CandidateShiftsRoute: typeof CandidateShiftsRoute
+  CandidateWalletRoute: typeof CandidateWalletRoute
   CandidateWishlistRoute: typeof CandidateWishlistRoute
   EmployerApplicantsRoute: typeof EmployerApplicantsRoute
   EmployerChatRoute: typeof EmployerChatRoute
@@ -616,6 +642,7 @@ export interface RootRouteChildren {
   JobsIndexRoute: typeof JobsIndexRoute
   CandidateEmployerEmployerIdRoute: typeof CandidateEmployerEmployerIdRoute
   CandidateJobsJobIdRoute: typeof CandidateJobsJobIdRoute
+  EmployerCandidateCandidateIdRoute: typeof EmployerCandidateCandidateIdRoute
   CandidateVerificationIndexRoute: typeof CandidateVerificationIndexRoute
 }
 
@@ -775,6 +802,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CandidateWishlistRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/candidate/wallet': {
+      id: '/candidate/wallet'
+      path: '/candidate/wallet'
+      fullPath: '/candidate/wallet'
+      preLoaderRoute: typeof CandidateWalletRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/candidate/shifts': {
       id: '/candidate/shifts'
       path: '/candidate/shifts'
@@ -851,6 +885,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/employer/profile/edit'
       preLoaderRoute: typeof EmployerProfileEditRouteImport
       parentRoute: typeof EmployerProfileRoute
+    }
+    '/employer/candidate/$candidateId': {
+      id: '/employer/candidate/$candidateId'
+      path: '/employer/candidate/$candidateId'
+      fullPath: '/employer/candidate/$candidateId'
+      preLoaderRoute: typeof EmployerCandidateCandidateIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/candidate/profile/verify': {
       id: '/candidate/profile/verify'
@@ -1020,6 +1061,7 @@ const rootRouteChildren: RootRouteChildren = {
   CandidateNotificationsRoute: CandidateNotificationsRoute,
   CandidateProfileRoute: CandidateProfileRouteWithChildren,
   CandidateShiftsRoute: CandidateShiftsRoute,
+  CandidateWalletRoute: CandidateWalletRoute,
   CandidateWishlistRoute: CandidateWishlistRoute,
   EmployerApplicantsRoute: EmployerApplicantsRoute,
   EmployerChatRoute: EmployerChatRoute,
@@ -1037,6 +1079,7 @@ const rootRouteChildren: RootRouteChildren = {
   JobsIndexRoute: JobsIndexRoute,
   CandidateEmployerEmployerIdRoute: CandidateEmployerEmployerIdRoute,
   CandidateJobsJobIdRoute: CandidateJobsJobIdRoute,
+  EmployerCandidateCandidateIdRoute: EmployerCandidateCandidateIdRoute,
   CandidateVerificationIndexRoute: CandidateVerificationIndexRoute,
 }
 export const routeTree = rootRouteImport

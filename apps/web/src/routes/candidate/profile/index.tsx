@@ -15,6 +15,7 @@ import {
   Settings,
   ShieldCheck,
   Star,
+  Wallet,
 } from 'lucide-react';
 import { useMyApplicationsRealtime } from '@/features/jobs/hooks/useMyApplicationsRealtime';
 
@@ -56,9 +57,12 @@ function CandidateProfilePage() {
   const activeShiftsCount = applications.filter((app) => app.status === 'APPROVED' || app.status === 'CHECKED_IN').length;
   const completedShiftsCount = applications.filter((app) => app.status === 'COMPLETED').length;
 
-  // Mock data for Rating (since there's no reviews feature yet)
+  // Dynamic data for Rating
+  const avgRating = userProfile?.average_rating || 0;
+  const ratingText = avgRating > 0 ? avgRating.toFixed(1) : 'Mới';
+
   const stats = {
-    rating: 4.8,
+    rating: ratingText,
     activeShifts: activeShiftsCount,
     completedShifts: completedShiftsCount
   };
@@ -247,10 +251,28 @@ function CandidateProfilePage() {
           </div>
         </div>
 
-        {/* Admin Actions */}
+        {/* Wallet + Admin Actions */}
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-          <h3 className="text-[13px] font-bold text-slate-400 uppercase tracking-wider mb-3">Quản trị</h3>
+          <h3 className="text-[13px] font-bold text-slate-400 uppercase tracking-wider mb-3">Tài chính & Quản trị</h3>
           <div className="space-y-1.5">
+            <Link
+              to="/candidate/wallet"
+              className="w-full flex items-center justify-between p-3 rounded-xl border border-indigo-50 bg-indigo-50/30 hover:bg-indigo-50 text-slate-700 transition-colors"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-white shadow-sm flex items-center justify-center text-indigo-600">
+                  <Wallet className="w-4 h-4" />
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-bold">Ví của tôi</p>
+                  <p className="text-[11px] text-indigo-500 font-bold">{(userProfile.balance || 0).toLocaleString()}đ</p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-indigo-400" />
+            </Link>
+            
+            <div className="h-px bg-slate-50 my-1" />
+
             <Link
               to="/candidate/profile/edit"
               className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 text-slate-700 transition-colors"
