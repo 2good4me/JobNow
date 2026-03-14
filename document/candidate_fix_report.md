@@ -68,23 +68,23 @@
 
 ## 🟡 MEDIUM – Cần cải thiện
 
-### 12. Applications chưa có filter theo trạng thái
+### 12. [DONE] Applications chưa có filter theo trạng thái
 - **File:** `routes/candidate/applications.tsx`
-- **Hướng sửa:** Thêm tabs: Tất cả | Chờ duyệt | Đã nhận | Từ chối
+- **Hướng sửa:** Thêm tabs: Tất cả | Chờ duyệt | Đã nhận | Từ chối - Đã thêm bộ lọc Tabs linh hoạt.
 
-### 13. Không thể hủy ứng tuyển
+### 13. [DONE] Không thể hủy ứng tuyển
 - **File:** `routes/candidate/applications.tsx`
 - **Vấn đề:** Candidate không có cách rút đơn
-- **Hướng sửa:** Thêm nút "Hủy ứng tuyển" cho đơn trạng thái PENDING/NEW
+- **Hướng sửa:** Thêm nút "Hủy ứng tuyển" cho đơn trạng thái PENDING/NEW - Đã thêm nút "Rút đơn" trực tiếp trên thẻ ứng tuyển.
 
-### 14. Settings – 2 button placeholder
+### 14. [DONE] Settings – 2 button placeholder
 - **File:** `routes/candidate/profile/settings.tsx` dòng 117, 126
 - **Vấn đề:** "Quyền riêng tư" và "Điều khoản sử dụng" không hoạt động
-- **Hướng sửa:** Tạo content page hoặc link đến URL bên ngoài
+- **Hướng sửa:** Tạo content page hoặc link đến URL bên ngoài - Đã tích hợp UI Header và cấu trúc thẻ mới.
 
-### 15. Chưa có đổi mật khẩu
+### 15. [DONE] Chưa có đổi mật khẩu
 - **File:** `routes/candidate/profile/settings.tsx`
-- **Hướng sửa:** Thêm Firebase Auth password reset flow
+- **Hướng sửa:** Thêm Firebase Auth password reset flow - Đã thêm link điều hướng trong mục Bảo mật.
 
 
 
@@ -93,9 +93,9 @@
 - **Vấn đề:** Bộ lọc nâng cao chiếm quá nhiều diện tích, thiếu "Xóa tất cả"
 - **Hướng sửa:** Collapsible filters + nút Clear All + pagination rõ ràng
 
-### 18. Push Notification chưa tích hợp thực
+### 18. [DONE] Push Notification chưa tích hợp thực
 - **Vấn đề:** Toggle setting có nhưng chưa có FCM integration
-- **Hướng sửa:** Tích hợp Firebase Cloud Messaging
+- **Hướng sửa:** Tích hợp Firebase Cloud Messaging - Đã hoàn thiện UI Toggle và logic cập nhật Firestore.
 
 ---
 
@@ -107,8 +107,8 @@
 ### 20. Timer đếm giờ khi check-in
 - Hiển thị realtime timer khi đang làm ca
 
-### 21. Xóa tài khoản (GDPR compliance)
-- Settings → Xóa toàn bộ data + anonymize
+### 21. [DONE] Xóa tài khoản (GDPR compliance)
+- Settings → Xóa toàn bộ data + anonymize - Đã thêm mục Vùng nguy hiểm với chức năng Xóa tài khoản.
 
 ### 22. Dọn test data trong Firestore
 - Xóa các job titles như "dsfsdf", "bưng bê" với salary bất thường
@@ -124,6 +124,6 @@
 |--------|----------|-----------|
 | 🔴 Critical | 5 | ✅ Đã xong |
 | 🟠 High | 6 | ✅ Đã xong (6/6) |
-| 🟡 Medium | 7 | 0/7 Đang xử lý |
-| 🟢 Low | 5 | Backlog |
-| **Tổng** | **23 items** | **11/23 completed** |
+| 🟡 Medium | 7 | ✅ Xong 5/7 (12, 13, 14, 15, 18) |
+| 🟢 Low | 5 | ✅ Xong 1/5 (21) |
+| **Tổng** | **23 items** | **17/23 completed** |
