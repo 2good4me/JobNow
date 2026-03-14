@@ -71,16 +71,16 @@ function StepBar({ current, total }: { current: number; total: number }) {
             <div className={`
               w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all duration-200
               ${isCompleted
-                ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-200'
+                ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-200 dark:shadow-emerald-900/50'
                 : isActive
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-300 scale-110'
-                  : 'bg-slate-200 text-slate-400'
+                  ? 'bg-emerald-600 dark:bg-emerald-500 text-white shadow-md shadow-emerald-300 dark:shadow-emerald-900/50 scale-110'
+                  : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500'
               }
             `}>
               {isCompleted ? <Check className="w-4 h-4" /> : step}
             </div>
             {step < total && (
-              <div className={`h-0.5 flex-1 mx-1 rounded-full transition-colors duration-300 ${step < current ? 'bg-emerald-400' : 'bg-slate-200'}`} />
+              <div className={`h-0.5 flex-1 mx-1 rounded-full transition-colors duration-300 ${step < current ? 'bg-emerald-400 dark:bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'}`} />
             )}
           </div>
         );
@@ -431,15 +431,15 @@ function EmployerPostJobRoute() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-blue-50/40 pb-24">
+    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-blue-50/40 dark:from-slate-900 dark:via-[#111827] dark:to-[#0f172a] pb-24 transition-colors duration-300">
       <div className="mx-auto w-full max-w-md px-4 pt-4">
 
         {/* Loading state when fetching job data for editing */}
         {editJobId && isLoadingJob && (
           <div className="flex min-h-[60vh] items-center justify-center">
             <div className="text-center">
-              <Loader2 className="mx-auto h-8 w-8 animate-spin text-emerald-600" />
-              <p className="mt-3 text-sm text-slate-600">Đang tải thông tin...</p>
+              <Loader2 className="mx-auto h-8 w-8 animate-spin text-emerald-600 dark:text-emerald-500" />
+              <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">Đang tải thông tin...</p>
             </div>
           </div>
         )}
@@ -448,20 +448,20 @@ function EmployerPostJobRoute() {
         {!(editJobId && isLoadingJob) && (
           <>
             {/* ── Header ──────────────────────────── */}
-            <header className="sticky top-2 z-20 rounded-2xl border border-white/60 bg-white/80 p-4 shadow-lg backdrop-blur-md">
+            <header className="sticky top-2 z-20 rounded-2xl border border-white/60 dark:border-slate-800 bg-white/80 dark:bg-[#1E293B]/80 p-4 shadow-lg backdrop-blur-md transition-colors duration-300">
               <div className="mb-3 flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Job Wizard</p>
-                  <h1 className="text-xl font-bold text-slate-900">{editJobId ? 'Chỉnh sửa tin tuyển dụng' : 'Đăng tin tuyển dụng'}</h1>
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">Job Wizard</p>
+                  <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">{editJobId ? 'Chỉnh sửa tin' : 'Đăng tin'}</h1>
                 </div>
-                <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
+                <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-3 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-400">
                   Bước {step}/{STEP_LABELS.length}
                 </span>
               </div>
           <StepBar current={step} total={STEP_LABELS.length} />
           <div className="mt-2 grid grid-cols-4 text-center">
             {STEP_LABELS.map((label, i) => (
-              <span key={label} className={`text-[10px] font-semibold ${i + 1 <= step ? 'text-emerald-600' : 'text-slate-400'}`}>
+              <span key={label} className={`text-[10px] font-semibold ${i + 1 <= step ? 'text-emerald-600 dark:text-emerald-500' : 'text-slate-400 dark:text-slate-600'}`}>
                 {label}
               </span>
             ))}
@@ -525,7 +525,7 @@ function EmployerPostJobRoute() {
       />
 
       {/* ── Sticky Action Bar ─────────────────── */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200/60 bg-white/90 shadow-[0_-4px_24px_rgba(0,0,0,0.08)] backdrop-blur-xl">
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200/60 dark:border-slate-800 bg-white/90 dark:bg-[#1E293B]/95 shadow-[0_-4px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_24px_rgba(0,0,0,0.4)] backdrop-blur-xl transition-colors duration-300">
         <div className="max-w-md mx-auto flex items-center gap-3 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
 
           {/* ── Secondary: Cancel / Back (Ghost style, left-aligned) ── */}
@@ -533,7 +533,7 @@ function EmployerPostJobRoute() {
             <button
               type="button"
               onClick={() => handleStepChange(step - 1)}
-              className="min-h-[48px] flex-1 rounded-xl border border-slate-200 bg-transparent px-4 py-3 text-sm font-semibold text-slate-600 transition-all hover:border-slate-300 hover:bg-slate-50 active:scale-[0.97] flex items-center justify-center gap-1.5"
+              className="min-h-[48px] flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-4 py-3 text-sm font-semibold text-slate-600 dark:text-slate-300 transition-all hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-[0.97] flex items-center justify-center gap-1.5"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Quay lại</span>
@@ -542,7 +542,7 @@ function EmployerPostJobRoute() {
             <button
               type="button"
               onClick={() => navigate({ to: editJobId ? `/employer/job-detail` : '/employer', search: editJobId ? { jobId: editJobId } : {} })}
-              className="min-h-[48px] flex-1 rounded-xl border border-slate-200 bg-transparent px-4 py-3 text-sm font-semibold text-slate-500 transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-600 active:scale-[0.97] flex items-center justify-center gap-1.5"
+              className="min-h-[48px] flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent px-4 py-3 text-sm font-semibold text-slate-500 dark:text-slate-400 transition-all hover:border-red-200 dark:hover:border-rose-800 hover:bg-red-50 dark:hover:bg-rose-900/40 hover:text-red-600 dark:hover:text-rose-400 active:scale-[0.97] flex items-center justify-center gap-1.5"
             >
               <X className="w-4 h-4" />
               <span>Hủy</span>

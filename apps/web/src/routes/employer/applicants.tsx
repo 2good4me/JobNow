@@ -20,7 +20,7 @@ type ApplicantTab = 'all' | 'pending' | 'approved' | 'rejected';
 /* ── Card Skeleton ── */
 function CardSkeleton() {
   return (
-    <div className="animate-pulse rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+    <div className="animate-pulse rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-[#1E293B] p-4 shadow-sm transition-colors duration-300">
       <div className="flex items-start gap-3">
         <div className="h-12 w-12 rounded-xl bg-slate-200" />
         <div className="flex-1 space-y-2">
@@ -62,13 +62,13 @@ function DelayedSkeleton({ delayMs = 500 }: { delayMs?: number }) {
 function EmptyApplicants({ isFiltered, onShare }: { isFiltered?: boolean; onShare: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-      <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center mb-5 shadow-sm">
-        <Users className="w-10 h-10 text-indigo-400" />
+      <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 flex items-center justify-center mb-5 shadow-sm">
+        <Users className="w-10 h-10 text-indigo-400 dark:text-indigo-500" />
       </div>
-      <h3 className="text-lg font-bold text-slate-800 mb-2">
+      <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-2">
         {isFiltered ? 'Không tìm thấy ứng viên' : 'Chưa có ai ứng tuyển'}
       </h3>
-      <p className="text-sm text-slate-500 max-w-[260px] mb-6">
+      <p className="text-sm text-slate-500 dark:text-slate-400 max-w-[260px] mb-6">
         {isFiltered
           ? 'Thử đổi bộ lọc hoặc tìm kiếm khác để xem thêm ứng viên.'
           : 'Chia sẻ tin tuyển dụng để thu hút ứng viên tiềm năng nhé!'
@@ -97,11 +97,11 @@ function StatPill({ label, value, color, active, onClick }: {
       onClick={onClick}
       className={`flex flex-col items-center gap-0.5 rounded-2xl px-4 py-2.5 text-center transition-all min-w-[72px] ${active
         ? `${color} shadow-sm border border-current/10`
-        : 'bg-white border border-slate-100 hover:bg-slate-50'
+        : 'bg-white dark:bg-[#1E293B] border border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/80'
         }`}
     >
-      <span className={`text-xl font-extrabold leading-none ${active ? '' : 'text-slate-700'}`}>{value}</span>
-      <span className={`text-[10px] font-semibold uppercase tracking-wider ${active ? '' : 'text-slate-400'}`}>{label}</span>
+      <span className={`text-xl font-extrabold leading-none ${active ? '' : 'text-slate-700 dark:text-slate-200'}`}>{value}</span>
+      <span className={`text-[10px] font-semibold uppercase tracking-wider ${active ? '' : 'text-slate-400 dark:text-slate-500'}`}>{label}</span>
     </button>
   );
 }
@@ -163,7 +163,7 @@ function EmployerApplicantsRoute() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-24">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-24 transition-colors duration-300">
       <div className="mx-auto w-full max-w-lg">
 
         {/* ── Gradient Header ── */}
@@ -226,17 +226,17 @@ function EmployerApplicantsRoute() {
 
         {/* ── Search Bar ── */}
         <div className="px-4 -mt-4 relative z-20">
-          <div className="flex items-center gap-2 rounded-2xl bg-white px-4 py-3 shadow-lg border border-slate-100">
-            <Search className="h-4 w-4 text-slate-400 shrink-0" />
+          <div className="flex items-center gap-2 rounded-2xl bg-white dark:bg-[#1f2937] px-4 py-3 shadow-lg border border-slate-100 dark:border-slate-800 transition-colors duration-300">
+            <Search className="h-4 w-4 text-slate-400 dark:text-slate-500 shrink-0" />
             <input
-              className="w-full border-none bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:ring-0 focus:outline-none"
+              className="w-full border-none bg-transparent text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:ring-0 focus:outline-none"
               placeholder="Tìm theo tên ứng viên..."
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             {searchTerm && (
-              <button type="button" onClick={() => setSearchTerm('')} className="text-slate-400 hover:text-slate-600 text-lg leading-none">
+              <button type="button" onClick={() => setSearchTerm('')} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 text-lg leading-none">
                 ×
               </button>
             )}
@@ -256,8 +256,8 @@ function EmployerApplicantsRoute() {
             <>
               {/* Funnel hint */}
               {activeTab === 'pending' && stats.pending > 0 && (
-                <div className="flex items-center gap-2 rounded-xl bg-blue-50 border border-blue-100 px-3 py-2 text-xs text-blue-700 font-medium">
-                  <Sparkles className="h-4 w-4 shrink-0 text-blue-500" />
+                <div className="flex items-center gap-2 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 px-3 py-2 text-xs text-blue-700 dark:text-blue-400 font-medium">
+                  <Sparkles className="h-4 w-4 shrink-0 text-blue-500 dark:text-blue-400" />
                   {stats.pending} ứng viên đang chờ bạn duyệt. Bấm <strong>Duyệt</strong> để nhận ngay!
                 </div>
               )}

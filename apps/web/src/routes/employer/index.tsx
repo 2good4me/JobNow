@@ -68,12 +68,12 @@ function EmployerDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-28">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-28 transition-colors duration-300">
 
       {/* ── 1. Header — Clean, flat, white ─────────── */}
-      <header className="bg-white px-5 pt-8 pb-5">
-        <p className="text-slate-500 text-sm font-medium">{greeting},</p>
-        <h1 className="text-slate-900 text-xl font-bold tracking-tight mt-0.5 line-clamp-1">
+      <header className="bg-white dark:bg-[#1f2937] px-5 pt-8 pb-5 transition-colors duration-300">
+        <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">{greeting},</p>
+        <h1 className="text-slate-900 dark:text-slate-100 text-xl font-bold tracking-tight mt-0.5 line-clamp-1">
           {companyName}
         </h1>
       </header>

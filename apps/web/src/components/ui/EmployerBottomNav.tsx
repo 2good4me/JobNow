@@ -25,7 +25,7 @@ export function EmployerBottomNav() {
     const manageBadgeCount = 0;
 
     return (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/85 dark:bg-slate-900/85 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-700/50 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] animate-slide-in-bottom">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/85 dark:bg-slate-800/85 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-700/50 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] animate-slide-in-bottom transition-colors duration-300">
             <div className="flex items-center justify-around max-w-lg mx-auto h-[72px] px-2 relative">
                 {navItemsDef.map((item) => {
                     const { to, icon: Icon, label } = item;
@@ -65,21 +65,21 @@ export function EmployerBottomNav() {
                             to={to}
                             className="flex-1 flex flex-col items-center justify-center gap-1 group relative h-full transition-colors"
                         >
-                            <div className={`flex h-7 items-center justify-center transition-all duration-200 ${isActive ? 'text-primary-600 drop-shadow-[0_0_8px_rgba(36,99,235,0.4)]' : 'text-slate-400 group-hover:text-primary-500'}`}>
+                            <div className={`flex h-7 items-center justify-center transition-all duration-200 ${isActive ? 'text-primary-600 drop-shadow-[0_0_8px_rgba(36,99,235,0.4)]' : 'text-slate-400 group-hover:text-primary-500 dark:text-slate-300'}`}>
                                 <Icon className={`w-[26px] h-[26px] ${isActive ? 'scale-110' : ''}`} strokeWidth={isActive ? 2.5 : 2} />
                             </div>
 
                             {hasBadge && badgeValue > 0 && badgeType === 'chat' && (
-                                <span className="absolute top-2 right-[20%] min-w-[16px] h-4 bg-red-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full border border-white px-1 z-10">
+                                <span className="absolute top-2 right-[20%] min-w-[16px] h-4 bg-red-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full border border-white px-1 z-10 dark:border-slate-800">
                                     {badgeValue > 99 ? '99+' : badgeValue}
                                 </span>
                             )}
 
                             {hasBadge && badgeValue > 0 && badgeType === 'manage' && (
-                                <span className="absolute top-2 right-[25%] w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white z-10" />
+                                <span className="absolute top-2 right-[25%] w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white z-10 dark:border-slate-800" />
                             )}
 
-                            <span className={`text-[10px] font-medium leading-none tracking-tight transition-colors ${isActive ? 'text-primary-600' : 'text-slate-500 group-hover:text-primary-500'}`}>
+                            <span className={`text-[10px] font-medium leading-none tracking-tight transition-colors ${isActive ? 'text-primary-600' : 'text-slate-500 group-hover:text-primary-500 dark:text-slate-300'}`}>
                                 {label}
                             </span>
                         </Link>
