@@ -1,6 +1,6 @@
 import { Check, Clock3, Shield, UserRoundCheck, X, Briefcase, Loader2, Phone, MessageCircle, Star } from 'lucide-react';
 import type { Application } from '@jobnow/types';
-import { useUpdateApplicationStatus } from '@/features/jobs/hooks/useManageApplicants';
+import { useUpdateApplicationStatus, useCompleteApplication } from '@/features/jobs/hooks/useManageApplicants';
 import { useCandidateProfile } from '@/features/jobs/hooks/useCandidateProfile';
 import { useState, useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
@@ -66,6 +66,8 @@ export function ApplicantCard({
   );
   const navigate = useNavigate();
   const [showConfetti, setShowConfetti] = useState(false);
+  const { mutate: completeWithPayment, isPending: isPaying } = useCompleteApplication();
+  const [showPayOptions, setShowPayOptions] = useState(false);
 
   // Prefer denormalized data, fallback to fetched profile
   const fullName = dnName || candidate?.fullName || 'Ứng viên';
@@ -80,7 +82,9 @@ export function ApplicantCard({
     PENDING: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500', label: 'Chờ duyệt' },
     REVIEWED: { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500', label: 'Đã duyệt' },
     APPROVED: { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500', label: 'Đã duyệt' },
-    CHECKED_IN: { bg: 'bg-violet-50', text: 'text-violet-700', dot: 'bg-violet-500', label: 'Đang làm' },
+    CHECK_IN: { bg: 'bg-violet-50', text: 'text-violet-700', dot: 'bg-violet-500', label: 'Đang làm' },
+    WORK_FINISHED: { bg: 'bg-indigo-50', text: 'text-indigo-700', dot: 'bg-indigo-500', label: 'Chờ thanh toán' },
+    CASH_CONFIRMATION: { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500', label: 'Chờ xác nhận TM' },
     COMPLETED: { bg: 'bg-sky-50', text: 'text-sky-700', dot: 'bg-sky-500', label: 'Hoàn thành' },
     REJECTED: { bg: 'bg-rose-50', text: 'text-rose-600', dot: 'bg-rose-500', label: 'Từ chối' },
     CANCELLED: { bg: 'bg-slate-50', text: 'text-slate-500', dot: 'bg-slate-400', label: 'Đã hủy' },
@@ -143,9 +147,24 @@ export function ApplicantCard({
   const { user } = useAuth();
   const [reviewOpen, setReviewOpen] = useState(false);
 
-  const canApprove = !['REVIEWED', 'APPROVED', 'COMPLETED', 'CANCELLED'].includes(status);
-  const canReject = !['REJECTED', 'COMPLETED', 'CANCELLED'].includes(status);
+  const canApprove = !['REVIEWED', 'APPROVED', 'CHECKED_IN', 'WORK_FINISHED', 'CASH_CONFIRMATION', 'COMPLETED', 'CANCELLED'].includes(status);
+  const canReject = !['REJECTED', 'WORK_FINISHED', 'CASH_CONFIRMATION', 'COMPLETED', 'CANCELLED'].includes(status);
+  const canPay = status === 'WORK_FINISHED';
   const canReview = status === 'COMPLETED';
+
+  const handlePay = (method: 'APP' | 'CASH') => {
+    completeWithPayment(
+      { id: applicationId, paymentMethod: method },
+      {
+        onSuccess: () => {
+          setShowPayOptions(false);
+          setShowConfetti(true);
+          setTimeout(() => setShowConfetti(false), 2000);
+        },
+        onError: (err) => alert(`Thanh toán thất bại: ${err.message}`)
+      }
+    );
+  };
 
   return (
     <article className="group relative rounded-2xl border border-slate-100 bg-white shadow-sm transition-all hover:shadow-md active:scale-[0.99]">
@@ -262,6 +281,44 @@ export function ApplicantCard({
           >
             <Check className="h-4 w-4" /> Duyệt
           </button>
+        )}
+
+        {/* Pay & Complete */}
+        {canPay && (
+          <div className="relative flex-[1.5] flex">
+            {!showPayOptions ? (
+              <button
+                type="button"
+                disabled={isPaying}
+                onClick={() => setShowPayOptions(true)}
+                className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-white bg-indigo-600 transition-colors hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-50"
+              >
+                {isPaying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Briefcase className="h-4 w-4" />} 
+                Trả lương
+              </button>
+            ) : (
+              <div className="flex w-full animate-in slide-in-from-right-2 duration-200">
+                <button
+                  onClick={() => handlePay('APP')}
+                  className="flex-1 bg-indigo-500 text-[10px] font-black text-white px-1 py-2 hover:bg-indigo-600 border-r border-white/20"
+                >
+                  QUA APP
+                </button>
+                <button
+                  onClick={() => handlePay('CASH')}
+                  className="flex-1 bg-emerald-500 text-[10px] font-black text-white px-1 py-2 hover:bg-emerald-600 border-r border-white/20"
+                >
+                  TIỀN MẶT
+                </button>
+                <button
+                  onClick={() => setShowPayOptions(false)}
+                  className="bg-slate-800 text-white p-2"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Review (Employer rates Candidate) */}

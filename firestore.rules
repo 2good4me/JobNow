@@ -30,7 +30,7 @@ service cloud.firestore {
       );
       allow update: if isOwner(userId) || (
         isSignedIn() && (
-          request.resource.data.diff(resource.data).affectedKeys().hasAny(['average_rating', 'total_ratings', 'updated_at', 'updatedAt'])
+          request.resource.data.diff(resource.data).affectedKeys().hasAny(['average_rating', 'total_ratings', 'updated_at', 'updatedAt', 'balance'])
         )
       );
 
@@ -136,8 +136,9 @@ service cloud.firestore {
 
     // --- TRANSACTIONS ---
     match /transactions/{transactionId} {
-      allow read: if isSignedIn() && resource.data.user_id == request.auth.uid;
-      allow write: if false;
+      allow read: if isSignedIn() && (resource == null || resource.data.user_id == request.auth.uid || resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn(); // Allow creating for simulation
+      allow update, delete: if false;
     }
 
     // --- REVIEWS ---

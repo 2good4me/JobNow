@@ -6,10 +6,13 @@ export type ApplicationStatus =
     | 'APPROVED'
     | 'REJECTED'
     | 'CHECKED_IN'
+    | 'WORK_FINISHED'
+    | 'CASH_CONFIRMATION'
     | 'COMPLETED'
     | 'CANCELLED';
 
 export type PaymentStatus = 'UNPAID' | 'PROCESSING' | 'PAID';
+export type PaymentMethod = 'APP' | 'CASH';
 
 export interface Application {
     id: string;
@@ -19,6 +22,7 @@ export interface Application {
     candidateId: string;
     status: ApplicationStatus;
     paymentStatus: PaymentStatus;
+    paymentMethod?: PaymentMethod;
     coverLetter?: string;
     notes?: string;           // Employer ghi chú về ứng viên
     rating?: number;          // Đánh giá sau khi hoàn thành (1-5)
@@ -46,6 +50,7 @@ export interface ApplicationDoc {
     candidate_id: string;
     status: ApplicationStatus;
     payment_status?: PaymentStatus;
+    payment_method?: PaymentMethod;
     cover_letter?: string;
     notes?: string;
     rating?: number;

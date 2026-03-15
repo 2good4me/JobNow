@@ -9,6 +9,7 @@ import {
     useMarkNotificationRead,
     useMarkAllRead,
 } from '@/features/notifications/hooks/useNotifications';
+import { useNavigate } from '@tanstack/react-router';
 import {
     type AppNotification,
     type NotificationType,
@@ -42,6 +43,7 @@ function getIconStyle(type: NotificationType): IconStyle {
         case 'SHIFT_CHECKIN':
             return { icon: Clock, bg: 'bg-emerald-100', color: 'text-emerald-600' };
         case 'PAYMENT_RECEIVED':
+        case 'PAYMENT_CONFIRM_REQUIRED':
         case 'PAYMENT_REMINDER':
         case 'PAYMENT':
             return { icon: Wallet, bg: 'bg-amber-100', color: 'text-amber-600' };
@@ -89,17 +91,17 @@ const TABS: { key: FilterTab; label: string }[] = [
 
 function NotificationItem({
     notification,
-    onRead,
+    onClick,
 }: {
     notification: AppNotification;
-    onRead: (id: string) => void;
+    onClick: (n: AppNotification) => void;
 }) {
     const { icon: Icon, bg, color } = getIconStyle(notification.type);
     const isUnread = !notification.isRead;
 
     return (
         <button
-            onClick={() => onRead(notification.id)}
+            onClick={() => onClick(notification)}
             className={`w-full flex gap-4 px-5 py-4 text-left transition-colors cursor-pointer active:bg-slate-100
                 ${isUnread ? 'bg-sky-50/60' : 'bg-white hover:bg-slate-50'}
             `}
@@ -142,9 +144,52 @@ export function NotificationCenter() {
     const { data: notifications, isLoading, unreadCount, allData } = useFilteredNotifications(userId, activeTab);
     const markRead = useMarkNotificationRead();
     const markAllRead = useMarkAllRead();
+    const navigate = useNavigate();
 
-    const handleRead = (id: string) => {
-        markRead.mutate(id);
+    const handleNotificationClick = (n: AppNotification) => {
+        // 1. Mark as read if unread
+        if (!n.isRead) {
+            markRead.mutate(n.id);
+        }
+
+        // 2. Navigate based on type and data
+        const data = n.data || {};
+        const { applicationId, jobId } = data;
+
+        // Candidate flows
+        if (n.type === 'APPLICATION_APPROVED' || 
+            n.type === 'APPLICATION_REJECTED' || 
+            n.type === 'APPLICATION_UPDATE' ||
+            n.type === 'PAYMENT_RECEIVED' ||
+            n.type === 'PAYMENT_CONFIRM_REQUIRED' ||
+            n.category === 'SHIFT' ||
+            n.category === 'PAYMENT' ||
+            n.category === 'APPLICATION') {
+            
+            if (applicationId) {
+                navigate({ 
+                    to: '/candidate/applications/$applicationId', 
+                    params: { applicationId } 
+                } as any);
+                return;
+            }
+        }
+
+        // Employer flows
+        if (n.type === 'NEW_APPLICATION') {
+            if (jobId) {
+                navigate({ 
+                    to: '/employer/applicants', 
+                    search: { jobId } 
+                } as any);
+                return;
+            }
+        }
+
+        // Default or fallbacks
+        if (n.category === 'SYSTEM') {
+             // Maybe go to profile or home
+        }
     };
 
     const handleMarkAllRead = () => {
@@ -228,7 +273,7 @@ export function NotificationCenter() {
                             <NotificationItem
                                 key={notification.id}
                                 notification={notification}
-                                onRead={handleRead}
+                                onClick={handleNotificationClick}
                             />
                         ))}
                     </div>

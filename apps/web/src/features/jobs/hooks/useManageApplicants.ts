@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Application } from '@jobnow/types';
-import { fetchJobApplications, updateApplicationStatus, fetchEmployerApplications } from '../services/applicationService';
+import { fetchJobApplications, updateApplicationStatus, fetchEmployerApplications, completeApplicationWithPayment, confirmPaymentReceived } from '../services/applicationService';
 
 /**
  * Hook to fetch all applications for a specific job.
@@ -66,5 +66,40 @@ export function useGetEmployerApplications(employerId: string | undefined) {
         },
         enabled: !!employerId,
         staleTime: 1 * 60 * 1000, // 1 min — apps change more often
+    });
+}
+/**
+ * Hook to complete application with payment.
+ */
+export function useCompleteApplication() {
+    const queryClient = useQueryClient();
+
+    return useMutation<Application, Error, { id: string; paymentMethod: 'APP' | 'CASH' }>({
+        mutationFn: async ({ id, paymentMethod }) => {
+            return await completeApplicationWithPayment(id, paymentMethod);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['applications'] });
+        },
+    });
+}
+
+/**
+ * Hook for candidate to confirm receipt of cash payment.
+ */
+export function useConfirmPayment() {
+    const queryClient = useQueryClient();
+
+    return useMutation<Application, Error, string>({
+        mutationFn: async (id: string) => {
+            return await confirmPaymentReceived(id);
+        },
+        onSuccess: (updatedApp) => {
+            queryClient.invalidateQueries({ queryKey: ['applications'] });
+            // And a single application query
+            queryClient.invalidateQueries({
+                queryKey: ['applications', 'id', updatedApp.id],
+            });
+        },
     });
 }

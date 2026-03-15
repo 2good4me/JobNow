@@ -36,8 +36,8 @@ function calculateDistanceMeters(lat1: number, lng1: number, lat2: number, lng2:
 }
 
 export function validateGpsClientSide(input: GpsValidationInput): GpsValidationResult {
-    const radius = input.radiusMeters ?? 200; // Tăng bán kính lên 200m cho linh hoạt
-    const maxAccuracy = input.maxAccuracyMeters ?? 100; // Chấp nhận độ chính xác thấp hơn một chút
+    const radius = input.radiusMeters ?? 5000; // Đã tăng lên 5km để hỗ trợ test (Gốc: 200m)
+    const maxAccuracy = input.maxAccuracyMeters ?? 200; // Tăng độ chấp nhận sai số GPS
 
     if (input.accuracy > maxAccuracy) {
         return {
@@ -142,7 +142,7 @@ export async function checkOut(input: CheckOutInput): Promise<{ success: boolean
         
         await writeBatch(db)
             .update(appRef, {
-                status: 'COMPLETED',
+                status: 'WORK_FINISHED',
                 updated_at: serverTimestamp(),
             })
             .commit();

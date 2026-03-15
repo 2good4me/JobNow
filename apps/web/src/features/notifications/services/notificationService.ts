@@ -17,11 +17,14 @@ export type NotificationType =
     | 'SHIFT_CHECKIN'
     // Payment
     | 'PAYMENT_RECEIVED'
+    | 'PAYMENT_CONFIRM_REQUIRED'
     | 'PAYMENT_REMINDER'
     // System
     | 'VERIFICATION_UPDATE'
     | 'SYSTEM_ANNOUNCEMENT'
     // Legacy fallback
+    | 'APPLICATION_APPROVED'
+    | 'APPLICATION_REJECTED'
     | 'APPLICATION_UPDATE'
     | 'PAYMENT'
     | 'SYSTEM';
@@ -57,6 +60,7 @@ export function getNotificationCategory(type: NotificationType): NotificationCat
         case 'SHIFT_CHECKIN':
             return 'SHIFT';
         case 'PAYMENT_RECEIVED':
+        case 'PAYMENT_CONFIRM_REQUIRED':
         case 'PAYMENT_REMINDER':
         case 'PAYMENT':
             return 'PAYMENT';

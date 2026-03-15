@@ -2,6 +2,7 @@ import { collection, getDocs, query, where, limit, doc, getDoc, updateDoc, addDo
 import { db } from '@/config/firebase';
 import type { Application, ApplicationStatus } from '@jobnow/types';
 import { mapApplicationDocToApplication } from './adapters';
+import { processAppPayment } from '@/features/wallet/services/walletService';
 
 function dedupeById(items: Application[]): Application[] {
     const map = new Map<string, Application>();
@@ -183,5 +184,107 @@ export async function updateApplicationStatus(
            throw new Error(`Firebase [${error.code}]: ` + (error?.message || 'Không rõ nguyên nhân.'));
         }
         throw new Error(error?.message || 'Không thể cập nhật trạng thái đơn ứng tuyển. (Internal)');
+    }
+}
+
+/**
+ * Marks an application as completed and handles payment details.
+ */
+export async function completeApplicationWithPayment(
+    applicationId: string,
+    paymentMethod: 'APP' | 'CASH'
+): Promise<Application> {
+    try {
+        const appRef = doc(db, 'applications', applicationId);
+        const appSnap = await getDoc(appRef);
+        
+        if (!appSnap.exists()) {
+            throw new Error('Đơn ứng tuyển không tồn tại.');
+        }
+
+        const data = appSnap.data();
+        const candidateId = String(data.candidate_id || data.candidateId || '');
+        const jobId = String(data.job_id || data.jobId || '');
+
+        // 1. Update Application status and payment info
+        const newStatus = paymentMethod === 'CASH' ? 'CASH_CONFIRMATION' : 'COMPLETED';
+        const newPaymentStatus = paymentMethod === 'CASH' ? 'PROCESSING' : 'PAID';
+
+        await updateDoc(appRef, {
+            status: newStatus,
+            payment_status: newPaymentStatus,
+            payment_method: paymentMethod,
+            updated_at: serverTimestamp()
+        });
+
+        // 2. Handle Wallet transaction (simulation)
+        if (paymentMethod === 'APP') {
+            // Get salary from job
+            let amount = 0;
+            let jobTitle = 'Công việc';
+            if (jobId) {
+                const jobSnap = await getDoc(doc(db, 'jobs', jobId));
+                if (jobSnap.exists()) {
+                    const jobData = jobSnap.data();
+                    amount = Number(jobData.salary || 0);
+                    jobTitle = String(jobData.title || 'Công việc');
+                }
+            }
+
+            if (amount > 0) {
+                await processAppPayment(candidateId, amount, jobTitle, applicationId);
+                console.log(`[applicationService] Processed APP payment of ${amount} to ${candidateId}`);
+            }
+        }
+
+        // 3. Notify candidate
+        let jobTitle = 'Công việc';
+        if (jobId) {
+            const jobSnap = await getDoc(doc(db, 'jobs', jobId));
+            if (jobSnap.exists()) jobTitle = jobSnap.data().title;
+        }
+
+        await addDoc(collection(db, 'notifications'), {
+            userId: candidateId,
+            user_id: candidateId,
+            type: paymentMethod === 'CASH' ? 'PAYMENT_CONFIRM_REQUIRED' : 'PAYMENT_RECEIVED',
+            category: 'SYSTEM',
+            title: paymentMethod === 'CASH' ? 'Nhà tuyển dụng đã thanh toán' : 'Thanh toán thành công',
+            body: paymentMethod === 'CASH' 
+                ? `Nhà tuyển dụng đã đánh dấu thanh toán TIỀN MẶT cho "${jobTitle}". Vui lòng xác nhận nếu bạn đã nhận đủ tiền.`
+                : `Bạn đã được thanh toán cho công việc "${jobTitle}" qua hình thức Ứng dụng.`,
+            isRead: false,
+            created_at: serverTimestamp(),
+        });
+
+        const refreshed = await getDoc(appRef);
+        return mapApplicationDocToApplication(refreshed.id, refreshed.data() as any);
+    } catch (error: any) {
+        console.error('Error in completeApplicationWithPayment:', error);
+        throw new Error(error.message || 'Thanh toán thất bại.');
+    }
+}
+
+/**
+ * Candidate confirms receipt of cash payment.
+ */
+export async function confirmPaymentReceived(applicationId: string): Promise<Application> {
+    try {
+        const appRef = doc(db, 'applications', applicationId);
+        const appSnap = await getDoc(appRef);
+        
+        if (!appSnap.exists()) throw new Error('Đơn ứng tuyển không tồn tại.');
+
+        await updateDoc(appRef, {
+            status: 'COMPLETED',
+            payment_status: 'PAID',
+            updated_at: serverTimestamp()
+        });
+
+        const refreshed = await getDoc(appRef);
+        return mapApplicationDocToApplication(refreshed.id, refreshed.data() as any);
+    } catch (error: any) {
+        console.error('Error in confirmPaymentReceived:', error);
+        throw new Error('Không thể xác nhận thanh toán.');
     }
 }

@@ -12,10 +12,12 @@ import {
   MapPin,
   Pencil,
   Phone,
-  Settings,
-  ShieldCheck,
   Wallet,
   Bell,
+  GraduationCap,
+  ExternalLink,
+  Settings,
+  ShieldCheck,
 } from 'lucide-react';
 import { useMyApplicationsRealtime } from '@/features/jobs/hooks/useMyApplicationsRealtime';
 import { ReputationStatsCard } from '@/features/auth/components/ReputationStatsCard';
@@ -258,8 +260,47 @@ function CandidateProfilePage() {
                                 {userProfile.phone_number}
                             </div>
                         )}
+                        {userProfile.resume_url && (
+                            <a 
+                                href={userProfile.resume_url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2.5 text-blue-600 font-bold hover:underline"
+                            >
+                                <FileCheck2 className="w-4 h-4 shrink-0" />
+                                Xem CV / Hồ sơ năng lực
+                                <ExternalLink className="w-3 h-3" />
+                            </a>
+                        )}
                     </div>
                 </div>
+
+                {/* Education Section */}
+                {userProfile.education && userProfile.education.length > 0 && (
+                    <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+                        <h3 className="text-[13px] font-bold text-slate-400 uppercase tracking-wider mb-3">
+                            Học vấn
+                        </h3>
+                        <div className="space-y-4">
+                            {userProfile.education.map((edu, index) => (
+                                <div key={index} className="flex gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                                        <GraduationCap className="w-5 h-5 text-blue-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-slate-800">{edu.school}</p>
+                                        <p className="text-xs text-slate-500 font-medium">
+                                            {edu.degree} {edu.field ? `• ${edu.field}` : ''}
+                                        </p>
+                                        <p className="text-[11px] text-slate-400 mt-0.5">
+                                            Bắt đầu: {edu.start_date || 'N/A'}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Active Jobs / Shifts */}
                 {isAppsLoading ? <ListSkeleton /> : (

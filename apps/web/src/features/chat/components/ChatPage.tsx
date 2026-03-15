@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Conversation } from '@jobnow/types';
 import { ChatList } from './ChatList';
 import { ChatRoom } from './ChatRoom';
@@ -16,73 +16,103 @@ export function ChatPage({ userId, role }: ChatPageProps) {
     const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
     const [isStarting, setIsStarting] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const { data: conversations } = useConversations({ userId, role });
+
+    // Use a ref to track the last ID we attempted to initialize to avoid redundant calls or loops
+    const initialInitRef = useRef<string | null>(null);
+    const queryResult = useConversations({ userId, role });
+    const conversations = queryResult.data;
 
     // Auto-select or initialize conversation based on applicationId or jobId in URL
     useEffect(() => {
+        let isAborted = false;
+
         const initChat = async () => {
-            if (!conversations || isStarting) return;
+            if (!search.applicationId && !search.jobId) return;
             
+            // Wait for conversations to load
+            if (!conversations || (conversations.length === 0 && queryResult.isLoading)) return;
+
+            const currentKey = `${search.applicationId || ''}-${search.jobId || ''}`;
+            if (initialInitRef.current === currentKey) {
+                // If we're already selected something matching this key, we're done
+                if (selectedConversation) {
+                    const isAppMatch = search.applicationId && (selectedConversation.id === search.applicationId || selectedConversation.applicationId === search.applicationId);
+                    const isJobMatch = search.jobId && selectedConversation.jobId === search.jobId;
+                    if (isAppMatch || isJobMatch) return;
+                }
+                // If we are NOT selected yet, but we have this key, it might mean we are in progress 
+                // or we failed previously. To be safe, we let it fall through to the "find in list" segment.
+            }
+
+            // Check if already selected matches
+            if (selectedConversation) {
+                const isAppMatch = search.applicationId && (selectedConversation.id === search.applicationId || selectedConversation.applicationId === search.applicationId);
+                const isJobMatch = search.jobId && selectedConversation.jobId === search.jobId;
+                if (isAppMatch || isJobMatch) {
+                   initialInitRef.current = currentKey; // Mark as done for this key
+                   return;
+                }
+            }
+
             // 1. Try to find in existing list
             let found: Conversation | undefined;
             if (search.applicationId) {
                 found = conversations.find(c => c.id === search.applicationId || c.applicationId === search.applicationId);
             } 
-            
             if (!found && search.jobId) {
                 found = conversations.find(c => c.jobId === search.jobId);
             }
 
-            if (found) {
-                if (selectedConversation?.id !== found.id) {
-                    setSelectedConversation(found);
-                }
-                
-                // Clear the URL params after finding, so user can switch chats
-                if (search.applicationId || search.jobId) {
-                    // Use a simpler approach that avoids TanStack typing issues with functional updates
-                    // if the route schema is strict.
-                    navigate({ 
-                        search: {} as any, 
-                        replace: true 
-                    });
-                }
+             if (found) {
+                console.log(`[ChatPage] Found conversation for ${currentKey} in current list.`);
+                initialInitRef.current = currentKey;
+                setSelectedConversation(found);
+                // Clear search params to avoid re-triggering this logic on back/refresh
+                navigate({ search: {} as any, replace: true });
                 return;
             }
 
-            // 2. If not found but we have params, start it
-            if ((search.applicationId || search.jobId) && !selectedConversation) {
-                try {
-                    setIsStarting(true);
-                    setError(null);
-                    const { startConversation, getConversationById } = await import('../services/chatService');
-                    const { conversationId } = await startConversation({
-                        applicationId: search.applicationId,
-                        jobId: search.jobId
-                    });
-                    
-                    const conv = await getConversationById(conversationId);
-                    if (conv) {
-                        setSelectedConversation(conv);
-                        // Clear the URL params after starting
-                        navigate({ 
-                            search: {} as any, 
-                            replace: true 
-                        });
-                    } else {
-                        throw new Error('Không thể tải thông tin hội thoại sau khi khởi tạo.');
-                    }
-                } catch (err: any) {
-                    console.error('Failed to start conversation:', err);
-                    setError(err.message || 'Không thể bắt đầu trò chuyện. Vui lòng thử lại sau.');
-                } finally {
-                    setIsStarting(false);
+            // 2. Start it
+            try {
+                initialInitRef.current = currentKey;
+                setIsStarting(true);
+                setError(null);
+                
+                const { startConversation, getConversationById } = await import('../services/chatService');
+                const result = await startConversation({
+                    applicationId: search.applicationId,
+                    jobId: search.jobId
+                });
+                
+                if (isAborted) return;
+
+                const conv = await getConversationById(result.conversationId);
+                if (conv && !isAborted) {
+                    setSelectedConversation(conv);
+                    navigate({ search: {} as any, replace: true });
+                } else if (!isAborted) {
+                    throw new Error('Đã khởi tạo hội thoại nhưng không thể tải dữ liệu chi tiết.');
                 }
+            } catch (err: any) {
+                console.error('Failed to start conversation:', err);
+                if (!isAborted) {
+                    setError(err.message || 'Không thể bắt đầu trò chuyện.');
+                }
+                initialInitRef.current = null; // Allow retry
+            } finally {
+                // We ALWAYS clear isStarting when a start attempt finishes, 
+                // regardless of whether that specific effect instance was aborted.
+                // New effect instances will show their own loading if needed.
+                setIsStarting(false);
             }
         };
 
-        initChat();
-    }, [search.applicationId, search.jobId, conversations, isStarting, selectedConversation?.id, navigate]);
+        const timer = setTimeout(initChat, 100); // 100ms debounce
+        return () => {
+            isAborted = true;
+            clearTimeout(timer);
+        };
+    }, [search.applicationId, search.jobId, conversations, queryResult.isLoading, navigate, selectedConversation]);
 
     return (
         <div className="flex h-[calc(100vh-64px)] md:h-[calc(100vh-70px)] bg-white dark:bg-gray-950 overflow-hidden relative">
@@ -121,14 +151,17 @@ export function ChatPage({ userId, role }: ChatPageProps) {
                         <p className="text-sm text-gray-400 mt-2">Chúng tôi đang chuẩn bị phòng chat cho bạn</p>
                     </div>
                 ) : error ? (
-                    <div className="flex-1 flex flex-col items-center justify-center text-red-500 p-8 text-center">
+                    <div className="flex-1 flex flex-col items-center justify-center text-red-500 p-8 text-center" style={{ zIndex: 50 }}>
                         <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
                             <span className="text-2xl">⚠️</span>
                         </div>
                         <h3 className="text-lg font-bold mb-2">Lỗi khởi tạo</h3>
                         <p className="max-w-xs">{error}</p>
                         <button 
-                            onClick={() => window.location.reload()}
+                            onClick={() => {
+                                initialInitRef.current = null;
+                                window.location.reload();
+                            }}
                             className="mt-6 px-6 py-2 bg-slate-900 text-white rounded-full text-sm font-medium hover:bg-slate-800 transition-colors"
                         >
                             Thử lại

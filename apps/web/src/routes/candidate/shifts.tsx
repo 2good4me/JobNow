@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { CalendarDays, Clock, MessageCircle, Timer, CheckCircle2, History, Star } from 'lucide-react';
+import { CalendarDays, Clock, MessageCircle, Timer, CheckCircle2, History, Star, DollarSign, Loader2 } from 'lucide-react';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useMyApplicationsRealtime } from '@/features/jobs/hooks/useMyApplicationsRealtime';
 import { useGeolocation } from '@/features/jobs/hooks/useGeolocation';
 import { useCheckIn, useCheckOut } from '@/features/jobs/hooks/useCheckIn';
+import { useConfirmPayment } from '@/features/jobs/hooks/useManageApplicants';
 import { useState } from 'react';
 import { ReviewModal } from '@/features/jobs/components/ReviewModal';
 import { toast } from 'sonner';
@@ -21,6 +22,7 @@ function CandidateShifts() {
   });
   const checkInMutation = useCheckIn();
   const checkOutMutation = useCheckOut();
+  const { mutate: confirmPayment, isPending: isConfirming } = useConfirmPayment();
 
   // State for Review Modal
   const [reviewData, setReviewData] = useState<{
@@ -39,7 +41,7 @@ function CandidateShifts() {
 
   const activeShifts = applications.filter((app) => app.status === 'CHECKED_IN');
   const upcoming = applications.filter((app) => app.status === 'APPROVED' || app.status === 'NEW' || app.status === 'PENDING');
-  const completed = applications.filter((app) => app.status === 'COMPLETED');
+  const historyItems = applications.filter((app) => app.status === 'COMPLETED' || app.status === 'CASH_CONFIRMATION');
 
   const openReviewModal = (app: any) => {
     setReviewData({
@@ -203,13 +205,13 @@ function CandidateShifts() {
             Lịch sử đã làm
           </h2>
 
-          {completed.length === 0 ? (
+          {historyItems.length === 0 ? (
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 text-sm text-slate-400 italic">
               Bạn chưa hoàn thành ca làm nào.
             </div>
           ) : (
             <div className="space-y-3">
-              {completed.map((shift) => (
+              {historyItems.map((shift) => (
                 <div key={shift.id} className="bg-white rounded-2xl border-l-4 border-slate-300 border border-slate-100 shadow-sm p-4 opacity-100">
                   <div className="flex items-start justify-between mb-3">
                     <div>
@@ -224,13 +226,28 @@ function CandidateShifts() {
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => openReviewModal(shift)}
-                    className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 text-[13px] font-bold hover:bg-amber-100 transition-colors active:scale-[0.98]"
-                  >
-                    <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
-                    Đánh giá nhà tuyển dụng
-                  </button>
+                  {shift.status === 'CASH_CONFIRMATION' ? (
+                    <button
+                      onClick={() => {
+                        confirmPayment(shift.id, {
+                          onSuccess: () => toast.success('Xác nhận nhận tiền thành công!')
+                        });
+                      }}
+                      disabled={isConfirming}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-emerald-600 text-white text-[14px] font-black hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-900/10 active:scale-95 disabled:opacity-50"
+                    >
+                      {isConfirming ? <Loader2 className="w-4 h-4 animate-spin" /> : <DollarSign className="w-4 h-4" />}
+                      XÁC NHẬN ĐÃ NHẬN TIỀN
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => openReviewModal(shift)}
+                      className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 text-[13px] font-bold hover:bg-amber-100 transition-colors active:scale-[0.98]"
+                    >
+                      <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
+                      Đánh giá nhà tuyển dụng
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

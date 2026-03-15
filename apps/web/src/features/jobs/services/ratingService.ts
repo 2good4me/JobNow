@@ -82,16 +82,19 @@ export async function submitRating(input: RatingInput): Promise<RatingResult> {
                 createdAt: serverTimestamp(),
             });
 
+            const newReputation = Math.round(newAvg * 20);
+
             // 4. Update Reviewee Profile using set(merge) for robustness
             transaction.set(revieweeRef, {
                 average_rating: newAvg,
                 total_ratings: newTotal,
+                reputation_score: newReputation,
                 updated_at: serverTimestamp(),
                 updatedAt: serverTimestamp(),
             }, { merge: true });
 
-            console.log(`Review submitted: reviewId=${newReviewRef.id}, app=${input.applicationId}, reviewee=${input.revieweeId}`);
-            return { reviewId: newReviewRef.id, updatedReputationScore: newAvg };
+            console.log(`Review submitted: reviewId=${newReviewRef.id}, app=${input.applicationId}, reviewee=${input.revieweeId}, newScore=${newReputation}`);
+            return { reviewId: newReviewRef.id, updatedReputationScore: newReputation };
         });
 
         return result;

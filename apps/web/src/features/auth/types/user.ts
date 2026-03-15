@@ -18,8 +18,24 @@ export interface UserProfile {
     skills: string[];
     achievements?: string[];
     identity_images: string[];
-    birthday?: string;
     experience?: string;
+    education?: {
+        school: string;
+        degree: string;
+        field: string;
+        start_date: string;
+        end_date?: string;
+        description?: string;
+    }[];
+    certifications?: {
+        name: string;
+        organization: string;
+        issue_date: string;
+        expiry_date?: string;
+        credential_id?: string;
+        credential_url?: string;
+    }[];
+    resume_url?: string | null;
     created_at: Date;
     updated_at: Date;
 
