@@ -68,6 +68,11 @@ export async function getUserDocument(uid: string): Promise<UserProfile | null> 
         total_ratings: data.total_ratings ?? 0,       // New: Total ratings
         skills: data.skills || [],
         identity_images: data.identity_images || [],
+        birthday: data.birthday || null,
+        experience: data.experience || '',
+        education: data.education || [],
+        certifications: data.certifications || [],
+        resume_url: data.resume_url || null,
         created_at: data.created_at?.toDate?.() ?? new Date(),
         updated_at: data.updated_at?.toDate?.() ?? new Date(),
         // Employer-specific fields

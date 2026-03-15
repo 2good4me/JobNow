@@ -184,6 +184,8 @@ export async function startConversation(input: StartConversationInput): Promise<
   const uid = auth.currentUser?.uid;
   if (!uid) throw new Error('Yêu cầu đăng nhập để bắt đầu trò chuyện.');
 
+  console.log(`[chatService] startConversation called with input:`, input);
+
   // 1. Fetch source info if available
   let employerId = input.employerId || '';
   let candidateId = '';
@@ -191,9 +193,54 @@ export async function startConversation(input: StartConversationInput): Promise<
 
   if (input.applicationId) {
     const appRef = doc(db, 'applications', input.applicationId);
-    const appSnap = await getDoc(appRef);
+    let appSnap = await getDoc(appRef);
+    
+    if (!appSnap.exists()) {
+      // If direct ID lookup fails, search for a document where 'id' field matches the string
+      console.log(`[chatService] Application not found by direct ID ${input.applicationId}. Searching via 'id' field...`);
+      const qByIdField = query(
+        collection(db, 'applications'),
+        where('id', '==', input.applicationId),
+        limit(1)
+      );
+      const idSnap = await getDocs(qByIdField);
+      
+      if (!idSnap.empty) {
+        appSnap = idSnap.docs[0];
+      } else {
+        // Search by participants and job as fallback
+        console.log(`[chatService] Searching for applications for user ${uid}...`);
+        const qCandidate = query(
+          collection(db, 'applications'),
+          where('candidate_id', '==', uid),
+          where('job_id', '==', jobId || ''),
+          limit(1)
+        );
+        const cSnap = await getDocs(qCandidate);
+        
+        if (!cSnap.empty) {
+          appSnap = cSnap.docs[0];
+        } else {
+          const qEmployer = query(
+            collection(db, 'applications'),
+            where('employer_id', '==', uid),
+            where('job_id', '==', jobId || ''),
+            limit(1)
+          );
+          const eSnap = await getDocs(qEmployer);
+          if (!eSnap.empty) appSnap = eSnap.docs[0];
+        }
+      }
+    }
+
     if (appSnap.exists()) {
-      // Logic for chatPermission and conversationStatus is now handled globally below
+      const appData = appSnap.data();
+      console.log(`[chatService] Found application data for ${input.applicationId || appSnap.id}:`, appData.status);
+      if (!jobId) jobId = String(appData.jobId || appData.job_id || '');
+      if (!employerId) employerId = String(appData.employerId || appData.employer_id || '');
+      if (!candidateId) candidateId = String(appData.candidateId || appData.candidate_id || '');
+    } else {
+      console.warn(`[chatService] Application document ${input.applicationId} not found and no matches for current user.`);
     }
   }
 
@@ -215,54 +262,85 @@ export async function startConversation(input: StartConversationInput): Promise<
   // 2. Determine and Lookup existing conversation
   let conversationId = '';
 
-  // Priority 1: Deterministic ID based on Job + Candidate
-  const deterministicId = jobId ? `job_${jobId}_${candidateId}` : '';
-  
-  if (deterministicId) {
-    const dSnap = await getDoc(doc(db, 'conversations', deterministicId));
-    if (dSnap.exists()) {
-      conversationId = dSnap.id;
+  // Priority 1: Use Application ID search (Direct match)
+  if (!conversationId && input.applicationId) {
+    console.log(`[chatService] Searching for conversation by application_id: ${input.applicationId}`);
+    // IMPORTANT: Broad queries on 'conversations' will fail security rules if not constrained by participant ID.
+    // Try to determine which role the current user has to constrain the query.
+    
+    const tryQuery = async (field: 'candidate_id' | 'employer_id') => {
+        const q = query(
+            collection(db, 'conversations'),
+            where('application_id', '==', input.applicationId),
+            where(field, '==', uid),
+            limit(1)
+        );
+        const snap = await getDocs(q);
+        return snap.empty ? null : snap.docs[0].id;
+    };
+
+    conversationId = (await tryQuery('candidate_id')) || (await tryQuery('employer_id')) || '';
+    if (conversationId) {
+      console.log(`[chatService] Found existing conversation by application_id query: ${conversationId}`);
     }
   }
 
-  // Priority 2: Use Application ID if provided and document exists
+  // Priority 2: Use Application ID as document ID directly
   if (!conversationId && input.applicationId) {
     const aSnap = await getDoc(doc(db, 'conversations', input.applicationId));
     if (aSnap.exists()) {
       conversationId = aSnap.id;
+      console.log(`[chatService] Found existing conversation by application_id as DOC ID: ${conversationId}`);
     }
   }
 
-    // Priority 3: Search by fields to catch any other variations
+  // Priority 3: Deterministic ID based on Job + Candidate
+  const deterministicId = jobId ? `job_${jobId}_${candidateId}` : '';
+  
+  if (!conversationId && deterministicId) {
+    const dSnap = await getDoc(doc(db, 'conversations', deterministicId));
+    if (dSnap.exists()) {
+      conversationId = dSnap.id;
+      console.log(`[chatService] Found existing conversation by deterministic ID: ${conversationId}`);
+    }
+  }
+
+    // Priority 4: Search by fields to catch any other variations
     if (!conversationId && jobId && candidateId) {
-      const q = query(
-        collection(db, 'conversations'),
-        where('job_id', '==', jobId),
-        where('candidate_id', '==', candidateId),
-        limit(1)
-      );
-      const qSnap = await getDocs(q);
-      if (!qSnap.empty) {
-        conversationId = qSnap.docs[0].id;
-      }
+      const tryJobQuery = async (field: 'candidate_id' | 'employer_id') => {
+          const q = query(
+            collection(db, 'conversations'),
+            where('job_id', '==', jobId),
+            where('candidate_id', '==', candidateId),
+            where(field, '==', uid),
+            limit(1)
+          );
+          const snap = await getDocs(q);
+          return snap.empty ? null : snap.docs[0].id;
+      };
+      conversationId = (await tryJobQuery('candidate_id')) || (await tryJobQuery('employer_id')) || '';
     }
 
-    // Priority 4: Search by Candidate + Employer (Unified Chat)
+    // Priority 5: Search by Candidate + Employer (Unified Chat)
     if (!conversationId && candidateId && employerId) {
-      const q = query(
-        collection(db, 'conversations'),
-        where('candidate_id', '==', candidateId),
-        where('employer_id', '==', employerId),
-        limit(1)
-      );
-      const qSnap = await getDocs(q);
-      if (!qSnap.empty) {
-        conversationId = qSnap.docs[0].id;
-      }
+       const tryUserPairQuery = async (field: 'candidate_id' | 'employer_id') => {
+          const q = query(
+            collection(db, 'conversations'),
+            where('candidate_id', '==', candidateId),
+            where('employer_id', '==', employerId),
+            where(field, '==', uid),
+            limit(1)
+          );
+          const snap = await getDocs(q);
+          return snap.empty ? null : snap.docs[0].id;
+      };
+      conversationId = (await tryUserPairQuery('candidate_id')) || (await tryUserPairQuery('employer_id')) || '';
     }
 
   // Final identity to use for creation or return
   const finalId = conversationId || deterministicId || input.applicationId;
+  console.log(`[chatService] Resolved identifiers - conversationId=${conversationId}, finalId=${finalId}, candidateId=${candidateId}, employerId=${employerId}`);
+  
   if (!finalId) {
     throw new Error('Không thể xác định ID hội thoại. Thiếu thông tin cần thiết.');
   }
@@ -298,6 +376,7 @@ export async function startConversation(input: StartConversationInput): Promise<
   };
 
   if (snap.exists()) {
+    console.log(`[chatService] Found existing document for ${finalId}. Checking for updates...`);
     const data = snap.data() as Record<string, unknown>;
     
     // Always upgrade to ACTIVE and TWO_WAY as requested
@@ -348,6 +427,7 @@ export async function startConversation(input: StartConversationInput): Promise<
     };
   }
 
+  console.log(`[chatService] Creating NEW conversation document for ${finalId}...`);
   if (!employerId) {
     throw new Error('Không tìm thấy thông tin nhà tuyển dụng cho bài đăng này.');
   }

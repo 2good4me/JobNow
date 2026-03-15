@@ -50,6 +50,7 @@ import { Route as CandidateProfileReputationRouteImport } from './routes/candida
 import { Route as CandidateProfileEditRouteImport } from './routes/candidate/profile/edit'
 import { Route as CandidateJobsJobIdRouteImport } from './routes/candidate/jobs/$jobId'
 import { Route as CandidateEmployerEmployerIdRouteImport } from './routes/candidate/employer/$employerId'
+import { Route as CandidateApplicationsApplicationIdRouteImport } from './routes/candidate/applications.$applicationId'
 import { Route as EmployerProfileSettingsIndexRouteImport } from './routes/employer/profile/settings/index'
 import { Route as EmployerProfileSettingsTermsRouteImport } from './routes/employer/profile/settings/terms'
 import { Route as EmployerProfileSettingsPrivacyRouteImport } from './routes/employer/profile/settings/privacy'
@@ -271,6 +272,12 @@ const CandidateEmployerEmployerIdRoute =
     path: '/candidate/employer/$employerId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const CandidateApplicationsApplicationIdRoute =
+  CandidateApplicationsApplicationIdRouteImport.update({
+    id: '/$applicationId',
+    path: '/$applicationId',
+    getParentRoute: () => CandidateApplicationsRoute,
+  } as any)
 const EmployerProfileSettingsIndexRoute =
   EmployerProfileSettingsIndexRouteImport.update({
     id: '/settings/',
@@ -328,7 +335,7 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/support-center': typeof SupportCenterRoute
   '/support-center-data': typeof SupportCenterDataRoute
-  '/candidate/applications': typeof CandidateApplicationsRoute
+  '/candidate/applications': typeof CandidateApplicationsRouteWithChildren
   '/candidate/chat': typeof CandidateChatRoute
   '/candidate/notifications': typeof CandidateNotificationsRoute
   '/candidate/profile': typeof CandidateProfileRouteWithChildren
@@ -349,6 +356,7 @@ export interface FileRoutesByFullPath {
   '/candidate/': typeof CandidateIndexRoute
   '/employer/': typeof EmployerIndexRoute
   '/jobs/': typeof JobsIndexRoute
+  '/candidate/applications/$applicationId': typeof CandidateApplicationsApplicationIdRoute
   '/candidate/employer/$employerId': typeof CandidateEmployerEmployerIdRoute
   '/candidate/jobs/$jobId': typeof CandidateJobsJobIdRoute
   '/candidate/profile/edit': typeof CandidateProfileEditRoute
@@ -379,7 +387,7 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/support-center': typeof SupportCenterRoute
   '/support-center-data': typeof SupportCenterDataRoute
-  '/candidate/applications': typeof CandidateApplicationsRoute
+  '/candidate/applications': typeof CandidateApplicationsRouteWithChildren
   '/candidate/chat': typeof CandidateChatRoute
   '/candidate/notifications': typeof CandidateNotificationsRoute
   '/candidate/shifts': typeof CandidateShiftsRoute
@@ -397,6 +405,7 @@ export interface FileRoutesByTo {
   '/candidate': typeof CandidateIndexRoute
   '/employer': typeof EmployerIndexRoute
   '/jobs': typeof JobsIndexRoute
+  '/candidate/applications/$applicationId': typeof CandidateApplicationsApplicationIdRoute
   '/candidate/employer/$employerId': typeof CandidateEmployerEmployerIdRoute
   '/candidate/jobs/$jobId': typeof CandidateJobsJobIdRoute
   '/candidate/profile/edit': typeof CandidateProfileEditRoute
@@ -428,7 +437,7 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/support-center': typeof SupportCenterRoute
   '/support-center-data': typeof SupportCenterDataRoute
-  '/candidate/applications': typeof CandidateApplicationsRoute
+  '/candidate/applications': typeof CandidateApplicationsRouteWithChildren
   '/candidate/chat': typeof CandidateChatRoute
   '/candidate/notifications': typeof CandidateNotificationsRoute
   '/candidate/profile': typeof CandidateProfileRouteWithChildren
@@ -449,6 +458,7 @@ export interface FileRoutesById {
   '/candidate/': typeof CandidateIndexRoute
   '/employer/': typeof EmployerIndexRoute
   '/jobs/': typeof JobsIndexRoute
+  '/candidate/applications/$applicationId': typeof CandidateApplicationsApplicationIdRoute
   '/candidate/employer/$employerId': typeof CandidateEmployerEmployerIdRoute
   '/candidate/jobs/$jobId': typeof CandidateJobsJobIdRoute
   '/candidate/profile/edit': typeof CandidateProfileEditRoute
@@ -502,6 +512,7 @@ export interface FileRouteTypes {
     | '/candidate/'
     | '/employer/'
     | '/jobs/'
+    | '/candidate/applications/$applicationId'
     | '/candidate/employer/$employerId'
     | '/candidate/jobs/$jobId'
     | '/candidate/profile/edit'
@@ -550,6 +561,7 @@ export interface FileRouteTypes {
     | '/candidate'
     | '/employer'
     | '/jobs'
+    | '/candidate/applications/$applicationId'
     | '/candidate/employer/$employerId'
     | '/candidate/jobs/$jobId'
     | '/candidate/profile/edit'
@@ -601,6 +613,7 @@ export interface FileRouteTypes {
     | '/candidate/'
     | '/employer/'
     | '/jobs/'
+    | '/candidate/applications/$applicationId'
     | '/candidate/employer/$employerId'
     | '/candidate/jobs/$jobId'
     | '/candidate/profile/edit'
@@ -632,7 +645,7 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRoute
   SupportCenterRoute: typeof SupportCenterRoute
   SupportCenterDataRoute: typeof SupportCenterDataRoute
-  CandidateApplicationsRoute: typeof CandidateApplicationsRoute
+  CandidateApplicationsRoute: typeof CandidateApplicationsRouteWithChildren
   CandidateChatRoute: typeof CandidateChatRoute
   CandidateNotificationsRoute: typeof CandidateNotificationsRoute
   CandidateProfileRoute: typeof CandidateProfileRouteWithChildren
@@ -948,6 +961,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CandidateEmployerEmployerIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/candidate/applications/$applicationId': {
+      id: '/candidate/applications/$applicationId'
+      path: '/$applicationId'
+      fullPath: '/candidate/applications/$applicationId'
+      preLoaderRoute: typeof CandidateApplicationsApplicationIdRouteImport
+      parentRoute: typeof CandidateApplicationsRoute
+    }
     '/employer/profile/settings/': {
       id: '/employer/profile/settings/'
       path: '/settings'
@@ -1006,6 +1026,20 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface CandidateApplicationsRouteChildren {
+  CandidateApplicationsApplicationIdRoute: typeof CandidateApplicationsApplicationIdRoute
+}
+
+const CandidateApplicationsRouteChildren: CandidateApplicationsRouteChildren = {
+  CandidateApplicationsApplicationIdRoute:
+    CandidateApplicationsApplicationIdRoute,
+}
+
+const CandidateApplicationsRouteWithChildren =
+  CandidateApplicationsRoute._addFileChildren(
+    CandidateApplicationsRouteChildren,
+  )
 
 interface CandidateProfileRouteChildren {
   CandidateProfileEditRoute: typeof CandidateProfileEditRoute
@@ -1078,7 +1112,7 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterRoute: RegisterRoute,
   SupportCenterRoute: SupportCenterRoute,
   SupportCenterDataRoute: SupportCenterDataRoute,
-  CandidateApplicationsRoute: CandidateApplicationsRoute,
+  CandidateApplicationsRoute: CandidateApplicationsRouteWithChildren,
   CandidateChatRoute: CandidateChatRoute,
   CandidateNotificationsRoute: CandidateNotificationsRoute,
   CandidateProfileRoute: CandidateProfileRouteWithChildren,

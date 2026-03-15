@@ -5,6 +5,9 @@ import { useMyApplicationsRealtime } from '@/features/jobs/hooks/useMyApplicatio
 import { useState } from 'react';
 import { useUpdateApplicationStatus } from '@/features/jobs/hooks/useManageApplicants';
 import { toast } from 'sonner';
+import { ReviewModal } from '@/features/jobs/components/ReviewModal';
+import { Star, DollarSign, Loader2 } from 'lucide-react';
+import { useConfirmPayment } from '@/features/jobs/hooks/useManageApplicants';
 
 export const Route = createFileRoute('/candidate/applications')({
     component: CandidateApplications,
@@ -17,6 +20,13 @@ function CandidateApplications() {
     const { userProfile } = useAuth();
     const [activeFilter, setActiveFilter] = useState<FilterStatus>('ALL');
     const updateStatusMutation = useUpdateApplicationStatus();
+    const { mutate: confirmPayment, isPending: isConfirming } = useConfirmPayment();
+    
+    // Review modal state
+    const [reviewAppId, setReviewAppId] = useState<string | null>(null);
+    const [reviewTargetId, setReviewTargetId] = useState<string | null>(null);
+    const [reviewTargetName, setReviewTargetName] = useState<string>('');
+    const [reviewJobTitle, setReviewJobTitle] = useState<string>('');
 
     // Fetch user applications
     const { data: applications = [], isLoading } = useMyApplicationsRealtime({
@@ -41,8 +51,12 @@ function CandidateApplications() {
                 return { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200', label: 'Chờ duyệt', icon: Clock };
             case 'CHECKED_IN':
                 return { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200', label: 'Đang làm', icon: Briefcase };
+            case 'WORK_FINISHED':
+                return { bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'border-indigo-200', label: 'Chờ thanh toán', icon: CheckCircle2 };
             case 'COMPLETED':
                 return { bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-200', label: 'Hoàn thành', icon: CheckCircle2 };
+            case 'CASH_CONFIRMATION':
+                return { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', label: 'Chờ xác nhận TM', icon: DollarSign };
             case 'CANCELLED':
                 return { bg: 'bg-slate-100', text: 'text-slate-500', border: 'border-slate-200', label: 'Đã hủy', icon: XCircle };
             default:
@@ -142,8 +156,8 @@ function CandidateApplications() {
                         return (
                             <Link
                                 key={app.id}
-                                to="/candidate/jobs/$jobId"
-                                params={{ jobId: app.jobId }}
+                                to="/candidate/applications/$applicationId"
+                                params={{ applicationId: app.id }}
                                 className="block bg-white border border-slate-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group"
                             >
                                 <div className="flex justify-between items-start mb-3">
@@ -167,9 +181,43 @@ function CandidateApplications() {
                                             )}
                                         </div>
                                     </div>
-                                    <div className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${theme.bg} ${theme.text} ${theme.border}`}>
-                                        <StatusIcon className="w-3.5 h-3.5" />
-                                        <span className="text-[11px] font-bold tracking-wide uppercase">{theme.label}</span>
+                                    <div className="flex flex-col items-end gap-2">
+                                        <div className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${theme.bg} ${theme.text} ${theme.border}`}>
+                                            <StatusIcon className="w-3.5 h-3.5" />
+                                            <span className="text-[11px] font-bold tracking-wide uppercase">{theme.label}</span>
+                                        </div>
+                                        {app.status === 'CASH_CONFIRMATION' && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    confirmPayment(app.id, {
+                                                        onSuccess: () => toast.success('Xác nhận nhận tiền thành công!')
+                                                    });
+                                                }}
+                                                disabled={isConfirming}
+                                                className="flex items-center gap-1.5 px-3 py-1 bg-emerald-600 text-white rounded-full text-[11px] font-bold hover:bg-emerald-700 transition-colors shadow-sm active:scale-95 disabled:opacity-50"
+                                            >
+                                                {isConfirming ? <Loader2 className="w-3 h-3 animate-spin" /> : <DollarSign className="w-3 h-3" />}
+                                                XÁC NHẬN
+                                            </button>
+                                        )}
+                                        {app.status === 'COMPLETED' && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    setReviewAppId(app.id);
+                                                    setReviewTargetId(app.employerId);
+                                                    setReviewTargetName('Nhà tuyển dụng');
+                                                    setReviewJobTitle(app.jobTitle || 'Công việc');
+                                                }}
+                                                className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-600 border border-amber-200 rounded-full text-[11px] font-bold hover:bg-amber-100 transition-colors shadow-sm active:scale-95"
+                                            >
+                                                <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                                                ĐÁNH GIÁ
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
 
@@ -194,7 +242,36 @@ function CandidateApplications() {
                     })
                 )}
             </div>
+
+            <ReviewModalWrapper
+                appId={reviewAppId}
+                targetId={reviewTargetId}
+                targetName={reviewTargetName}
+                jobTitle={reviewJobTitle}
+                onClose={() => setReviewAppId(null)}
+            />
         </div>
+    );
+}
+
+function ReviewModalWrapper({ 
+    appId, targetId, targetName, jobTitle, onClose 
+}: { 
+    appId: string | null; targetId: string | null; targetName: string; jobTitle: string; onClose: () => void 
+}) {
+    const { user } = useAuth();
+    if (!appId || !targetId || !user) return null;
+
+    return (
+        <ReviewModal
+            isOpen={true}
+            onClose={onClose}
+            applicationId={appId}
+            reviewerId={user.uid}
+            revieweeId={targetId}
+            revieweeName={targetName}
+            jobTitle={jobTitle}
+        />
     );
 }
 

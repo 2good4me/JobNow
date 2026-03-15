@@ -14,8 +14,24 @@ export interface User {
     avatarUrl?: string | null;
     bio?: string | null;
     addressText?: string | null;
-    skills?: string[];
-    identityImages?: string[];
+    experience?: string;
+    education?: {
+        school: string;
+        degree: string;
+        field: string;
+        startDate: string;
+        endDate?: string;
+        description?: string;
+    }[];
+    certifications?: {
+        name: string;
+        organization: string;
+        issueDate: string;
+        expiryDate?: string;
+        credentialId?: string;
+        credentialUrl?: string;
+    }[];
+    resumeUrl?: string | null;
     createdAt?: any; // Server timestamp
     updatedAt?: any; // Server timestamp
 
