@@ -33,6 +33,7 @@ import { Route as EmployerJobDetailRouteImport } from './routes/employer/job-det
 import { Route as EmployerChatRouteImport } from './routes/employer/chat'
 import { Route as EmployerApplicantsRouteImport } from './routes/employer/applicants'
 import { Route as CandidateWishlistRouteImport } from './routes/candidate/wishlist'
+import { Route as CandidateWalletRouteImport } from './routes/candidate/wallet'
 import { Route as CandidateShiftsRouteImport } from './routes/candidate/shifts'
 import { Route as CandidateProfileRouteImport } from './routes/candidate/profile'
 import { Route as CandidateNotificationsRouteImport } from './routes/candidate/notifications'
@@ -50,12 +51,15 @@ import { Route as CandidateVerificationIndexRouteImport } from './routes/candida
 import { Route as CandidateProfileIndexRouteImport } from './routes/candidate/profile/index'
 import { Route as EmployerProfileReputationRouteImport } from './routes/employer/profile/reputation'
 import { Route as EmployerProfileEditRouteImport } from './routes/employer/profile/edit'
+import { Route as EmployerCandidateCandidateIdRouteImport } from './routes/employer/candidate.$candidateId'
 import { Route as CandidateProfileVerifyRouteImport } from './routes/candidate/profile/verify'
 import { Route as CandidateProfileSettingsRouteImport } from './routes/candidate/profile/settings'
+import { Route as CandidateProfileReputationRouteImport } from './routes/candidate/profile/reputation'
 import { Route as CandidateProfileEditRouteImport } from './routes/candidate/profile/edit'
 import { Route as CandidateJobsJobIdRouteImport } from './routes/candidate/jobs/$jobId'
 import { Route as CandidateEmployerEmployerIdRouteImport } from './routes/candidate/employer/$employerId'
 import { Route as AdminUsersUserIdRouteImport } from './routes/admin/users.$userId'
+import { Route as CandidateApplicationsApplicationIdRouteImport } from './routes/candidate/applications.$applicationId'
 import { Route as EmployerProfileSettingsIndexRouteImport } from './routes/employer/profile/settings/index'
 import { Route as EmployerProfileSettingsTermsRouteImport } from './routes/employer/profile/settings/terms'
 import { Route as EmployerProfileSettingsPrivacyRouteImport } from './routes/employer/profile/settings/privacy'
@@ -185,6 +189,11 @@ const CandidateWishlistRoute = CandidateWishlistRouteImport.update({
   path: '/candidate/wishlist',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CandidateWalletRoute = CandidateWalletRouteImport.update({
+  id: '/candidate/wallet',
+  path: '/candidate/wallet',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CandidateShiftsRoute = CandidateShiftsRouteImport.update({
   id: '/candidate/shifts',
   path: '/candidate/shifts',
@@ -273,6 +282,12 @@ const EmployerProfileEditRoute = EmployerProfileEditRouteImport.update({
   path: '/edit',
   getParentRoute: () => EmployerProfileRoute,
 } as any)
+const EmployerCandidateCandidateIdRoute =
+  EmployerCandidateCandidateIdRouteImport.update({
+    id: '/employer/candidate/$candidateId',
+    path: '/employer/candidate/$candidateId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const CandidateProfileVerifyRoute = CandidateProfileVerifyRouteImport.update({
   id: '/verify',
   path: '/verify',
@@ -282,6 +297,12 @@ const CandidateProfileSettingsRoute =
   CandidateProfileSettingsRouteImport.update({
     id: '/settings',
     path: '/settings',
+    getParentRoute: () => CandidateProfileRoute,
+  } as any)
+const CandidateProfileReputationRoute =
+  CandidateProfileReputationRouteImport.update({
+    id: '/reputation',
+    path: '/reputation',
     getParentRoute: () => CandidateProfileRoute,
   } as any)
 const CandidateProfileEditRoute = CandidateProfileEditRouteImport.update({
@@ -305,6 +326,12 @@ const AdminUsersUserIdRoute = AdminUsersUserIdRouteImport.update({
   path: '/$userId',
   getParentRoute: () => AdminUsersRoute,
 } as any)
+const CandidateApplicationsApplicationIdRoute =
+  CandidateApplicationsApplicationIdRouteImport.update({
+    id: '/$applicationId',
+    path: '/$applicationId',
+    getParentRoute: () => CandidateApplicationsRoute,
+  } as any)
 const EmployerProfileSettingsIndexRoute =
   EmployerProfileSettingsIndexRouteImport.update({
     id: '/settings/',
@@ -370,10 +397,12 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRouteWithChildren
   '/candidate/applications': typeof CandidateApplicationsRoute
+  '/candidate/applications': typeof CandidateApplicationsRouteWithChildren
   '/candidate/chat': typeof CandidateChatRoute
   '/candidate/notifications': typeof CandidateNotificationsRoute
   '/candidate/profile': typeof CandidateProfileRouteWithChildren
   '/candidate/shifts': typeof CandidateShiftsRoute
+  '/candidate/wallet': typeof CandidateWalletRoute
   '/candidate/wishlist': typeof CandidateWishlistRoute
   '/employer/applicants': typeof EmployerApplicantsRoute
   '/employer/chat': typeof EmployerChatRoute
@@ -391,11 +420,14 @@ export interface FileRoutesByFullPath {
   '/employer/': typeof EmployerIndexRoute
   '/jobs/': typeof JobsIndexRoute
   '/admin/users/$userId': typeof AdminUsersUserIdRoute
+  '/candidate/applications/$applicationId': typeof CandidateApplicationsApplicationIdRoute
   '/candidate/employer/$employerId': typeof CandidateEmployerEmployerIdRoute
   '/candidate/jobs/$jobId': typeof CandidateJobsJobIdRoute
   '/candidate/profile/edit': typeof CandidateProfileEditRoute
+  '/candidate/profile/reputation': typeof CandidateProfileReputationRoute
   '/candidate/profile/settings': typeof CandidateProfileSettingsRoute
   '/candidate/profile/verify': typeof CandidateProfileVerifyRoute
+  '/employer/candidate/$candidateId': typeof EmployerCandidateCandidateIdRoute
   '/employer/profile/edit': typeof EmployerProfileEditRoute
   '/employer/profile/reputation': typeof EmployerProfileReputationRoute
   '/candidate/profile/': typeof CandidateProfileIndexRoute
@@ -426,9 +458,11 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRouteWithChildren
   '/candidate/applications': typeof CandidateApplicationsRoute
+  '/candidate/applications': typeof CandidateApplicationsRouteWithChildren
   '/candidate/chat': typeof CandidateChatRoute
   '/candidate/notifications': typeof CandidateNotificationsRoute
   '/candidate/shifts': typeof CandidateShiftsRoute
+  '/candidate/wallet': typeof CandidateWalletRoute
   '/candidate/wishlist': typeof CandidateWishlistRoute
   '/employer/applicants': typeof EmployerApplicantsRoute
   '/employer/chat': typeof EmployerChatRoute
@@ -444,11 +478,14 @@ export interface FileRoutesByTo {
   '/employer': typeof EmployerIndexRoute
   '/jobs': typeof JobsIndexRoute
   '/admin/users/$userId': typeof AdminUsersUserIdRoute
+  '/candidate/applications/$applicationId': typeof CandidateApplicationsApplicationIdRoute
   '/candidate/employer/$employerId': typeof CandidateEmployerEmployerIdRoute
   '/candidate/jobs/$jobId': typeof CandidateJobsJobIdRoute
   '/candidate/profile/edit': typeof CandidateProfileEditRoute
+  '/candidate/profile/reputation': typeof CandidateProfileReputationRoute
   '/candidate/profile/settings': typeof CandidateProfileSettingsRoute
   '/candidate/profile/verify': typeof CandidateProfileVerifyRoute
+  '/employer/candidate/$candidateId': typeof EmployerCandidateCandidateIdRoute
   '/employer/profile/edit': typeof EmployerProfileEditRoute
   '/employer/profile/reputation': typeof EmployerProfileReputationRoute
   '/candidate/profile': typeof CandidateProfileIndexRoute
@@ -481,10 +518,12 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRouteWithChildren
   '/candidate/applications': typeof CandidateApplicationsRoute
+  '/candidate/applications': typeof CandidateApplicationsRouteWithChildren
   '/candidate/chat': typeof CandidateChatRoute
   '/candidate/notifications': typeof CandidateNotificationsRoute
   '/candidate/profile': typeof CandidateProfileRouteWithChildren
   '/candidate/shifts': typeof CandidateShiftsRoute
+  '/candidate/wallet': typeof CandidateWalletRoute
   '/candidate/wishlist': typeof CandidateWishlistRoute
   '/employer/applicants': typeof EmployerApplicantsRoute
   '/employer/chat': typeof EmployerChatRoute
@@ -502,11 +541,14 @@ export interface FileRoutesById {
   '/employer/': typeof EmployerIndexRoute
   '/jobs/': typeof JobsIndexRoute
   '/admin/users/$userId': typeof AdminUsersUserIdRoute
+  '/candidate/applications/$applicationId': typeof CandidateApplicationsApplicationIdRoute
   '/candidate/employer/$employerId': typeof CandidateEmployerEmployerIdRoute
   '/candidate/jobs/$jobId': typeof CandidateJobsJobIdRoute
   '/candidate/profile/edit': typeof CandidateProfileEditRoute
+  '/candidate/profile/reputation': typeof CandidateProfileReputationRoute
   '/candidate/profile/settings': typeof CandidateProfileSettingsRoute
   '/candidate/profile/verify': typeof CandidateProfileVerifyRoute
+  '/employer/candidate/$candidateId': typeof EmployerCandidateCandidateIdRoute
   '/employer/profile/edit': typeof EmployerProfileEditRoute
   '/employer/profile/reputation': typeof EmployerProfileReputationRoute
   '/candidate/profile/': typeof CandidateProfileIndexRoute
@@ -525,171 +567,183 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
-    | '/admin'
-    | '/forgot-password'
-    | '/login'
-    | '/onboarding'
-    | '/register'
-    | '/support-center'
-    | '/support-center-data'
-    | '/admin/analytics'
-    | '/admin/categories'
-    | '/admin/jobs'
-    | '/admin/reports'
-    | '/admin/settings'
-    | '/admin/users'
-    | '/candidate/applications'
-    | '/candidate/chat'
-    | '/candidate/notifications'
-    | '/candidate/profile'
-    | '/candidate/shifts'
-    | '/candidate/wishlist'
-    | '/employer/applicants'
-    | '/employer/chat'
-    | '/employer/job-detail'
-    | '/employer/job-list'
-    | '/employer/notifications'
-    | '/employer/post-job'
-    | '/employer/profile'
-    | '/employer/qr-display'
-    | '/employer/shift-management'
-    | '/employer/verification'
-    | '/employer/wallet'
-    | '/admin/'
-    | '/candidate/'
-    | '/employer/'
-    | '/jobs/'
-    | '/admin/users/$userId'
-    | '/candidate/employer/$employerId'
-    | '/candidate/jobs/$jobId'
-    | '/candidate/profile/edit'
-    | '/candidate/profile/settings'
-    | '/candidate/profile/verify'
-    | '/employer/profile/edit'
-    | '/employer/profile/reputation'
-    | '/candidate/profile/'
-    | '/candidate/verification/'
-    | '/employer/profile/'
-    | '/employer/verification/'
-    | '/employer/profile/settings/deactivate'
-    | '/employer/profile/settings/delete'
-    | '/employer/profile/settings/devices'
-    | '/employer/profile/settings/password'
-    | '/employer/profile/settings/phone'
-    | '/employer/profile/settings/privacy'
-    | '/employer/profile/settings/terms'
-    | '/employer/profile/settings/'
+  | '/'
+  | '/admin'
+  | '/forgot-password'
+  | '/login'
+  | '/onboarding'
+  | '/register'
+  | '/support-center'
+  | '/support-center-data'
+  | '/admin/analytics'
+  | '/admin/categories'
+  | '/admin/jobs'
+  | '/admin/reports'
+  | '/admin/settings'
+  | '/admin/users'
+  | '/candidate/applications'
+  | '/candidate/chat'
+  | '/candidate/notifications'
+  | '/candidate/profile'
+  | '/candidate/shifts'
+  | '/candidate/wallet'
+  | '/candidate/wishlist'
+  | '/employer/applicants'
+  | '/employer/chat'
+  | '/employer/job-detail'
+  | '/employer/job-list'
+  | '/employer/notifications'
+  | '/employer/post-job'
+  | '/employer/profile'
+  | '/employer/qr-display'
+  | '/employer/shift-management'
+  | '/employer/verification'
+  | '/employer/wallet'
+  | '/admin/'
+  | '/candidate/'
+  | '/employer/'
+  | '/jobs/'
+  | '/admin/users/$userId'
+  | '/candidate/applications/$applicationId'
+  | '/candidate/employer/$employerId'
+  | '/candidate/jobs/$jobId'
+  | '/candidate/profile/edit'
+  | '/candidate/profile/reputation'
+  | '/candidate/profile/settings'
+  | '/candidate/profile/verify'
+  | '/employer/candidate/$candidateId'
+  | '/employer/profile/edit'
+  | '/employer/profile/reputation'
+  | '/candidate/profile/'
+  | '/candidate/verification/'
+  | '/employer/profile/'
+  | '/employer/verification/'
+  | '/employer/profile/settings/deactivate'
+  | '/employer/profile/settings/delete'
+  | '/employer/profile/settings/devices'
+  | '/employer/profile/settings/password'
+  | '/employer/profile/settings/phone'
+  | '/employer/profile/settings/privacy'
+  | '/employer/profile/settings/terms'
+  | '/employer/profile/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
-    | '/forgot-password'
-    | '/login'
-    | '/onboarding'
-    | '/register'
-    | '/support-center'
-    | '/support-center-data'
-    | '/admin/analytics'
-    | '/admin/categories'
-    | '/admin/jobs'
-    | '/admin/reports'
-    | '/admin/settings'
-    | '/admin/users'
-    | '/candidate/applications'
-    | '/candidate/chat'
-    | '/candidate/notifications'
-    | '/candidate/shifts'
-    | '/candidate/wishlist'
-    | '/employer/applicants'
-    | '/employer/chat'
-    | '/employer/job-detail'
-    | '/employer/job-list'
-    | '/employer/notifications'
-    | '/employer/post-job'
-    | '/employer/qr-display'
-    | '/employer/shift-management'
-    | '/employer/wallet'
-    | '/admin'
-    | '/candidate'
-    | '/employer'
-    | '/jobs'
-    | '/admin/users/$userId'
-    | '/candidate/employer/$employerId'
-    | '/candidate/jobs/$jobId'
-    | '/candidate/profile/edit'
-    | '/candidate/profile/settings'
-    | '/candidate/profile/verify'
-    | '/employer/profile/edit'
-    | '/employer/profile/reputation'
-    | '/candidate/profile'
-    | '/candidate/verification'
-    | '/employer/profile'
-    | '/employer/verification'
-    | '/employer/profile/settings/deactivate'
-    | '/employer/profile/settings/delete'
-    | '/employer/profile/settings/devices'
-    | '/employer/profile/settings/password'
-    | '/employer/profile/settings/phone'
-    | '/employer/profile/settings/privacy'
-    | '/employer/profile/settings/terms'
-    | '/employer/profile/settings'
+  | '/'
+  | '/forgot-password'
+  | '/login'
+  | '/onboarding'
+  | '/register'
+  | '/support-center'
+  | '/support-center-data'
+  | '/admin/analytics'
+  | '/admin/categories'
+  | '/admin/jobs'
+  | '/admin/reports'
+  | '/admin/settings'
+  | '/admin/users'
+  | '/candidate/applications'
+  | '/candidate/chat'
+  | '/candidate/notifications'
+  | '/candidate/shifts'
+  | '/candidate/wallet'
+  | '/candidate/wishlist'
+  | '/employer/applicants'
+  | '/employer/chat'
+  | '/employer/job-detail'
+  | '/employer/job-list'
+  | '/employer/notifications'
+  | '/employer/post-job'
+  | '/employer/qr-display'
+  | '/employer/shift-management'
+  | '/employer/wallet'
+  | '/admin'
+  | '/candidate'
+  | '/employer'
+  | '/jobs'
+  | '/admin/users/$userId'
+  | '/candidate/applications/$applicationId'
+  | '/candidate/employer/$employerId'
+  | '/candidate/jobs/$jobId'
+  | '/candidate/profile/edit'
+  | '/candidate/profile/reputation'
+  | '/candidate/profile/settings'
+  | '/candidate/profile/verify'
+  | '/employer/candidate/$candidateId'
+  | '/employer/profile/edit'
+  | '/employer/profile/reputation'
+  | '/candidate/profile'
+  | '/candidate/verification'
+  | '/employer/profile'
+  | '/employer/verification'
+  | '/employer/profile/settings/deactivate'
+  | '/employer/profile/settings/delete'
+  | '/employer/profile/settings/devices'
+  | '/employer/profile/settings/password'
+  | '/employer/profile/settings/phone'
+  | '/employer/profile/settings/privacy'
+  | '/employer/profile/settings/terms'
+  | '/employer/profile/settings'
   id:
-    | '__root__'
-    | '/'
-    | '/admin'
-    | '/forgot-password'
-    | '/login'
-    | '/onboarding'
-    | '/register'
-    | '/support-center'
-    | '/support-center-data'
-    | '/admin/analytics'
-    | '/admin/categories'
-    | '/admin/jobs'
-    | '/admin/reports'
-    | '/admin/settings'
-    | '/admin/users'
-    | '/candidate/applications'
-    | '/candidate/chat'
-    | '/candidate/notifications'
-    | '/candidate/profile'
-    | '/candidate/shifts'
-    | '/candidate/wishlist'
-    | '/employer/applicants'
-    | '/employer/chat'
-    | '/employer/job-detail'
-    | '/employer/job-list'
-    | '/employer/notifications'
-    | '/employer/post-job'
-    | '/employer/profile'
-    | '/employer/qr-display'
-    | '/employer/shift-management'
-    | '/employer/verification'
-    | '/employer/wallet'
-    | '/admin/'
-    | '/candidate/'
-    | '/employer/'
-    | '/jobs/'
-    | '/admin/users/$userId'
-    | '/candidate/employer/$employerId'
-    | '/candidate/jobs/$jobId'
-    | '/candidate/profile/edit'
-    | '/candidate/profile/settings'
-    | '/candidate/profile/verify'
-    | '/employer/profile/edit'
-    | '/employer/profile/reputation'
-    | '/candidate/profile/'
-    | '/candidate/verification/'
-    | '/employer/profile/'
-    | '/employer/verification/'
-    | '/employer/profile/settings/deactivate'
-    | '/employer/profile/settings/delete'
-    | '/employer/profile/settings/devices'
-    | '/employer/profile/settings/password'
-    | '/employer/profile/settings/phone'
-    | '/employer/profile/settings/privacy'
-    | '/employer/profile/settings/terms'
-    | '/employer/profile/settings/'
+  | '__root__'
+  | '/'
+  | '/admin'
+  | '/forgot-password'
+  | '/login'
+  | '/onboarding'
+  | '/register'
+  | '/support-center'
+  | '/support-center-data'
+  | '/admin/analytics'
+  | '/admin/categories'
+  | '/admin/jobs'
+  | '/admin/reports'
+  | '/admin/settings'
+  | '/admin/users'
+  | '/candidate/applications'
+  | '/candidate/chat'
+  | '/candidate/notifications'
+  | '/candidate/profile'
+  | '/candidate/shifts'
+  | '/candidate/wallet'
+  | '/candidate/wishlist'
+  | '/employer/applicants'
+  | '/employer/chat'
+  | '/employer/job-detail'
+  | '/employer/job-list'
+  | '/employer/notifications'
+  | '/employer/post-job'
+  | '/employer/profile'
+  | '/employer/qr-display'
+  | '/employer/shift-management'
+  | '/employer/verification'
+  | '/employer/wallet'
+  | '/admin/'
+  | '/candidate/'
+  | '/employer/'
+  | '/jobs/'
+  | '/admin/users/$userId'
+  | '/candidate/applications/$applicationId'
+  | '/candidate/employer/$employerId'
+  | '/candidate/jobs/$jobId'
+  | '/candidate/profile/edit'
+  | '/candidate/profile/reputation'
+  | '/candidate/profile/settings'
+  | '/candidate/profile/verify'
+  | '/employer/candidate/$candidateId'
+  | '/employer/profile/edit'
+  | '/employer/profile/reputation'
+  | '/candidate/profile/'
+  | '/candidate/verification/'
+  | '/employer/profile/'
+  | '/employer/verification/'
+  | '/employer/profile/settings/deactivate'
+  | '/employer/profile/settings/delete'
+  | '/employer/profile/settings/devices'
+  | '/employer/profile/settings/password'
+  | '/employer/profile/settings/phone'
+  | '/employer/profile/settings/privacy'
+  | '/employer/profile/settings/terms'
+  | '/employer/profile/settings/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -701,11 +755,12 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRoute
   SupportCenterRoute: typeof SupportCenterRoute
   SupportCenterDataRoute: typeof SupportCenterDataRoute
-  CandidateApplicationsRoute: typeof CandidateApplicationsRoute
+  CandidateApplicationsRoute: typeof CandidateApplicationsRouteWithChildren
   CandidateChatRoute: typeof CandidateChatRoute
   CandidateNotificationsRoute: typeof CandidateNotificationsRoute
   CandidateProfileRoute: typeof CandidateProfileRouteWithChildren
   CandidateShiftsRoute: typeof CandidateShiftsRoute
+  CandidateWalletRoute: typeof CandidateWalletRoute
   CandidateWishlistRoute: typeof CandidateWishlistRoute
   EmployerApplicantsRoute: typeof EmployerApplicantsRoute
   EmployerChatRoute: typeof EmployerChatRoute
@@ -723,6 +778,7 @@ export interface RootRouteChildren {
   JobsIndexRoute: typeof JobsIndexRoute
   CandidateEmployerEmployerIdRoute: typeof CandidateEmployerEmployerIdRoute
   CandidateJobsJobIdRoute: typeof CandidateJobsJobIdRoute
+  EmployerCandidateCandidateIdRoute: typeof EmployerCandidateCandidateIdRoute
   CandidateVerificationIndexRoute: typeof CandidateVerificationIndexRoute
 }
 
@@ -896,6 +952,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CandidateWishlistRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/candidate/wallet': {
+      id: '/candidate/wallet'
+      path: '/candidate/wallet'
+      fullPath: '/candidate/wallet'
+      preLoaderRoute: typeof CandidateWalletRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/candidate/shifts': {
       id: '/candidate/shifts'
       path: '/candidate/shifts'
@@ -1015,6 +1078,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmployerProfileEditRouteImport
       parentRoute: typeof EmployerProfileRoute
     }
+    '/employer/candidate/$candidateId': {
+      id: '/employer/candidate/$candidateId'
+      path: '/employer/candidate/$candidateId'
+      fullPath: '/employer/candidate/$candidateId'
+      preLoaderRoute: typeof EmployerCandidateCandidateIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/candidate/profile/verify': {
       id: '/candidate/profile/verify'
       path: '/verify'
@@ -1027,6 +1097,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/candidate/profile/settings'
       preLoaderRoute: typeof CandidateProfileSettingsRouteImport
+      parentRoute: typeof CandidateProfileRoute
+    }
+    '/candidate/profile/reputation': {
+      id: '/candidate/profile/reputation'
+      path: '/reputation'
+      fullPath: '/candidate/profile/reputation'
+      preLoaderRoute: typeof CandidateProfileReputationRouteImport
       parentRoute: typeof CandidateProfileRoute
     }
     '/candidate/profile/edit': {
@@ -1056,194 +1133,217 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/users/$userId'
       preLoaderRoute: typeof AdminUsersUserIdRouteImport
       parentRoute: typeof AdminUsersRoute
-    }
-    '/employer/profile/settings/': {
-      id: '/employer/profile/settings/'
-      path: '/settings'
-      fullPath: '/employer/profile/settings/'
-      preLoaderRoute: typeof EmployerProfileSettingsIndexRouteImport
-      parentRoute: typeof EmployerProfileRoute
-    }
-    '/employer/profile/settings/terms': {
-      id: '/employer/profile/settings/terms'
-      path: '/settings/terms'
-      fullPath: '/employer/profile/settings/terms'
-      preLoaderRoute: typeof EmployerProfileSettingsTermsRouteImport
-      parentRoute: typeof EmployerProfileRoute
-    }
-    '/employer/profile/settings/privacy': {
-      id: '/employer/profile/settings/privacy'
-      path: '/settings/privacy'
-      fullPath: '/employer/profile/settings/privacy'
-      preLoaderRoute: typeof EmployerProfileSettingsPrivacyRouteImport
-      parentRoute: typeof EmployerProfileRoute
-    }
-    '/employer/profile/settings/phone': {
-      id: '/employer/profile/settings/phone'
-      path: '/settings/phone'
-      fullPath: '/employer/profile/settings/phone'
-      preLoaderRoute: typeof EmployerProfileSettingsPhoneRouteImport
-      parentRoute: typeof EmployerProfileRoute
-    }
-    '/employer/profile/settings/password': {
-      id: '/employer/profile/settings/password'
-      path: '/settings/password'
-      fullPath: '/employer/profile/settings/password'
-      preLoaderRoute: typeof EmployerProfileSettingsPasswordRouteImport
-      parentRoute: typeof EmployerProfileRoute
-    }
-    '/employer/profile/settings/devices': {
-      id: '/employer/profile/settings/devices'
-      path: '/settings/devices'
-      fullPath: '/employer/profile/settings/devices'
-      preLoaderRoute: typeof EmployerProfileSettingsDevicesRouteImport
-      parentRoute: typeof EmployerProfileRoute
-    }
-    '/employer/profile/settings/delete': {
-      id: '/employer/profile/settings/delete'
-      path: '/settings/delete'
-      fullPath: '/employer/profile/settings/delete'
-      preLoaderRoute: typeof EmployerProfileSettingsDeleteRouteImport
-      parentRoute: typeof EmployerProfileRoute
-    }
-    '/employer/profile/settings/deactivate': {
-      id: '/employer/profile/settings/deactivate'
-      path: '/settings/deactivate'
-      fullPath: '/employer/profile/settings/deactivate'
-      preLoaderRoute: typeof EmployerProfileSettingsDeactivateRouteImport
-      parentRoute: typeof EmployerProfileRoute
+      '/candidate/applications/$applicationId': {
+        id: '/candidate/applications/$applicationId'
+        path: '/$applicationId'
+        fullPath: '/candidate/applications/$applicationId'
+        preLoaderRoute: typeof CandidateApplicationsApplicationIdRouteImport
+        parentRoute: typeof CandidateApplicationsRoute
+      }
+      '/employer/profile/settings/': {
+        id: '/employer/profile/settings/'
+        path: '/settings'
+        fullPath: '/employer/profile/settings/'
+        preLoaderRoute: typeof EmployerProfileSettingsIndexRouteImport
+        parentRoute: typeof EmployerProfileRoute
+      }
+      '/employer/profile/settings/terms': {
+        id: '/employer/profile/settings/terms'
+        path: '/settings/terms'
+        fullPath: '/employer/profile/settings/terms'
+        preLoaderRoute: typeof EmployerProfileSettingsTermsRouteImport
+        parentRoute: typeof EmployerProfileRoute
+      }
+      '/employer/profile/settings/privacy': {
+        id: '/employer/profile/settings/privacy'
+        path: '/settings/privacy'
+        fullPath: '/employer/profile/settings/privacy'
+        preLoaderRoute: typeof EmployerProfileSettingsPrivacyRouteImport
+        parentRoute: typeof EmployerProfileRoute
+      }
+      '/employer/profile/settings/phone': {
+        id: '/employer/profile/settings/phone'
+        path: '/settings/phone'
+        fullPath: '/employer/profile/settings/phone'
+        preLoaderRoute: typeof EmployerProfileSettingsPhoneRouteImport
+        parentRoute: typeof EmployerProfileRoute
+      }
+      '/employer/profile/settings/password': {
+        id: '/employer/profile/settings/password'
+        path: '/settings/password'
+        fullPath: '/employer/profile/settings/password'
+        preLoaderRoute: typeof EmployerProfileSettingsPasswordRouteImport
+        parentRoute: typeof EmployerProfileRoute
+      }
+      '/employer/profile/settings/devices': {
+        id: '/employer/profile/settings/devices'
+        path: '/settings/devices'
+        fullPath: '/employer/profile/settings/devices'
+        preLoaderRoute: typeof EmployerProfileSettingsDevicesRouteImport
+        parentRoute: typeof EmployerProfileRoute
+      }
+      '/employer/profile/settings/delete': {
+        id: '/employer/profile/settings/delete'
+        path: '/settings/delete'
+        fullPath: '/employer/profile/settings/delete'
+        preLoaderRoute: typeof EmployerProfileSettingsDeleteRouteImport
+        parentRoute: typeof EmployerProfileRoute
+      }
+      '/employer/profile/settings/deactivate': {
+        id: '/employer/profile/settings/deactivate'
+        path: '/settings/deactivate'
+        fullPath: '/employer/profile/settings/deactivate'
+        preLoaderRoute: typeof EmployerProfileSettingsDeactivateRouteImport
+        parentRoute: typeof EmployerProfileRoute
+      }
     }
   }
-}
 
-interface AdminUsersRouteChildren {
-  AdminUsersUserIdRoute: typeof AdminUsersUserIdRoute
-}
+  interface AdminUsersRouteChildren {
+    AdminUsersUserIdRoute: typeof AdminUsersUserIdRoute
+  }
 
-const AdminUsersRouteChildren: AdminUsersRouteChildren = {
-  AdminUsersUserIdRoute: AdminUsersUserIdRoute,
-}
+  const AdminUsersRouteChildren: AdminUsersRouteChildren = {
+    AdminUsersUserIdRoute: AdminUsersUserIdRoute,
+  }
 
-const AdminUsersRouteWithChildren = AdminUsersRoute._addFileChildren(
-  AdminUsersRouteChildren,
-)
+  const AdminUsersRouteWithChildren = AdminUsersRoute._addFileChildren(
+    AdminUsersRouteChildren,
+  )
 
-interface AdminRouteChildren {
-  AdminAnalyticsRoute: typeof AdminAnalyticsRoute
-  AdminCategoriesRoute: typeof AdminCategoriesRoute
-  AdminJobsRoute: typeof AdminJobsRoute
-  AdminReportsRoute: typeof AdminReportsRoute
-  AdminSettingsRoute: typeof AdminSettingsRoute
-  AdminUsersRoute: typeof AdminUsersRouteWithChildren
-  AdminIndexRoute: typeof AdminIndexRoute
-}
+  interface AdminRouteChildren {
+    AdminAnalyticsRoute: typeof AdminAnalyticsRoute
+    AdminCategoriesRoute: typeof AdminCategoriesRoute
+    AdminJobsRoute: typeof AdminJobsRoute
+    AdminReportsRoute: typeof AdminReportsRoute
+    AdminSettingsRoute: typeof AdminSettingsRoute
+    AdminUsersRoute: typeof AdminUsersRouteWithChildren
+    AdminIndexRoute: typeof AdminIndexRoute
+  }
 
-const AdminRouteChildren: AdminRouteChildren = {
-  AdminAnalyticsRoute: AdminAnalyticsRoute,
-  AdminCategoriesRoute: AdminCategoriesRoute,
-  AdminJobsRoute: AdminJobsRoute,
-  AdminReportsRoute: AdminReportsRoute,
-  AdminSettingsRoute: AdminSettingsRoute,
-  AdminUsersRoute: AdminUsersRouteWithChildren,
-  AdminIndexRoute: AdminIndexRoute,
-}
+  const AdminRouteChildren: AdminRouteChildren = {
+    AdminAnalyticsRoute: AdminAnalyticsRoute,
+    AdminCategoriesRoute: AdminCategoriesRoute,
+    AdminJobsRoute: AdminJobsRoute,
+    AdminReportsRoute: AdminReportsRoute,
+    AdminSettingsRoute: AdminSettingsRoute,
+    AdminUsersRoute: AdminUsersRouteWithChildren,
+    AdminIndexRoute: AdminIndexRoute,
+  }
 
-const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+  const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+  interface CandidateApplicationsRouteChildren {
+    CandidateApplicationsApplicationIdRoute: typeof CandidateApplicationsApplicationIdRoute
+  }
 
-interface CandidateProfileRouteChildren {
-  CandidateProfileEditRoute: typeof CandidateProfileEditRoute
-  CandidateProfileSettingsRoute: typeof CandidateProfileSettingsRoute
-  CandidateProfileVerifyRoute: typeof CandidateProfileVerifyRoute
-  CandidateProfileIndexRoute: typeof CandidateProfileIndexRoute
-}
+  const CandidateApplicationsRouteChildren: CandidateApplicationsRouteChildren = {
+    CandidateApplicationsApplicationIdRoute:
+      CandidateApplicationsApplicationIdRoute,
+  }
 
-const CandidateProfileRouteChildren: CandidateProfileRouteChildren = {
-  CandidateProfileEditRoute: CandidateProfileEditRoute,
-  CandidateProfileSettingsRoute: CandidateProfileSettingsRoute,
-  CandidateProfileVerifyRoute: CandidateProfileVerifyRoute,
-  CandidateProfileIndexRoute: CandidateProfileIndexRoute,
-}
+  const CandidateApplicationsRouteWithChildren =
+    CandidateApplicationsRoute._addFileChildren(
+      CandidateApplicationsRouteChildren,
+    )
 
-const CandidateProfileRouteWithChildren =
-  CandidateProfileRoute._addFileChildren(CandidateProfileRouteChildren)
+  interface CandidateProfileRouteChildren {
+    CandidateProfileEditRoute: typeof CandidateProfileEditRoute
+    CandidateProfileReputationRoute: typeof CandidateProfileReputationRoute
+    CandidateProfileSettingsRoute: typeof CandidateProfileSettingsRoute
+    CandidateProfileVerifyRoute: typeof CandidateProfileVerifyRoute
+    CandidateProfileIndexRoute: typeof CandidateProfileIndexRoute
+  }
 
-interface EmployerProfileRouteChildren {
-  EmployerProfileEditRoute: typeof EmployerProfileEditRoute
-  EmployerProfileReputationRoute: typeof EmployerProfileReputationRoute
-  EmployerProfileIndexRoute: typeof EmployerProfileIndexRoute
-  EmployerProfileSettingsDeactivateRoute: typeof EmployerProfileSettingsDeactivateRoute
-  EmployerProfileSettingsDeleteRoute: typeof EmployerProfileSettingsDeleteRoute
-  EmployerProfileSettingsDevicesRoute: typeof EmployerProfileSettingsDevicesRoute
-  EmployerProfileSettingsPasswordRoute: typeof EmployerProfileSettingsPasswordRoute
-  EmployerProfileSettingsPhoneRoute: typeof EmployerProfileSettingsPhoneRoute
-  EmployerProfileSettingsPrivacyRoute: typeof EmployerProfileSettingsPrivacyRoute
-  EmployerProfileSettingsTermsRoute: typeof EmployerProfileSettingsTermsRoute
-  EmployerProfileSettingsIndexRoute: typeof EmployerProfileSettingsIndexRoute
-}
+  const CandidateProfileRouteChildren: CandidateProfileRouteChildren = {
+    CandidateProfileEditRoute: CandidateProfileEditRoute,
+    CandidateProfileReputationRoute: CandidateProfileReputationRoute,
+    CandidateProfileSettingsRoute: CandidateProfileSettingsRoute,
+    CandidateProfileVerifyRoute: CandidateProfileVerifyRoute,
+    CandidateProfileIndexRoute: CandidateProfileIndexRoute,
+  }
 
-const EmployerProfileRouteChildren: EmployerProfileRouteChildren = {
-  EmployerProfileEditRoute: EmployerProfileEditRoute,
-  EmployerProfileReputationRoute: EmployerProfileReputationRoute,
-  EmployerProfileIndexRoute: EmployerProfileIndexRoute,
-  EmployerProfileSettingsDeactivateRoute:
-    EmployerProfileSettingsDeactivateRoute,
-  EmployerProfileSettingsDeleteRoute: EmployerProfileSettingsDeleteRoute,
-  EmployerProfileSettingsDevicesRoute: EmployerProfileSettingsDevicesRoute,
-  EmployerProfileSettingsPasswordRoute: EmployerProfileSettingsPasswordRoute,
-  EmployerProfileSettingsPhoneRoute: EmployerProfileSettingsPhoneRoute,
-  EmployerProfileSettingsPrivacyRoute: EmployerProfileSettingsPrivacyRoute,
-  EmployerProfileSettingsTermsRoute: EmployerProfileSettingsTermsRoute,
-  EmployerProfileSettingsIndexRoute: EmployerProfileSettingsIndexRoute,
-}
+  const CandidateProfileRouteWithChildren =
+    CandidateProfileRoute._addFileChildren(CandidateProfileRouteChildren)
 
-const EmployerProfileRouteWithChildren = EmployerProfileRoute._addFileChildren(
-  EmployerProfileRouteChildren,
-)
+  interface EmployerProfileRouteChildren {
+    EmployerProfileEditRoute: typeof EmployerProfileEditRoute
+    EmployerProfileReputationRoute: typeof EmployerProfileReputationRoute
+    EmployerProfileIndexRoute: typeof EmployerProfileIndexRoute
+    EmployerProfileSettingsDeactivateRoute: typeof EmployerProfileSettingsDeactivateRoute
+    EmployerProfileSettingsDeleteRoute: typeof EmployerProfileSettingsDeleteRoute
+    EmployerProfileSettingsDevicesRoute: typeof EmployerProfileSettingsDevicesRoute
+    EmployerProfileSettingsPasswordRoute: typeof EmployerProfileSettingsPasswordRoute
+    EmployerProfileSettingsPhoneRoute: typeof EmployerProfileSettingsPhoneRoute
+    EmployerProfileSettingsPrivacyRoute: typeof EmployerProfileSettingsPrivacyRoute
+    EmployerProfileSettingsTermsRoute: typeof EmployerProfileSettingsTermsRoute
+    EmployerProfileSettingsIndexRoute: typeof EmployerProfileSettingsIndexRoute
+  }
 
-interface EmployerVerificationRouteChildren {
-  EmployerVerificationIndexRoute: typeof EmployerVerificationIndexRoute
-}
+  const EmployerProfileRouteChildren: EmployerProfileRouteChildren = {
+    EmployerProfileEditRoute: EmployerProfileEditRoute,
+    EmployerProfileReputationRoute: EmployerProfileReputationRoute,
+    EmployerProfileIndexRoute: EmployerProfileIndexRoute,
+    EmployerProfileSettingsDeactivateRoute:
+      EmployerProfileSettingsDeactivateRoute,
+    EmployerProfileSettingsDeleteRoute: EmployerProfileSettingsDeleteRoute,
+    EmployerProfileSettingsDevicesRoute: EmployerProfileSettingsDevicesRoute,
+    EmployerProfileSettingsPasswordRoute: EmployerProfileSettingsPasswordRoute,
+    EmployerProfileSettingsPhoneRoute: EmployerProfileSettingsPhoneRoute,
+    EmployerProfileSettingsPrivacyRoute: EmployerProfileSettingsPrivacyRoute,
+    EmployerProfileSettingsTermsRoute: EmployerProfileSettingsTermsRoute,
+    EmployerProfileSettingsIndexRoute: EmployerProfileSettingsIndexRoute,
+  }
 
-const EmployerVerificationRouteChildren: EmployerVerificationRouteChildren = {
-  EmployerVerificationIndexRoute: EmployerVerificationIndexRoute,
-}
+  const EmployerProfileRouteWithChildren = EmployerProfileRoute._addFileChildren(
+    EmployerProfileRouteChildren,
+  )
 
-const EmployerVerificationRouteWithChildren =
-  EmployerVerificationRoute._addFileChildren(EmployerVerificationRouteChildren)
+  interface EmployerVerificationRouteChildren {
+    EmployerVerificationIndexRoute: typeof EmployerVerificationIndexRoute
+  }
 
-const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  AdminRoute: AdminRouteWithChildren,
-  ForgotPasswordRoute: ForgotPasswordRoute,
-  LoginRoute: LoginRoute,
-  OnboardingRoute: OnboardingRoute,
-  RegisterRoute: RegisterRoute,
-  SupportCenterRoute: SupportCenterRoute,
-  SupportCenterDataRoute: SupportCenterDataRoute,
-  CandidateApplicationsRoute: CandidateApplicationsRoute,
-  CandidateChatRoute: CandidateChatRoute,
-  CandidateNotificationsRoute: CandidateNotificationsRoute,
-  CandidateProfileRoute: CandidateProfileRouteWithChildren,
-  CandidateShiftsRoute: CandidateShiftsRoute,
-  CandidateWishlistRoute: CandidateWishlistRoute,
-  EmployerApplicantsRoute: EmployerApplicantsRoute,
-  EmployerChatRoute: EmployerChatRoute,
-  EmployerJobDetailRoute: EmployerJobDetailRoute,
-  EmployerJobListRoute: EmployerJobListRoute,
-  EmployerNotificationsRoute: EmployerNotificationsRoute,
-  EmployerPostJobRoute: EmployerPostJobRoute,
-  EmployerProfileRoute: EmployerProfileRouteWithChildren,
-  EmployerQrDisplayRoute: EmployerQrDisplayRoute,
-  EmployerShiftManagementRoute: EmployerShiftManagementRoute,
-  EmployerVerificationRoute: EmployerVerificationRouteWithChildren,
-  EmployerWalletRoute: EmployerWalletRoute,
-  CandidateIndexRoute: CandidateIndexRoute,
-  EmployerIndexRoute: EmployerIndexRoute,
-  JobsIndexRoute: JobsIndexRoute,
-  CandidateEmployerEmployerIdRoute: CandidateEmployerEmployerIdRoute,
-  CandidateJobsJobIdRoute: CandidateJobsJobIdRoute,
-  CandidateVerificationIndexRoute: CandidateVerificationIndexRoute,
-}
-export const routeTree = rootRouteImport
-  ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+  const EmployerVerificationRouteChildren: EmployerVerificationRouteChildren = {
+    EmployerVerificationIndexRoute: EmployerVerificationIndexRoute,
+  }
+
+  const EmployerVerificationRouteWithChildren =
+    EmployerVerificationRoute._addFileChildren(EmployerVerificationRouteChildren)
+
+  const rootRouteChildren: RootRouteChildren = {
+    IndexRoute: IndexRoute,
+    AdminRoute: AdminRouteWithChildren,
+    ForgotPasswordRoute: ForgotPasswordRoute,
+    LoginRoute: LoginRoute,
+    OnboardingRoute: OnboardingRoute,
+    RegisterRoute: RegisterRoute,
+    SupportCenterRoute: SupportCenterRoute,
+    SupportCenterDataRoute: SupportCenterDataRoute,
+    CandidateApplicationsRoute: CandidateApplicationsRouteWithChildren,
+    CandidateChatRoute: CandidateChatRoute,
+    CandidateNotificationsRoute: CandidateNotificationsRoute,
+    CandidateProfileRoute: CandidateProfileRouteWithChildren,
+    CandidateShiftsRoute: CandidateShiftsRoute,
+    CandidateWalletRoute: CandidateWalletRoute,
+    CandidateWishlistRoute: CandidateWishlistRoute,
+    EmployerApplicantsRoute: EmployerApplicantsRoute,
+    EmployerChatRoute: EmployerChatRoute,
+    EmployerJobDetailRoute: EmployerJobDetailRoute,
+    EmployerJobListRoute: EmployerJobListRoute,
+    EmployerNotificationsRoute: EmployerNotificationsRoute,
+    EmployerPostJobRoute: EmployerPostJobRoute,
+    EmployerProfileRoute: EmployerProfileRouteWithChildren,
+    EmployerQrDisplayRoute: EmployerQrDisplayRoute,
+    EmployerShiftManagementRoute: EmployerShiftManagementRoute,
+    EmployerVerificationRoute: EmployerVerificationRouteWithChildren,
+    EmployerWalletRoute: EmployerWalletRoute,
+    CandidateIndexRoute: CandidateIndexRoute,
+    EmployerIndexRoute: EmployerIndexRoute,
+    JobsIndexRoute: JobsIndexRoute,
+    CandidateEmployerEmployerIdRoute: CandidateEmployerEmployerIdRoute,
+    CandidateJobsJobIdRoute: CandidateJobsJobIdRoute,
+    EmployerCandidateCandidateIdRoute: EmployerCandidateCandidateIdRoute,
+    CandidateVerificationIndexRoute: CandidateVerificationIndexRoute,
+  }
+  export const routeTree = rootRouteImport
+    ._addFileChildren(rootRouteChildren)
+    ._addFileTypes<FileRouteTypes>()

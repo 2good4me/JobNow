@@ -1,25 +1,46 @@
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import type { Message } from '@jobnow/types';
+import type { Message, Conversation } from '@jobnow/types';
+import { useNavigate } from '@tanstack/react-router';
 
 interface MessageBubbleProps {
     message: Message;
+    conversation: Conversation;
     isCurrentUser: boolean;
     showAvatar?: boolean;
 }
 
-export function MessageBubble({ message, isCurrentUser, showAvatar = false }: MessageBubbleProps) {
+export function MessageBubble({ message, conversation, isCurrentUser, showAvatar = false }: MessageBubbleProps) {
+    const navigate = useNavigate();
     const createdAt = message.createdAt
         ? (typeof message.createdAt === 'string'
             ? new Date(message.createdAt)
             : (message.createdAt as any).toDate?.() || new Date())
         : new Date();
 
+    const avatar = message.senderRole === 'EMPLOYER' ? conversation.employerAvatar : conversation.candidateAvatar;
+    const displayName = message.senderRole === 'EMPLOYER' ? conversation.employerName : conversation.candidateName;
+
+    const handleNavigateToProfile = () => {
+        if (message.senderRole === 'EMPLOYER') {
+            navigate({ to: `/candidate/employer/${conversation.employerId}` as any });
+        } else {
+            navigate({ to: `/employer/candidate/${conversation.candidateId}` as any });
+        }
+    };
+
     return (
         <div className={`flex w-full mb-4 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
             {!isCurrentUser && showAvatar && (
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 mr-2 flex-shrink-0 flex items-center justify-center text-gray-600 font-semibold text-xs border border-white/50 shadow-sm mt-auto mb-1">
-                    {message.senderRole === 'EMPLOYER' ? 'NTD' : 'ƯV'}
+                <div 
+                    className="w-8 h-8 rounded-full bg-slate-100 mr-2 flex-shrink-0 flex items-center justify-center text-slate-600 font-semibold text-xs border border-white/50 shadow-sm mt-auto mb-1 overflow-hidden cursor-pointer"
+                    onClick={handleNavigateToProfile}
+                >
+                    {avatar ? (
+                        <img src={avatar} alt={displayName} className="w-full h-full object-cover" />
+                    ) : (
+                        displayName?.charAt(0).toUpperCase() || (message.senderRole === 'EMPLOYER' ? 'N' : 'Ư')
+                    )}
                 </div>
             )}
 
@@ -45,3 +66,4 @@ export function MessageBubble({ message, isCurrentUser, showAvatar = false }: Me
         </div>
     );
 }
+

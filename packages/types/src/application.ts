@@ -6,10 +6,13 @@ export type ApplicationStatus =
     | 'APPROVED'
     | 'REJECTED'
     | 'CHECKED_IN'
+    | 'WORK_FINISHED'
+    | 'CASH_CONFIRMATION'
     | 'COMPLETED'
     | 'CANCELLED';
 
 export type PaymentStatus = 'UNPAID' | 'PROCESSING' | 'PAID';
+export type PaymentMethod = 'APP' | 'CASH';
 
 export interface Application {
     id: string;
@@ -19,6 +22,7 @@ export interface Application {
     candidateId: string;
     status: ApplicationStatus;
     paymentStatus: PaymentStatus;
+    paymentMethod?: PaymentMethod;
     coverLetter?: string;
     notes?: string;           // Employer ghi chú về ứng viên
     rating?: number;          // Đánh giá sau khi hoàn thành (1-5)
@@ -46,6 +50,7 @@ export interface ApplicationDoc {
     candidate_id: string;
     status: ApplicationStatus;
     payment_status?: PaymentStatus;
+    payment_method?: PaymentMethod;
     cover_letter?: string;
     notes?: string;
     rating?: number;
@@ -153,6 +158,10 @@ export interface Conversation {
     lastMessageBy?: string;
     candidateUnreadCount: number;
     employerUnreadCount: number;
+    candidateName?: string;
+    candidateAvatar?: string;
+    employerName?: string;
+    employerAvatar?: string;
     createdAt?: any;
     updatedAt?: any;
 }
@@ -169,6 +178,10 @@ export interface ConversationDoc {
     last_message_by?: string;
     candidate_unread_count?: number;
     employer_unread_count?: number;
+    candidate_name?: string;
+    candidate_avatar?: string;
+    employer_name?: string;
+    employer_avatar?: string;
     created_at?: any;
     updated_at?: any;
 }
@@ -209,12 +222,15 @@ export interface ChatSummary {
 }
 
 export interface StartConversationInput {
-    applicationId: string;
+    applicationId?: string;
+    jobId?: string;
+    employerId?: string;
 }
 
 export interface SendMessageInput {
     conversationId?: string;
     applicationId?: string;
+    jobId?: string;
     text: string;
     clientMessageId: string;
 }

@@ -112,5 +112,6 @@ export function mapApplicationDocToApplication(id: string, data: Partial<Applica
         // ─── Denormalized job/shift info ───
         jobTitle: getValue(data, ['job_title', 'jobTitle']) as string | undefined,
         shiftTime: getValue(data, ['shift_time', 'shiftTime']) as string | undefined,
+        employerName: getValue(data, ['employer_name', 'employerName']) as string | undefined,
     };
 }

@@ -25,7 +25,14 @@ service cloud.firestore {
     // --- USERS (public profile only) ---
     match /users/{userId} {
       allow read: if isSignedIn();
-      allow write: if isOwner(userId);
+      allow create: if isOwner(userId) || (
+        isSignedIn() && request.resource.data.keys().hasAll(['average_rating', 'total_ratings'])
+      );
+      allow update: if isOwner(userId) || (
+        isSignedIn() && (
+          request.resource.data.diff(resource.data).affectedKeys().hasAny(['average_rating', 'total_ratings', 'updated_at', 'updatedAt', 'balance'])
+        )
+      );
 
       // Wishlist is owner-only
       match /wishlist_jobs/{jobId} {
@@ -76,39 +83,17 @@ service cloud.firestore {
 
     // --- APPLICATIONS ---
     match /applications/{applicationId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
+      allow read, write: if isSignedIn();
       
-      // Cho phép cập nhật trực tiếp trên Client (Không dùng Cloud Functions nữa)
-      function isApplicationEmployer() {
-        return resource.data.employer_id == request.auth.uid 
-            || resource.data.employerId == request.auth.uid;
-      }
-      function isApplicationCandidate() {
-        return resource.data.candidate_id == request.auth.uid 
-            || resource.data.candidateId == request.auth.uid;
-      }
-      
-      // Candidate: Hủy đơn, Employer: Duyệt/Từ chối/Đánh dấu xong
-      allow update: if isSignedIn() && (isApplicationEmployer() || isApplicationCandidate());
-      
-      allow delete: if false;
-
-      match /checkins/{checkinId} {
-        allow read: if isSignedIn() && (
-          get(/databases/$(database)/documents/applications/$(applicationId)).data.candidate_id == request.auth.uid ||
-          get(/databases/$(database)/documents/applications/$(applicationId)).data.employer_id == request.auth.uid ||
-          get(/databases/$(database)/documents/applications/$(applicationId)).data.candidateId == request.auth.uid ||
-          get(/databases/$(database)/documents/applications/$(applicationId)).data.employerId == request.auth.uid
-        );
-
-        allow create, update, delete: if false;
+      match /{allSubcollections=**} {
+        allow read, write: if isSignedIn();
       }
     }
 
     // --- CONVERSATIONS / MESSAGES ---
     match /conversations/{conversationId} {
       allow read: if isSignedIn() && (
+        resource == null ||
         resource.data.candidate_id == request.auth.uid ||
         resource.data.employer_id == request.auth.uid ||
         resource.data.candidateId == request.auth.uid ||
@@ -123,6 +108,7 @@ service cloud.firestore {
         request.resource.data.employerId == request.auth.uid
       );
       allow update: if isSignedIn() && (
+        resource == null ||
         resource.data.candidate_id == request.auth.uid ||
         resource.data.employer_id == request.auth.uid ||
         resource.data.candidateId == request.auth.uid ||
@@ -150,14 +136,19 @@ service cloud.firestore {
 
     // --- TRANSACTIONS ---
     match /transactions/{transactionId} {
-      allow read: if isSignedIn() && resource.data.user_id == request.auth.uid;
-      allow write: if false;
+      allow read: if isSignedIn() && (resource == null || resource.data.user_id == request.auth.uid || resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn(); // Allow creating for simulation
+      allow update, delete: if false;
     }
 
-    // --- REVIEWS (writes via Cloud Functions only) ---
+    // --- REVIEWS ---
     match /reviews/{reviewId} {
       allow read: if isSignedIn();
-      allow create, update, delete: if false;
+      allow create: if isSignedIn() 
+                    && request.resource.data.reviewer_id == request.auth.uid
+                    && request.resource.data.rating >= 1 
+                    && request.resource.data.rating <= 5;
+      allow update, delete: if false;
     }
 
     // --- CATEGORIES ---
