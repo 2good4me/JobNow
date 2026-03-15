@@ -15,10 +15,12 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as JobsIndexRouteImport } from './routes/jobs/index'
 import { Route as EmployerIndexRouteImport } from './routes/employer/index'
 import { Route as CandidateIndexRouteImport } from './routes/candidate/index'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as EmployerWalletRouteImport } from './routes/employer/wallet'
 import { Route as EmployerVerificationRouteImport } from './routes/employer/verification'
 import { Route as EmployerShiftManagementRouteImport } from './routes/employer/shift-management'
@@ -36,6 +38,12 @@ import { Route as CandidateProfileRouteImport } from './routes/candidate/profile
 import { Route as CandidateNotificationsRouteImport } from './routes/candidate/notifications'
 import { Route as CandidateChatRouteImport } from './routes/candidate/chat'
 import { Route as CandidateApplicationsRouteImport } from './routes/candidate/applications'
+import { Route as AdminUsersRouteImport } from './routes/admin/users'
+import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
+import { Route as AdminReportsRouteImport } from './routes/admin/reports'
+import { Route as AdminJobsRouteImport } from './routes/admin/jobs'
+import { Route as AdminCategoriesRouteImport } from './routes/admin/categories'
+import { Route as AdminAnalyticsRouteImport } from './routes/admin/analytics'
 import { Route as EmployerVerificationIndexRouteImport } from './routes/employer/verification/index'
 import { Route as EmployerProfileIndexRouteImport } from './routes/employer/profile/index'
 import { Route as CandidateVerificationIndexRouteImport } from './routes/candidate/verification/index'
@@ -47,6 +55,7 @@ import { Route as CandidateProfileSettingsRouteImport } from './routes/candidate
 import { Route as CandidateProfileEditRouteImport } from './routes/candidate/profile/edit'
 import { Route as CandidateJobsJobIdRouteImport } from './routes/candidate/jobs/$jobId'
 import { Route as CandidateEmployerEmployerIdRouteImport } from './routes/candidate/employer/$employerId'
+import { Route as AdminUsersUserIdRouteImport } from './routes/admin/users.$userId'
 import { Route as EmployerProfileSettingsIndexRouteImport } from './routes/employer/profile/settings/index'
 import { Route as EmployerProfileSettingsTermsRouteImport } from './routes/employer/profile/settings/terms'
 import { Route as EmployerProfileSettingsPrivacyRouteImport } from './routes/employer/profile/settings/privacy'
@@ -86,6 +95,11 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -105,6 +119,11 @@ const CandidateIndexRoute = CandidateIndexRouteImport.update({
   id: '/candidate/',
   path: '/candidate/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
 } as any)
 const EmployerWalletRoute = EmployerWalletRouteImport.update({
   id: '/employer/wallet',
@@ -191,6 +210,36 @@ const CandidateApplicationsRoute = CandidateApplicationsRouteImport.update({
   path: '/candidate/applications',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminReportsRoute = AdminReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminJobsRoute = AdminJobsRouteImport.update({
+  id: '/jobs',
+  path: '/jobs',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCategoriesRoute = AdminCategoriesRouteImport.update({
+  id: '/categories',
+  path: '/categories',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => AdminRoute,
+} as any)
 const EmployerVerificationIndexRoute =
   EmployerVerificationIndexRouteImport.update({
     id: '/',
@@ -251,6 +300,11 @@ const CandidateEmployerEmployerIdRoute =
     path: '/candidate/employer/$employerId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AdminUsersUserIdRoute = AdminUsersUserIdRouteImport.update({
+  id: '/$userId',
+  path: '/$userId',
+  getParentRoute: () => AdminUsersRoute,
+} as any)
 const EmployerProfileSettingsIndexRoute =
   EmployerProfileSettingsIndexRouteImport.update({
     id: '/settings/',
@@ -302,12 +356,19 @@ const EmployerProfileSettingsDeactivateRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/register': typeof RegisterRoute
   '/support-center': typeof SupportCenterRoute
   '/support-center-data': typeof SupportCenterDataRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/categories': typeof AdminCategoriesRoute
+  '/admin/jobs': typeof AdminJobsRoute
+  '/admin/reports': typeof AdminReportsRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/users': typeof AdminUsersRouteWithChildren
   '/candidate/applications': typeof CandidateApplicationsRoute
   '/candidate/chat': typeof CandidateChatRoute
   '/candidate/notifications': typeof CandidateNotificationsRoute
@@ -325,9 +386,11 @@ export interface FileRoutesByFullPath {
   '/employer/shift-management': typeof EmployerShiftManagementRoute
   '/employer/verification': typeof EmployerVerificationRouteWithChildren
   '/employer/wallet': typeof EmployerWalletRoute
+  '/admin/': typeof AdminIndexRoute
   '/candidate/': typeof CandidateIndexRoute
   '/employer/': typeof EmployerIndexRoute
   '/jobs/': typeof JobsIndexRoute
+  '/admin/users/$userId': typeof AdminUsersUserIdRoute
   '/candidate/employer/$employerId': typeof CandidateEmployerEmployerIdRoute
   '/candidate/jobs/$jobId': typeof CandidateJobsJobIdRoute
   '/candidate/profile/edit': typeof CandidateProfileEditRoute
@@ -356,6 +419,12 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/support-center': typeof SupportCenterRoute
   '/support-center-data': typeof SupportCenterDataRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/categories': typeof AdminCategoriesRoute
+  '/admin/jobs': typeof AdminJobsRoute
+  '/admin/reports': typeof AdminReportsRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/users': typeof AdminUsersRouteWithChildren
   '/candidate/applications': typeof CandidateApplicationsRoute
   '/candidate/chat': typeof CandidateChatRoute
   '/candidate/notifications': typeof CandidateNotificationsRoute
@@ -370,9 +439,11 @@ export interface FileRoutesByTo {
   '/employer/qr-display': typeof EmployerQrDisplayRoute
   '/employer/shift-management': typeof EmployerShiftManagementRoute
   '/employer/wallet': typeof EmployerWalletRoute
+  '/admin': typeof AdminIndexRoute
   '/candidate': typeof CandidateIndexRoute
   '/employer': typeof EmployerIndexRoute
   '/jobs': typeof JobsIndexRoute
+  '/admin/users/$userId': typeof AdminUsersUserIdRoute
   '/candidate/employer/$employerId': typeof CandidateEmployerEmployerIdRoute
   '/candidate/jobs/$jobId': typeof CandidateJobsJobIdRoute
   '/candidate/profile/edit': typeof CandidateProfileEditRoute
@@ -396,12 +467,19 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/register': typeof RegisterRoute
   '/support-center': typeof SupportCenterRoute
   '/support-center-data': typeof SupportCenterDataRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/categories': typeof AdminCategoriesRoute
+  '/admin/jobs': typeof AdminJobsRoute
+  '/admin/reports': typeof AdminReportsRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/users': typeof AdminUsersRouteWithChildren
   '/candidate/applications': typeof CandidateApplicationsRoute
   '/candidate/chat': typeof CandidateChatRoute
   '/candidate/notifications': typeof CandidateNotificationsRoute
@@ -419,9 +497,11 @@ export interface FileRoutesById {
   '/employer/shift-management': typeof EmployerShiftManagementRoute
   '/employer/verification': typeof EmployerVerificationRouteWithChildren
   '/employer/wallet': typeof EmployerWalletRoute
+  '/admin/': typeof AdminIndexRoute
   '/candidate/': typeof CandidateIndexRoute
   '/employer/': typeof EmployerIndexRoute
   '/jobs/': typeof JobsIndexRoute
+  '/admin/users/$userId': typeof AdminUsersUserIdRoute
   '/candidate/employer/$employerId': typeof CandidateEmployerEmployerIdRoute
   '/candidate/jobs/$jobId': typeof CandidateJobsJobIdRoute
   '/candidate/profile/edit': typeof CandidateProfileEditRoute
@@ -446,12 +526,19 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/forgot-password'
     | '/login'
     | '/onboarding'
     | '/register'
     | '/support-center'
     | '/support-center-data'
+    | '/admin/analytics'
+    | '/admin/categories'
+    | '/admin/jobs'
+    | '/admin/reports'
+    | '/admin/settings'
+    | '/admin/users'
     | '/candidate/applications'
     | '/candidate/chat'
     | '/candidate/notifications'
@@ -469,9 +556,11 @@ export interface FileRouteTypes {
     | '/employer/shift-management'
     | '/employer/verification'
     | '/employer/wallet'
+    | '/admin/'
     | '/candidate/'
     | '/employer/'
     | '/jobs/'
+    | '/admin/users/$userId'
     | '/candidate/employer/$employerId'
     | '/candidate/jobs/$jobId'
     | '/candidate/profile/edit'
@@ -500,6 +589,12 @@ export interface FileRouteTypes {
     | '/register'
     | '/support-center'
     | '/support-center-data'
+    | '/admin/analytics'
+    | '/admin/categories'
+    | '/admin/jobs'
+    | '/admin/reports'
+    | '/admin/settings'
+    | '/admin/users'
     | '/candidate/applications'
     | '/candidate/chat'
     | '/candidate/notifications'
@@ -514,9 +609,11 @@ export interface FileRouteTypes {
     | '/employer/qr-display'
     | '/employer/shift-management'
     | '/employer/wallet'
+    | '/admin'
     | '/candidate'
     | '/employer'
     | '/jobs'
+    | '/admin/users/$userId'
     | '/candidate/employer/$employerId'
     | '/candidate/jobs/$jobId'
     | '/candidate/profile/edit'
@@ -539,12 +636,19 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/forgot-password'
     | '/login'
     | '/onboarding'
     | '/register'
     | '/support-center'
     | '/support-center-data'
+    | '/admin/analytics'
+    | '/admin/categories'
+    | '/admin/jobs'
+    | '/admin/reports'
+    | '/admin/settings'
+    | '/admin/users'
     | '/candidate/applications'
     | '/candidate/chat'
     | '/candidate/notifications'
@@ -562,9 +666,11 @@ export interface FileRouteTypes {
     | '/employer/shift-management'
     | '/employer/verification'
     | '/employer/wallet'
+    | '/admin/'
     | '/candidate/'
     | '/employer/'
     | '/jobs/'
+    | '/admin/users/$userId'
     | '/candidate/employer/$employerId'
     | '/candidate/jobs/$jobId'
     | '/candidate/profile/edit'
@@ -588,6 +694,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
@@ -663,6 +770,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -690,6 +804,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/candidate/'
       preLoaderRoute: typeof CandidateIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/employer/wallet': {
       id: '/employer/wallet'
@@ -810,6 +931,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CandidateApplicationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/reports': {
+      id: '/admin/reports'
+      path: '/reports'
+      fullPath: '/admin/reports'
+      preLoaderRoute: typeof AdminReportsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/jobs': {
+      id: '/admin/jobs'
+      path: '/jobs'
+      fullPath: '/admin/jobs'
+      preLoaderRoute: typeof AdminJobsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/categories': {
+      id: '/admin/categories'
+      path: '/categories'
+      fullPath: '/admin/categories'
+      preLoaderRoute: typeof AdminCategoriesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/analytics': {
+      id: '/admin/analytics'
+      path: '/analytics'
+      fullPath: '/admin/analytics'
+      preLoaderRoute: typeof AdminAnalyticsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/employer/verification/': {
       id: '/employer/verification/'
       path: '/'
@@ -887,6 +1050,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CandidateEmployerEmployerIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/users/$userId': {
+      id: '/admin/users/$userId'
+      path: '/$userId'
+      fullPath: '/admin/users/$userId'
+      preLoaderRoute: typeof AdminUsersUserIdRouteImport
+      parentRoute: typeof AdminUsersRoute
+    }
     '/employer/profile/settings/': {
       id: '/employer/profile/settings/'
       path: '/settings'
@@ -945,6 +1115,40 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AdminUsersRouteChildren {
+  AdminUsersUserIdRoute: typeof AdminUsersUserIdRoute
+}
+
+const AdminUsersRouteChildren: AdminUsersRouteChildren = {
+  AdminUsersUserIdRoute: AdminUsersUserIdRoute,
+}
+
+const AdminUsersRouteWithChildren = AdminUsersRoute._addFileChildren(
+  AdminUsersRouteChildren,
+)
+
+interface AdminRouteChildren {
+  AdminAnalyticsRoute: typeof AdminAnalyticsRoute
+  AdminCategoriesRoute: typeof AdminCategoriesRoute
+  AdminJobsRoute: typeof AdminJobsRoute
+  AdminReportsRoute: typeof AdminReportsRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminUsersRoute: typeof AdminUsersRouteWithChildren
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAnalyticsRoute: AdminAnalyticsRoute,
+  AdminCategoriesRoute: AdminCategoriesRoute,
+  AdminJobsRoute: AdminJobsRoute,
+  AdminReportsRoute: AdminReportsRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
+  AdminUsersRoute: AdminUsersRouteWithChildren,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface CandidateProfileRouteChildren {
   CandidateProfileEditRoute: typeof CandidateProfileEditRoute
@@ -1009,6 +1213,7 @@ const EmployerVerificationRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,

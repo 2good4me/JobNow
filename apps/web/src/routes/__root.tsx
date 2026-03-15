@@ -13,6 +13,7 @@ export const Route = createRootRoute({
 
 /* ── Auth pages that should never show nav ─────── */
 const AUTH_ROUTES = ['/login', '/register', '/forgot-password', '/onboarding'];
+const ADMIN_ROUTES_PREFIX = '/admin';
 const ONBOARDING_STORAGE_KEY = 'jobnow_onboarding_seen';
 
 function hasSeenGuestOnboarding() {
@@ -63,6 +64,12 @@ function RootLayout() {
                 navigate({ to: '/employer', replace: true });
             }
         }
+
+        if (role === 'ADMIN') {
+            if (!location.pathname.startsWith('/admin')) {
+                navigate({ to: '/admin', replace: true });
+            }
+        }
     }, [user, role, needsProfileSetup, isAuthPage, location.pathname, navigate]);
 
     // Redirect to profile setup if user is logged in but has no profile.
@@ -85,10 +92,12 @@ function RootLayout() {
             }
             if (role === 'CANDIDATE') navigate({ to: '/candidate', replace: true });
             if (role === 'EMPLOYER') navigate({ to: '/employer', replace: true });
+            if (role === 'ADMIN') navigate({ to: '/admin', replace: true });
         }
     }, [role, needsProfileSetup, loading, location.pathname, navigate]);
     const isCandidateRoute = role === 'CANDIDATE' && !isAuthPage;
     const isEmployerRoute = role === 'EMPLOYER' && !isAuthPage;
+    const isAdminRoute = location.pathname.startsWith(ADMIN_ROUTES_PREFIX);
     const isFullScreenFlow = location.pathname.startsWith('/employer/post-job');
 
     // Whether to show mobile-first app layout
@@ -116,6 +125,16 @@ function RootLayout() {
         return (
             <div className="min-h-screen bg-slate-50 font-sans">
                 <Outlet />
+            </div>
+        );
+    }
+
+    // Admin routes use their own layout (AdminLayout), no header/nav needed
+    if (isAdminRoute) {
+        return (
+            <div className="min-h-screen bg-slate-50 font-sans">
+                <Outlet />
+                <Toaster position="top-center" richColors />
             </div>
         );
     }
