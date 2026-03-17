@@ -170,8 +170,10 @@ export function ApplicantCard({
     <article className="group relative rounded-2xl border border-slate-100 bg-white shadow-sm transition-all hover:shadow-md active:scale-[0.99]">
       {showConfetti && <ConfettiBurst />}
 
-      {/* ── Top row: Avatar + Info + Badge ── */}
-      <div className="flex items-start gap-3 p-4 pb-3">
+      <div 
+        className="flex items-start gap-3 p-4 pb-3 cursor-pointer hover:bg-slate-50/50 transition-colors"
+        onClick={() => navigate({ to: `/employer/candidate/${candidateId}` } as any)}
+      >
         {/* Avatar */}
         <div className="relative shrink-0">
           <div className="h-12 w-12 overflow-hidden rounded-xl border-2 border-white shadow-sm">
@@ -182,7 +184,7 @@ export function ApplicantCard({
             ) : avatarUrl ? (
               <img alt={fullName} className="h-full w-full object-cover" src={avatarUrl} loading="lazy" />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-500">
+              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-indigo-500 to-blue-600">
                 <span className="text-lg font-bold text-white">{initial}</span>
               </div>
             )}
@@ -200,7 +202,7 @@ export function ApplicantCard({
         {/* Info */}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="truncate text-[15px] font-bold text-slate-900">{fullName}</h3>
+            <h3 className="truncate text-[15px] font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">{fullName}</h3>
             <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${sc.bg} ${sc.text}`}>
               {sc.label}
             </span>

@@ -1,0 +1,47 @@
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/config/firebase';
+
+export interface UserProfile {
+    uid: string;
+    fullName: string;
+    avatarUrl: string | null;
+    role: 'CANDIDATE' | 'EMPLOYER' | 'ADMIN';
+    company_name?: string;
+    last_active_at?: any;
+}
+
+/**
+ * Fetch a basic user profile from Firestore
+ */
+export async function getUserProfile(uid: string): Promise<UserProfile | null> {
+    try {
+        const snapshot = await getDoc(doc(db, 'users', uid));
+        if (!snapshot.exists()) return null;
+
+        const d = snapshot.data();
+        return {
+            uid,
+            fullName: String(d.full_name ?? d.fullName ?? ''),
+            avatarUrl: String(d.avatar_url ?? d.avatarUrl ?? d.company_logo_url ?? ''),
+            role: d.role as UserProfile['role'],
+            company_name: d.company_name,
+            last_active_at: d.last_active_at
+        };
+    } catch (error) {
+        console.error('Error fetching user profile:', error);
+        return null;
+    }
+}
+
+/**
+ * Update current user's last active timestamp
+ */
+export async function updateUserActiveStatus(uid: string) {
+    try {
+        await setDoc(doc(db, 'users', uid), {
+            last_active_at: serverTimestamp(),
+        }, { merge: true });
+    } catch (error) {
+        console.error('Error updating active status:', error);
+    }
+}

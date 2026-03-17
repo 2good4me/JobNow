@@ -17,7 +17,7 @@ export function useCheckIn() {
 export function useCheckOut() {
     const queryClient = useQueryClient();
 
-    return useMutation<{ success: boolean }, Error, CheckOutInput>({
+    return useMutation<{ success: boolean }, Error, CheckOutInput & { latitude?: number; longitude?: number; accuracy?: number }>({
         mutationFn: (payload) => checkOut(payload),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['applications'] });

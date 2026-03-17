@@ -141,7 +141,6 @@ function EmployerPostJobRoute() {
       if (!form.category) newErrors.category = 'Vui lòng chọn danh mục';
       if (!form.salary.trim()) newErrors.salary = 'Mức lương không được để trống';
       if (Number(form.salary.replace(/\D/g, '')) < 0) newErrors.salary = 'Mức lương phải >= 0';
-      if (!form.vacancies || form.vacancies < 1) newErrors.vacancies = 'Số lượng phải >= 1';
     }
 
     if (stepNum === 2) {
@@ -188,8 +187,7 @@ function EmployerPostJobRoute() {
         form.description.trim().length > 0 &&
         form.category.length > 0 &&
         form.salary.trim().length > 0 &&
-        Number(form.salary.replace(/\D/g, '')) >= 0 &&
-        form.vacancies >= 1
+        Number(form.salary.replace(/\D/g, '')) >= 0
       );
     }
     if (step === 2) {
@@ -394,7 +392,7 @@ function EmployerPostJobRoute() {
           endTime: s.endTime,
           quantity: s.quantity,
         })),
-        vacancies: form.vacancies,
+        vacancies: form.shifts.reduce((acc, s) => acc + s.quantity, 0),
         genderPreference: mapGender(form.gender),
         startDate: form.startDate,
         deadline: form.deadline || undefined,

@@ -1,6 +1,5 @@
-import { collection, query, where, getDocs, doc, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, runTransaction, serverTimestamp, onSnapshot, type Unsubscribe } from 'firebase/firestore';
 import { db } from '@/config/firebase';
-import { getUserDocument } from '@/lib/firestore';
 
 export interface TransactionRecord {
     id: string;
@@ -18,8 +17,10 @@ export interface TransactionRecord {
  * Fetch the user's wallet balance from the users document.
  */
 export async function getWalletBalance(userId: string): Promise<number> {
-    const user = await getUserDocument(userId);
-    return user?.balance ?? 0;
+    const userRef = doc(db, 'users', userId);
+    const snapshot = await getDoc(userRef);
+    if (!snapshot.exists()) return 0;
+    return snapshot.data()?.balance ?? 0;
 }
 
 /**
@@ -28,25 +29,75 @@ export async function getWalletBalance(userId: string): Promise<number> {
 export async function fetchTransactions(userId: string, pageSize = 20): Promise<TransactionRecord[]> {
     try {
         const txRef = collection(db, 'transactions');
-        
-        // Fetch both snake_case and camelCase to be safe
         const q1 = query(txRef, where('userId', '==', userId));
         const q2 = query(txRef, where('user_id', '==', userId));
         
         const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
-        
         const allDocs = [...snap1.docs, ...snap2.docs];
         
-        // Deduplicate and sort client-side to avoid index issues for now
-        const results = dedupeById(allDocs.map(mapTransaction))
+        return dedupeById(allDocs.map(mapTransaction))
             .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
             .slice(0, pageSize);
-            
-        return results;
     } catch (error) {
         console.error('Error fetching transactions:', error);
-        return []; // Return empty instead of hanging
+        return [];
     }
+}
+
+export function subscribeWalletBalance(
+    userId: string,
+    onUpdate: (balance: number) => void
+): Unsubscribe {
+    const userRef = doc(db, 'users', userId);
+    return onSnapshot(userRef, (snapshot) => {
+        const data = snapshot.data();
+        onUpdate(data?.balance ?? 0);
+    }, (error) => {
+        console.error('Error subscribing to wallet balance:', error);
+    });
+}
+
+/**
+ * Subscribe to transaction history for a user.
+ */
+export function subscribeTransactions(
+    userId: string,
+    onUpdate: (transactions: TransactionRecord[]) => void,
+    pageSize = 20
+): Unsubscribe {
+    const txRef = collection(db, 'transactions');
+    
+    const q1 = query(txRef, where('userId', '==', userId));
+    const q2 = query(txRef, where('user_id', '==', userId));
+
+    let items1: TransactionRecord[] = [];
+    let items2: TransactionRecord[] = [];
+
+    const flush = () => {
+        const results = dedupeById([...items1, ...items2])
+            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+            .slice(0, pageSize);
+        onUpdate(results);
+    };
+
+    const unsub1 = onSnapshot(q1, (snapshot) => {
+        items1 = snapshot.docs.map(mapTransaction);
+        flush();
+    }, (error) => {
+        console.error('Error subscribing to transactions (q1):', error);
+    });
+
+    const unsub2 = onSnapshot(q2, (snapshot) => {
+        items2 = snapshot.docs.map(mapTransaction);
+        flush();
+    }, (error) => {
+        console.error('Error subscribing to transactions (q2):', error);
+    });
+
+    return () => {
+        unsub1();
+        unsub2();
+    };
 }
 
 function dedupeById<T extends { id: string }>(items: T[]): T[] {

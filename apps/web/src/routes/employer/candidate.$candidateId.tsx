@@ -104,7 +104,10 @@ function CandidateDetailPage() {
                     <div className="flex items-center gap-3 w-full max-w-sm">
                         <button 
                             className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-full shadow-sm transition-colors"
-                            onClick={() => navigate({ to: '/employer/chat' })}
+                            onClick={() => navigate({ 
+                                to: '/employer/chat' as any,
+                                search: { candidateId: candidateId } as any
+                            })}
                         >
                             <MessageCircle className="w-5 h-5" />
                             Nhắn tin

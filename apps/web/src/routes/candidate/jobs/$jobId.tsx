@@ -13,12 +13,51 @@ import { useAuth } from '@/features/auth/context/AuthContext';
 import { useApplyJob } from '@/features/jobs/hooks/useApplyJob';
 import { useUserProfile } from '@/features/auth/hooks/useUserProfile';
 import { useIsJobWishlisted, useToggleWishlist } from '@/features/jobs/hooks/useWishlistJobs';
+import { useApprovedCount } from '@/features/jobs/hooks/useApprovedCount';
 import { incrementJobView } from '@/features/jobs/services/jobService';
 import { toast } from 'sonner';
 
 export const Route = createFileRoute('/candidate/jobs/$jobId')({
   component: JobDetailPage,
 });
+
+function ShiftItem({ shift, jobId, isSelected, onSelect }: { 
+  shift: any, 
+  jobId: string, 
+  isSelected: boolean, 
+  onSelect: (id: string) => void 
+}) {
+  const { data: approvedCount = 0 } = useApprovedCount(jobId, shift.id);
+  const remainingSlots = Math.max(0, shift.quantity - approvedCount);
+
+  return (
+    <div
+      onClick={() => onSelect(shift.id)}
+      className={`border-2 shadow-sm rounded-2xl p-4 relative overflow-hidden cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 border-blue-500' : 'bg-white border-transparent hover:border-slate-200'
+        }`}
+    >
+      {isSelected && (
+        <div className="absolute top-0 right-0 bg-blue-500 text-white text-[10px] font-bold uppercase px-2 py-0.5 rounded-bl-lg z-10">
+          Đã chọn
+        </div>
+      )}
+      <div className="flex items-center gap-4 relative z-0">
+        <div className={`w-10 h-10 shadow-sm rounded-full flex items-center justify-center shrink-0 ${isSelected ? 'bg-white text-blue-500' : 'bg-slate-50 text-slate-500'}`}>
+          <Clock className="w-5 h-5" />
+        </div>
+        <div className="flex-1">
+          <div className="flex justify-between items-center mb-1">
+            <h3 className={`font-bold text-[15px] ${isSelected ? 'text-blue-900' : 'text-slate-800'}`}>{shift.name}</h3>
+            <span className={`text-[13px] font-semibold ${isSelected ? 'text-blue-600' : 'text-emerald-600'}`}>
+              {remainingSlots > 0 ? `Còn ${remainingSlots} chỗ` : 'Đã hết chỗ'}
+            </span>
+          </div>
+          <p className={`text-[12px] mb-2 font-medium ${isSelected ? 'text-blue-700/70' : 'text-slate-500'}`}>{shift.startTime} - {shift.endTime}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function JobDetailPage() {
   const navigate = useNavigate();
@@ -29,8 +68,17 @@ function JobDetailPage() {
 
   // Fetch employer details for dynamic rating/reputation/verification
   const { data: employerProfile } = useUserProfile(job?.employerId);
+  
+  // Fetch total approved count for this job to show remaining vacancies
+  const { data: totalApprovedCount = 0 } = useApprovedCount(jobId);
 
   const [selectedShiftId, setSelectedShiftId] = useState<string>('');
+
+  // Find selected shift object to check его remaining slots
+  const selectedShift = job?.shifts?.find(s => s.id === selectedShiftId);
+  // We need the approved count for the selected shift too
+  const { data: selectedShiftApprovedCount = 0 } = useApprovedCount(jobId, selectedShiftId);
+  const selectedShiftRemaining = selectedShift ? Math.max(0, selectedShift.quantity - selectedShiftApprovedCount) : 0;
 
   // Increment job view count on open
   useEffect(() => {
@@ -124,6 +172,11 @@ function JobDetailPage() {
       return;
     }
 
+    if (selectedShiftRemaining <= 0) {
+      toast.error('Ca làm việc này đã hết chỗ');
+      return;
+    }
+
     try {
       await applyMutation.mutateAsync({
         jobId,
@@ -163,6 +216,8 @@ function JobDetailPage() {
       </div>
     );
   }
+
+  const remainingVacancies = Math.max(0, (job.vacancies || 0) - totalApprovedCount);
 
   return (
     <div className="min-h-[100dvh] bg-slate-50 pb-24 font-sans text-slate-800">
@@ -274,7 +329,9 @@ function JobDetailPage() {
           <div className="bg-white border border-slate-100 shadow-sm rounded-2xl p-4 flex flex-col justify-center">
             <Users className="w-5 h-5 text-purple-500 mb-2" />
             <span className="text-slate-500 text-[12px] mb-1">Số lượng cần</span>
-            <span className="text-slate-900 font-bold text-[14px]">{job.vacancies || 'Không giới hạn'}</span>
+            <span className="text-slate-900 font-bold text-[14px]">
+              {remainingVacancies > 0 ? remainingVacancies : 'Đã đủ người'}
+            </span>
           </div>
           <div className="bg-white border border-slate-100 shadow-sm rounded-2xl p-4 flex flex-col justify-center">
             <UtensilsCrossed className="w-5 h-5 text-rose-500 mb-2" />
@@ -286,35 +343,15 @@ function JobDetailPage() {
         {/* Shift Selection */}
         <h2 className="text-[17px] font-bold text-slate-900 mb-4">Các ca làm việc</h2>
         <div className="space-y-3 mb-8">
-          {job.shifts.map((shift) => {
-            const isSelected = selectedShiftId === shift.id;
-            return (
-              <div
-                key={shift.id}
-                onClick={() => setSelectedShiftId(shift.id)}
-                className={`border-2 shadow-sm rounded-2xl p-4 relative overflow-hidden cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 border-blue-500' : 'bg-white border-transparent hover:border-slate-200'
-                  }`}
-              >
-                {isSelected && (
-                  <div className="absolute top-0 right-0 bg-blue-500 text-white text-[10px] font-bold uppercase px-2 py-0.5 rounded-bl-lg z-10">
-                    Đã chọn
-                  </div>
-                )}
-                <div className="flex items-center gap-4 relative z-0">
-                  <div className={`w-10 h-10 shadow-sm rounded-full flex items-center justify-center shrink-0 ${isSelected ? 'bg-white text-blue-500' : 'bg-slate-50 text-slate-500'}`}>
-                    <Clock className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-center mb-1">
-                      <h3 className={`font-bold text-[15px] ${isSelected ? 'text-blue-900' : 'text-slate-800'}`}>{shift.name}</h3>
-                      <span className={`text-[13px] font-semibold ${isSelected ? 'text-blue-600' : 'text-emerald-600'}`}>Còn {shift.quantity} chỗ</span>
-                    </div>
-                    <p className={`text-[12px] mb-2 font-medium ${isSelected ? 'text-blue-700/70' : 'text-slate-500'}`}>{shift.startTime} - {shift.endTime}</p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {job.shifts.map((shift) => (
+            <ShiftItem 
+              key={shift.id} 
+              shift={shift} 
+              jobId={jobId}
+              isSelected={selectedShiftId === shift.id}
+              onSelect={setSelectedShiftId}
+            />
+          ))}
         </div>
 
         {/* Job Description */}
@@ -371,20 +408,29 @@ function JobDetailPage() {
           <Heart className={`w-6 h-6 ${isWishlisted ? 'text-red-500 fill-red-500' : 'text-slate-400'}`} />
         </button>
         <button 
-          onClick={() => navigate({ to: '/candidate/chat', search: { jobId } })}
+          onClick={() => navigate({ 
+            to: '/candidate/chat', 
+            search: { 
+              jobId,
+              applicationId: undefined,
+              employerId: undefined
+            } 
+          })}
           className="w-[52px] h-[52px] bg-blue-50 rounded-2xl flex items-center justify-center shrink-0 border border-blue-100 hover:bg-blue-100 transition-colors"
         >
           <MessageSquare className="w-6 h-6 text-blue-600" />
         </button>
         <button
           onClick={handleApply}
-          disabled={applyMutation.isPending || hasApplied}
+          disabled={applyMutation.isPending || hasApplied || selectedShiftRemaining <= 0}
           className={`flex-1 font-bold text-[15px] rounded-2xl shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${hasApplied
+            ? 'bg-slate-200 text-slate-500 shadow-none'
+            : selectedShiftRemaining <= 0
             ? 'bg-slate-200 text-slate-500 shadow-none'
             : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200'
             }`}
         >
-          {applyMutation.isPending ? 'ĐANG XỬ LÝ...' : hasApplied ? 'ĐÃ ỨNG TUYỂN' : 'ỨNG TUYỂN NGAY'}
+          {applyMutation.isPending ? 'ĐANG XỬ LÝ...' : hasApplied ? 'ĐÃ ỨNG TUYỂN' : selectedShiftRemaining <= 0 ? 'CA LÀM ĐÃ HẾT CHỖ' : 'ỨNG TUYỂN NGAY'}
         </button>
       </div>
 
