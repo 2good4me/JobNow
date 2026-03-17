@@ -97,7 +97,7 @@ export const jobFormSchema = z.object({
    */
   vacancies: z.number()
     .int('Workers must be an integer')
-    .min(1, 'Workers must be >= 1'),
+    .min(0, 'Workers must be >= 0'),
 
   /**
    * SHIFTS VALIDATION

@@ -29,9 +29,6 @@ export default function Step1Info({
     setForm((p) => ({ ...p, salary: formattedSalary }));
   };
 
-  const adjustVacancies = (delta: number) => {
-    setForm((p) => ({ ...p, vacancies: Math.max(0, p.vacancies + delta) }));
-  };
 
   return (
     <div className="w-full shrink-0 px-0.5 space-y-4">
@@ -155,47 +152,6 @@ export default function Step1Info({
       <section className="rounded-2xl border border-white/70 bg-white/70 p-4 shadow-md backdrop-blur-md">
         <h2 className="mb-4 text-base font-bold text-slate-900">Lương và số lượng</h2>
         <div className="grid grid-cols-2 gap-3">
-          <label>
-            <span className="mb-1 block text-xs font-semibold text-slate-600">
-              Số lượng tuyển <span className="text-rose-400">*</span>
-            </span>
-            <div className="relative">
-              <UsersRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                type="number"
-                value={form.vacancies || ''}
-                min={1}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setForm((p) => ({ ...p, vacancies: Math.max(0, Number(e.target.value || 0)) }))
-                }
-                placeholder="VD: 2"
-                className={`w-full rounded-xl border px-3 py-2.5 pl-10 pr-10 text-sm text-slate-800 focus:outline-none transition-colors ${
-                  errors.vacancies
-                    ? 'border-rose-400 bg-rose-50 focus:border-rose-500 focus:ring-1 focus:ring-rose-200'
-                    : 'border-slate-200 bg-slate-50 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200'
-                }`}
-              />
-              <div className="absolute right-2 top-1/2 flex h-8 w-6 -translate-y-1/2 flex-col overflow-hidden rounded-md border border-slate-200 bg-white">
-                <button
-                  type="button"
-                  onClick={() => adjustVacancies(1)}
-                  className="flex h-1/2 items-center justify-center border-b border-slate-200 text-slate-500 transition-colors hover:bg-slate-100"
-                  aria-label="Tăng số lượng"
-                >
-                  <span className="h-0 w-0 border-x-[3px] border-x-transparent border-b-[5px] border-b-slate-400" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => adjustVacancies(-1)}
-                  className="flex h-1/2 items-center justify-center text-slate-500 transition-colors hover:bg-slate-100"
-                  aria-label="Giảm số lượng"
-                >
-                  <span className="h-0 w-0 border-x-[3px] border-x-transparent border-t-[5px] border-t-slate-400" />
-                </button>
-              </div>
-            </div>
-            {errors.vacancies && <p className="mt-1 text-xs font-semibold text-rose-600">🔴 {errors.vacancies}</p>}
-          </label>
 
           {/* Dynamic Salary Label based on payment type */}
           <label>

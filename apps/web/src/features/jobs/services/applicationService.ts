@@ -1,4 +1,4 @@
-import { collection, getDocs, query, where, limit, doc, getDoc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, query, where, limit, doc, getDoc, updateDoc, addDoc, serverTimestamp, onSnapshot, type Unsubscribe } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import type { Application, ApplicationStatus } from '@jobnow/types';
 import { mapApplicationDocToApplication } from './adapters';
@@ -75,13 +75,6 @@ async function fetchApplicationsByField(
     });
 }
 
-function fetchAllAppsByEmployerField(field: 'employerId' | 'employer_id', value: string, maxResults?: number): Promise<Application[]> {
-    const appsRef = collection(db, 'applications');
-    const baseQuery = query(appsRef, where(field, '==', value));
-    const finalQuery = maxResults ? query(baseQuery, limit(maxResults)) : baseQuery;
-    return getDocs(finalQuery).then(snapshot => snapshot.docs.map(docSnap => mapApplicationDocToApplication(docSnap.id, docSnap.data() as any)));
-}
-
 /**
  * Fetch all applications for a specific job, filtered by employerId.
  */
@@ -100,14 +93,70 @@ export async function fetchJobApplications(jobId: string, employerId: string): P
 }
 
 /**
+ * Subscribe to all applications for a specific job, filtered by employerId.
+ */
+export function subscribeJobApplications(
+    jobId: string, 
+    employerId: string, 
+    onUpdate: (applications: Application[]) => void
+): Unsubscribe {
+    const appsRef = collection(db, 'applications');
+    
+    // Listen for both camelCase and snake_case variants
+    const qCamel = query(
+        appsRef,
+        where('jobId', '==', jobId),
+        where('employerId', '==', employerId)
+    );
+    
+    const qSnake = query(
+        appsRef,
+        where('job_id', '==', jobId),
+        where('employer_id', '==', employerId)
+    );
+
+    let camelItems: Application[] = [];
+    let snakeItems: Application[] = [];
+
+    const flush = () => {
+        const deduped = dedupeById([...camelItems, ...snakeItems]);
+        onUpdate(deduped);
+    };
+
+    const unsubCamel = onSnapshot(qCamel, (snapshot) => {
+        camelItems = snapshot.docs.map(docSnap => mapApplicationDocToApplication(docSnap.id, docSnap.data() as any));
+        flush();
+    }, (error) => {
+        console.error('Error subscribing to job applications (camel):', error);
+    });
+
+    const unsubSnake = onSnapshot(qSnake, (snapshot) => {
+        snakeItems = snapshot.docs.map(docSnap => mapApplicationDocToApplication(docSnap.id, docSnap.data() as any));
+        flush();
+    }, (error) => {
+        console.error('Error subscribing to job applications (snake):', error);
+    });
+
+    return () => {
+        unsubCamel();
+        unsubSnake();
+    };
+}
+
+/**
  * Fetch all applications for a given employer across all jobs.
  */
 export async function fetchEmployerApplications(employerId: string): Promise<Application[]> {
     try {
-        const [camelItems, snakeItems] = await Promise.all([
-            fetchAllAppsByEmployerField('employerId', employerId, 100),
-            fetchAllAppsByEmployerField('employer_id', employerId, 100),
-        ]);
+        const appsRef = collection(db, 'applications');
+        const qCamel = query(appsRef, where('employerId', '==', employerId), limit(100));
+        const qSnake = query(appsRef, where('employer_id', '==', employerId), limit(100));
+
+        const [snapCamel, snapSnake] = await Promise.all([getDocs(qCamel), getDocs(qSnake)]);
+        
+        const camelItems = snapCamel.docs.map(docSnap => mapApplicationDocToApplication(docSnap.id, docSnap.data() as any));
+        const snakeItems = snapSnake.docs.map(docSnap => mapApplicationDocToApplication(docSnap.id, docSnap.data() as any));
+
         return dedupeById([...camelItems, ...snakeItems])
             .sort((a, b) => getApplicationSortTime(b) - getApplicationSortTime(a))
             .slice(0, 100);
@@ -115,6 +164,48 @@ export async function fetchEmployerApplications(employerId: string): Promise<App
         console.error('Error in fetchEmployerApplications:', { employerId, error });
         throw mapServiceError(error, 'Không thể lấy danh sách đơn ứng tuyển. Vui lòng thử lại sau.');
     }
+}
+
+/**
+ * Subscribe to all applications for a given employer across all jobs.
+ */
+export function subscribeEmployerApplications(
+    employerId: string,
+    onUpdate: (applications: Application[]) => void
+): Unsubscribe {
+    const appsRef = collection(db, 'applications');
+    
+    const qCamel = query(appsRef, where('employerId', '==', employerId), limit(100));
+    const qSnake = query(appsRef, where('employer_id', '==', employerId), limit(100));
+
+    let camelItems: Application[] = [];
+    let snakeItems: Application[] = [];
+
+    const flush = () => {
+        const deduped = dedupeById([...camelItems, ...snakeItems])
+            .sort((a, b) => getApplicationSortTime(b) - getApplicationSortTime(a))
+            .slice(0, 100);
+        onUpdate(deduped);
+    };
+
+    const unsubCamel = onSnapshot(qCamel, (snapshot) => {
+        camelItems = snapshot.docs.map(docSnap => mapApplicationDocToApplication(docSnap.id, docSnap.data() as any));
+        flush();
+    }, (error) => {
+        console.error('Error subscribing to employer applications (camel):', error);
+    });
+
+    const unsubSnake = onSnapshot(qSnake, (snapshot) => {
+        snakeItems = snapshot.docs.map(docSnap => mapApplicationDocToApplication(docSnap.id, docSnap.data() as any));
+        flush();
+    }, (error) => {
+        console.error('Error subscribing to employer applications (snake):', error);
+    });
+
+    return () => {
+        unsubCamel();
+        unsubSnake();
+    };
 }
 
 /**

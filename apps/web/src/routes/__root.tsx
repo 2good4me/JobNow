@@ -6,6 +6,7 @@ import { CandidateBottomNav } from '../components/ui/CandidateBottomNav';
 import { EmployerBottomNav } from '../components/ui/EmployerBottomNav';
 import { GlobalHeader } from '../components/ui/GlobalHeader';
 import { Toaster } from 'sonner';
+import { useOnlineStatus } from '../features/auth/hooks/useOnlineStatus';
 
 export const Route = createRootRoute({
     component: RootLayout,
@@ -29,6 +30,9 @@ function RootLayout() {
     const { user, role, needsProfileSetup, loading } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
+    
+    // Heartbeat for online status
+    useOnlineStatus();
     const isAuthPage = AUTH_ROUTES.some((r) => location.pathname.startsWith(r));
     const guestOnboardingSeen = hasSeenGuestOnboarding();
     const shouldRedirectGuestToOnboarding =

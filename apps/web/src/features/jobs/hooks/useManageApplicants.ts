@@ -1,12 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { Application } from '@jobnow/types';
-import { fetchJobApplications, updateApplicationStatus, fetchEmployerApplications, completeApplicationWithPayment, confirmPaymentReceived } from '../services/applicationService';
+import { fetchJobApplications, updateApplicationStatus, fetchEmployerApplications, completeApplicationWithPayment, confirmPaymentReceived, subscribeJobApplications, subscribeEmployerApplications } from '../services/applicationService';
 
 /**
  * Hook to fetch all applications for a specific job.
  */
 export function useGetApplicants(jobId: string, employerId: string | undefined) {
-    return useQuery<Application[], Error>({
+    const queryClient = useQueryClient();
+
+    const queryResult = useQuery<Application[], Error>({
         queryKey: ['applications', 'job', jobId, employerId],
         queryFn: async () => {
             if (!jobId) throw new Error('Job ID is required');
@@ -16,6 +19,18 @@ export function useGetApplicants(jobId: string, employerId: string | undefined) 
         enabled: !!jobId && !!employerId,
         staleTime: 60 * 1000, // 1 min — apps change but instant back-navigation is needed
     });
+
+    useEffect(() => {
+        if (!jobId || !employerId) return;
+
+        const unsubscribe = subscribeJobApplications(jobId, employerId, (data) => {
+            queryClient.setQueryData(['applications', 'job', jobId, employerId], data);
+        });
+
+        return () => unsubscribe();
+    }, [jobId, employerId, queryClient]);
+
+    return queryResult;
 }
 
 /**
@@ -58,7 +73,9 @@ export function useUpdateApplicationStatus() {
  * Hook to fetch all applications for a specific employer across all jobs.
  */
 export function useGetEmployerApplications(employerId: string | undefined) {
-    return useQuery<Application[], Error>({
+    const queryClient = useQueryClient();
+
+    const queryResult = useQuery<Application[], Error>({
         queryKey: ['applications', 'employer', employerId],
         queryFn: async () => {
             if (!employerId) throw new Error('Employer ID is required');
@@ -67,6 +84,18 @@ export function useGetEmployerApplications(employerId: string | undefined) {
         enabled: !!employerId,
         staleTime: 1 * 60 * 1000, // 1 min — apps change more often
     });
+
+    useEffect(() => {
+        if (!employerId) return;
+
+        const unsubscribe = subscribeEmployerApplications(employerId, (data) => {
+            queryClient.setQueryData(['applications', 'employer', employerId], data);
+        });
+
+        return () => unsubscribe();
+    }, [employerId, queryClient]);
+
+    return queryResult;
 }
 /**
  * Hook to complete application with payment.

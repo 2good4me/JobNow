@@ -1,10 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import {
     getWalletBalance,
     fetchTransactions,
     requestPayment,
     processDeposit,
     processWithdrawal,
+    subscribeWalletBalance,
+    subscribeTransactions,
     type TransactionRecord,
 } from '../services/walletService';
 
@@ -12,23 +15,51 @@ import {
  * Hook to fetch wallet balance.
  */
 export function useWalletBalance(userId: string | undefined) {
-    return useQuery<number>({
+    const queryClient = useQueryClient();
+
+    const queryResult = useQuery<number>({
         queryKey: ['wallet', 'balance', userId],
         queryFn: () => getWalletBalance(userId!),
         enabled: !!userId,
         staleTime: 30 * 1000, // 30 seconds
     });
+
+    useEffect(() => {
+        if (!userId) return;
+
+        const unsubscribe = subscribeWalletBalance(userId, (balance) => {
+            queryClient.setQueryData(['wallet', 'balance', userId], balance);
+        });
+
+        return () => unsubscribe();
+    }, [userId, queryClient]);
+
+    return queryResult;
 }
 
 /**
  * Hook to fetch transaction history.
  */
 export function useTransactionHistory(userId: string | undefined) {
-    return useQuery<TransactionRecord[]>({
+    const queryClient = useQueryClient();
+
+    const queryResult = useQuery<TransactionRecord[]>({
         queryKey: ['wallet', 'transactions', userId],
         queryFn: () => fetchTransactions(userId!),
         enabled: !!userId,
     });
+
+    useEffect(() => {
+        if (!userId) return;
+
+        const unsubscribe = subscribeTransactions(userId, (data) => {
+            queryClient.setQueryData(['wallet', 'transactions', userId], data);
+        });
+
+        return () => unsubscribe();
+    }, [userId, queryClient]);
+
+    return queryResult;
 }
 
 /**

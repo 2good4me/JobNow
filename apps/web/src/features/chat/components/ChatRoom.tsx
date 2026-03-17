@@ -7,6 +7,8 @@ import { markConversationRead } from '../services/chatService';
 import { MessageBubble } from './MessageBubble';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { useNavigate } from '@tanstack/react-router';
+import { formatDistanceToNow } from 'date-fns';
+import { vi } from 'date-fns/locale';
 
 interface ChatRoomProps {
     conversation: Conversation;
@@ -85,8 +87,39 @@ export function ChatRoom({ conversation, currentUserId, onBack }: ChatRoomProps)
         }
     };
 
+    // Format last active status
+    const renderStatus = () => {
+        if (!participantProfile?.last_active_at) {
+            return (
+                <div className="flex items-center gap-1.5 opacity-60">
+                    <span className="text-[11px] font-medium uppercase tracking-wider">Không rõ trạng thái</span>
+                </div>
+            );
+        }
+
+        const lastActiveDate = participantProfile.last_active_at.toDate();
+        const diffInMinutes = (Date.now() - lastActiveDate.getTime()) / (1000 * 60);
+
+        if (diffInMinutes < 2) {
+            return (
+                <div className="flex items-center gap-1.5 text-emerald-500">
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                    <span className="text-[11px] font-bold uppercase tracking-wider">Đang trực tuyến</span>
+                </div>
+            );
+        }
+
+        return (
+            <div className="flex items-center gap-1.5 text-gray-400">
+                <span className="text-[11px] font-medium uppercase tracking-wider">
+                    Hoạt động {formatDistanceToNow(lastActiveDate, { addSuffix: true, locale: vi })}
+                </span>
+            </div>
+        );
+    };
+
     return (
-        <div className="flex flex-col h-full relative overflow-hidden bg-white dark:bg-gray-950">
+        <div className="flex flex-col h-full relative overflow-hidden bg-white dark:bg-gray-950 max-h-[100dvh]">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800/60 sticky top-0 z-10">
                 <div className="flex items-center gap-3">
@@ -105,17 +138,16 @@ export function ChatRoom({ conversation, currentUserId, onBack }: ChatRoomProps)
                                 displayName.charAt(0).toUpperCase()
                             )}
                         </div>
-                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white dark:border-gray-950 rounded-full"></div>
+                        {participantProfile?.last_active_at && (Date.now() - participantProfile.last_active_at.toDate().getTime()) < 120000 && (
+                             <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white dark:border-gray-950 rounded-full"></div>
+                        )}
                     </div>
 
                     <div className="flex flex-col cursor-pointer" onClick={handleNavigateToProfile}>
                         <h3 className="font-bold text-gray-900 dark:text-white leading-tight">
                             {displayName}
                         </h3>
-                        <div className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                            <span className="text-[11px] text-gray-400 font-medium uppercase tracking-wider">Đang trực tuyến</span>
-                        </div>
+                        {renderStatus()}
                     </div>
                 </div>
             </div>

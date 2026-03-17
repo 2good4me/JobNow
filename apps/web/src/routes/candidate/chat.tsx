@@ -3,6 +3,13 @@ import { useAuth } from '@/features/auth/context/AuthContext';
 import { ChatPage } from '@/features/chat/components/ChatPage';
 
 export const Route = createFileRoute('/candidate/chat')({
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      applicationId: search.applicationId as string | undefined,
+      jobId: search.jobId as string | undefined,
+      employerId: search.employerId as string | undefined,
+    };
+  },
   component: CandidateChatRoute,
 });
 
