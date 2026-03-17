@@ -2,7 +2,8 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useGetEmployerJobs } from '@/features/jobs/hooks/useEmployerJobs';
 import { useGetEmployerApplications } from '@/features/jobs/hooks/useManageApplicants';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { getFollowerCount, getFollowingCount } from '@/features/auth/services/followService';
 import type { ComponentType } from 'react';
 import {
   BadgeCheck,
@@ -20,6 +21,8 @@ import {
 } from 'lucide-react';
 import { ReputationStatsCard } from '@/features/auth/components/ReputationStatsCard';
 import { AchievementBadges, PREDEFINED_ACHIEVEMENTS } from '@/features/auth/components/AchievementBadges';
+import { FollowListDialog } from '@/components/ui/FollowListDialog';
+import { Box, Typography } from '@mui/material';
 
 export const Route = createFileRoute('/employer/profile/')({
   component: EmployerProfilePage,
@@ -90,6 +93,20 @@ function EmployerProfilePage() {
 
   const { data: jobs = [], isLoading: isJobsLoading } = useGetEmployerJobs(employerId || '');
   const { data: applications = [], isLoading: isAppsLoading } = useGetEmployerApplications(employerId);
+  
+  const [followerCount, setFollowerCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [followDialog, setFollowDialog] = useState<{ isOpen: boolean; type: 'followers' | 'following' }>({
+    isOpen: false,
+    type: 'followers'
+  });
+
+  useEffect(() => {
+    if (employerId) {
+      getFollowerCount(employerId).then(setFollowerCount);
+      getFollowingCount(employerId).then(setFollowingCount);
+    }
+  }, [employerId]);
 
   const stats = useMemo(() => ({
     activeJobs: jobs.filter(j => j.status === 'ACTIVE').length,
@@ -199,10 +216,24 @@ function EmployerProfilePage() {
           <ReputationStatsCard
             reputationScore={userProfile.reputation_score || 0}
             averageRating={userProfile.average_rating || 0}
-            totalApplicants={stats.totalApplicants}
-            onViewDetails={() => navigate({ to: '/employer/profile/reputation' })}
+            statValue={followerCount}
+            statLabel="Followers"
+            onViewDetails={() => setFollowDialog({ isOpen: true, type: 'followers' })}
           />
         )}
+
+        <Box sx={{ mt: 2, px: 1, display: 'flex', gap: 2 }}>
+            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'bold' }}>
+                {followerCount} Người theo dõi
+            </Typography>
+            <Typography 
+                variant="caption" 
+                sx={{ color: 'text.secondary', fontWeight: 'bold', cursor: 'pointer', '&:hover': { color: 'primary.main' } }}
+                onClick={() => setFollowDialog({ isOpen: true, type: 'following' })}
+            >
+                {followingCount} Đang theo dõi
+            </Typography>
+        </Box>
 
         {/* Verification badges */}
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
@@ -370,6 +401,14 @@ function EmployerProfilePage() {
           JobNow v1.0.0
         </p>
       </div>
+
+      <FollowListDialog
+        isOpen={followDialog.isOpen}
+        onClose={() => setFollowDialog(prev => ({ ...prev, isOpen: false }))}
+        userId={employerId || ''}
+        type={followDialog.type}
+        title={followDialog.type === 'followers' ? 'Người đang theo dõi bạn' : 'Những người bạn đang theo dõi'}
+      />
     </div>
   );
 }

@@ -12,7 +12,7 @@ interface ChatPageProps {
 
 export function ChatPage({ userId, role }: ChatPageProps) {
     const navigate = useNavigate();
-    const search = useSearch({ strict: false }) as { applicationId?: string; jobId?: string };
+    const search = useSearch({ strict: false }) as { applicationId?: string; jobId?: string; employerId?: string };
     const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
     const [isStarting, setIsStarting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -22,33 +22,33 @@ export function ChatPage({ userId, role }: ChatPageProps) {
     const queryResult = useConversations({ userId, role });
     const conversations = queryResult.data;
 
-    // Auto-select or initialize conversation based on applicationId or jobId in URL
+    // Auto-select or initialize conversation based on applicationId, jobId or employerId in URL
     useEffect(() => {
         let isAborted = false;
 
         const initChat = async () => {
-            if (!search.applicationId && !search.jobId) return;
+            if (!search.applicationId && !search.jobId && !search.employerId) return;
             
             // Wait for conversations to load
             if (!conversations || (conversations.length === 0 && queryResult.isLoading)) return;
 
-            const currentKey = `${search.applicationId || ''}-${search.jobId || ''}`;
+            const currentKey = `${search.applicationId || ''}-${search.jobId || ''}-${search.employerId || ''}`;
             if (initialInitRef.current === currentKey) {
                 // If we're already selected something matching this key, we're done
                 if (selectedConversation) {
                     const isAppMatch = search.applicationId && (selectedConversation.id === search.applicationId || selectedConversation.applicationId === search.applicationId);
                     const isJobMatch = search.jobId && selectedConversation.jobId === search.jobId;
-                    if (isAppMatch || isJobMatch) return;
+                    const isEmployerMatch = search.employerId && selectedConversation.employerId === search.employerId;
+                    if (isAppMatch || isJobMatch || isEmployerMatch) return;
                 }
-                // If we are NOT selected yet, but we have this key, it might mean we are in progress 
-                // or we failed previously. To be safe, we let it fall through to the "find in list" segment.
             }
 
             // Check if already selected matches
             if (selectedConversation) {
                 const isAppMatch = search.applicationId && (selectedConversation.id === search.applicationId || selectedConversation.applicationId === search.applicationId);
                 const isJobMatch = search.jobId && selectedConversation.jobId === search.jobId;
-                if (isAppMatch || isJobMatch) {
+                const isEmployerMatch = search.employerId && selectedConversation.employerId === search.employerId;
+                if (isAppMatch || isJobMatch || isEmployerMatch) {
                    initialInitRef.current = currentKey; // Mark as done for this key
                    return;
                 }
@@ -61,6 +61,11 @@ export function ChatPage({ userId, role }: ChatPageProps) {
             } 
             if (!found && search.jobId) {
                 found = conversations.find(c => c.jobId === search.jobId);
+            }
+            if (!found && search.employerId) {
+                // Find most recent conversation with this employer that MIGHT not have a jobId (general chat)
+                // or just the latest one
+                found = conversations.find(c => c.employerId === search.employerId);
             }
 
              if (found) {
@@ -81,7 +86,8 @@ export function ChatPage({ userId, role }: ChatPageProps) {
                 const { startConversation, getConversationById } = await import('../services/chatService');
                 const result = await startConversation({
                     applicationId: search.applicationId,
-                    jobId: search.jobId
+                    jobId: search.jobId,
+                    employerId: search.employerId
                 });
                 
                 if (isAborted) return;
@@ -100,9 +106,6 @@ export function ChatPage({ userId, role }: ChatPageProps) {
                 }
                 initialInitRef.current = null; // Allow retry
             } finally {
-                // We ALWAYS clear isStarting when a start attempt finishes, 
-                // regardless of whether that specific effect instance was aborted.
-                // New effect instances will show their own loading if needed.
                 setIsStarting(false);
             }
         };
@@ -112,10 +115,10 @@ export function ChatPage({ userId, role }: ChatPageProps) {
             isAborted = true;
             clearTimeout(timer);
         };
-    }, [search.applicationId, search.jobId, conversations, queryResult.isLoading, navigate, selectedConversation]);
+    }, [search.applicationId, search.jobId, search.employerId, conversations, queryResult.isLoading, navigate, selectedConversation]);
 
     return (
-        <div className="flex h-[calc(100vh-64px)] md:h-[calc(100vh-70px)] bg-white dark:bg-gray-950 overflow-hidden relative">
+        <div className="flex h-[calc(100dvh-64px)] md:h-[calc(100dvh-70px)] bg-white dark:bg-gray-950 overflow-hidden relative">
             {/* Mobile view changes based on selection */}
             <div
                 className={`w-full md:w-1/3 lg:w-1/4 border-r border-gray-100 dark:border-gray-800 flex flex-col bg-white dark:bg-gray-950 absolute md:static inset-0 z-10 transition-transform duration-300 ${selectedConversation ? '-translate-x-full md:translate-x-0' : 'translate-x-0'

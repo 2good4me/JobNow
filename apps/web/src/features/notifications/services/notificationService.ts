@@ -1,4 +1,4 @@
-import { collection, query, where, orderBy, limit, getDocs, doc, updateDoc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, getDocs, doc, updateDoc, setDoc, onSnapshot, serverTimestamp, type Unsubscribe } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 
 /* ── Notification Types ────────────────────────── */
@@ -8,7 +8,7 @@ export type NotificationType =
     | 'NEW_APPLICATION'
     | 'APPLICATION_APPROVED'
     | 'APPLICATION_REJECTED'
-    // Job
+    | 'NEW_FOLLOWER'
     | 'JOB_EXPIRING'
     | 'JOB_CLOSED'
     | 'JOB_RECOMMENDATION'
@@ -146,4 +146,31 @@ function mapNotification(docSnap: any): AppNotification {
         isRead: d.isRead ?? d.is_read ?? false,
         createdAt: d.created_at?.toDate?.() ?? new Date(),
     };
+}
+
+/**
+ * Add a new notification
+ */
+export async function addNotification(notification: Omit<AppNotification, 'id' | 'createdAt' | 'isRead'>): Promise<string> {
+    const notifRef = collection(db, 'notifications');
+    const docRef = await setDoc(doc(notifRef), {
+        ...notification,
+        user_id: notification.userId,
+        is_read: false,
+        created_at: serverTimestamp()
+    });
+    return (docRef as any)?.id || '';
+}
+
+/* ── Specific Notification Helpers ── */
+
+export async function notifyNewFollower(followerId: string, followerName: string, employerId: string) {
+    return addNotification({
+        userId: employerId,
+        type: 'NEW_FOLLOWER',
+        category: 'SYSTEM',
+        title: 'Người theo dõi mới',
+        body: `${followerName} đã bắt đầu theo dõi bạn.`,
+        data: { followerId }
+    });
 }

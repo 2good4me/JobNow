@@ -102,12 +102,18 @@ function CandidateShifts() {
                       className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-900/10 transition-all active:scale-95 flex-1"
                       onClick={() => {
                         checkOutMutation.mutate(
-                          { applicationId: shift.id, candidateId: userProfile?.uid || '' },
+                          { 
+                            applicationId: shift.id, 
+                            candidateId: userProfile?.uid || '',
+                            latitude: geo.latitude,
+                            longitude: geo.longitude,
+                            accuracy: geo.accuracy || 30
+                          },
                           {
                             onSuccess: () => toast.success('Check-out thành công!'),
                             onError: (err: any) => {
                               console.error('Check-out error:', err);
-                              toast.error(`Check-out lỗi [${err.code || 'unknown'}]: ${err.message}`);
+                              toast.error(`Check-out lỗi: ${err.message}`);
                             }
                           }
                         );

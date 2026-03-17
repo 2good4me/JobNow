@@ -22,6 +22,9 @@ import {
 import { useMyApplicationsRealtime } from '@/features/jobs/hooks/useMyApplicationsRealtime';
 import { ReputationStatsCard } from '@/features/auth/components/ReputationStatsCard';
 import { AchievementBadges, CANDIDATE_ACHIEVEMENTS } from '@/features/auth/components/AchievementBadges';
+import { getFollowerCount, getFollowingCount } from '@/features/auth/services/followService';
+import { useEffect } from 'react';
+import { FollowListDialog } from '@/components/ui/FollowListDialog';
 
 export const Route = createFileRoute('/candidate/profile/')({
   component: CandidateProfilePage,
@@ -76,6 +79,19 @@ function CandidateProfilePage() {
     const { userProfile, signOut } = useAuth();
     const navigate = useNavigate();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [followerCount, setFollowerCount] = useState(0);
+    const [followingCount, setFollowingCount] = useState(0);
+    const [followDialog, setFollowDialog] = useState<{ isOpen: boolean; type: 'followers' | 'following' }>({
+        isOpen: false,
+        type: 'followers'
+    });
+
+    useEffect(() => {
+        if (userProfile?.uid) {
+            getFollowerCount(userProfile.uid).then(setFollowerCount);
+            getFollowingCount(userProfile.uid).then(setFollowingCount);
+        }
+    }, [userProfile?.uid]);
 
     // Fetch real applications data
     const { data: applications = [], isLoading: isAppsLoading } = useMyApplicationsRealtime({
@@ -166,6 +182,24 @@ function CandidateProfilePage() {
                         <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${verificationBadge.color} text-white`}>
                             {verificationBadge.text}
                         </span>
+
+                        <div className="flex items-center gap-4 mt-4 text-white/80">
+                            <button 
+                                onClick={() => setFollowDialog({ isOpen: true, type: 'followers' })}
+                                className="flex flex-col items-center hover:opacity-80 transition-opacity"
+                            >
+                                <span className="text-lg font-bold text-white">{followerCount}</span>
+                                <span className="text-[11px] font-medium uppercase tracking-wider">Người theo dõi</span>
+                            </button>
+                            <div className="w-px h-8 bg-white/20" />
+                            <button 
+                                onClick={() => setFollowDialog({ isOpen: true, type: 'following' })}
+                                className="flex flex-col items-center hover:opacity-80 transition-opacity"
+                            >
+                                <span className="text-lg font-bold text-white">{followingCount}</span>
+                                <span className="text-[11px] font-medium uppercase tracking-wider">Đang theo dõi</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -434,6 +468,14 @@ function CandidateProfilePage() {
                     JobNow v1.0.0
                 </p>
             </div>
+
+            <FollowListDialog
+                isOpen={followDialog.isOpen}
+                onClose={() => setFollowDialog(prev => ({ ...prev, isOpen: false }))}
+                userId={userProfile.uid}
+                type={followDialog.type}
+                title={followDialog.type === 'followers' ? 'Người đang theo dõi bạn' : 'Những người bạn đang theo dõi'}
+            />
         </div>
     );
 }
