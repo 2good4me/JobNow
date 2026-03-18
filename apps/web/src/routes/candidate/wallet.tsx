@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import { useState } from 'react';
+import { WithdrawBottomSheet } from './-components/wallet/WithdrawBottomSheet';
 
 export const Route = createFileRoute('/candidate/wallet')({
   component: CandidateWalletPage,
@@ -22,8 +24,11 @@ export const Route = createFileRoute('/candidate/wallet')({
 function CandidateWalletPage() {
   const navigate = useNavigate();
   const { userProfile } = useAuth();
-  const { data: balance = 0, isLoading: isLoadingBalance, refetch: refetchBalance } = useWalletBalance(userProfile?.uid);
-  const { data: transactions = [], isLoading: isLoadingTx, refetch: refetchTx } = useTransactionHistory(userProfile?.uid);
+  const userId = userProfile?.uid;
+  const { data: balance = 0, isLoading: isLoadingBalance, refetch: refetchBalance } = useWalletBalance(userId);
+  const { data: transactions = [], isLoading: isLoadingTx, refetch: refetchTx } = useTransactionHistory(userId);
+
+  const [showWithdrawSheet, setShowWithdrawSheet] = useState(false);
 
   const handleRefresh = () => {
     refetchBalance();
@@ -31,7 +36,7 @@ function CandidateWalletPage() {
   };
 
   return (
-    <div className="pb-24 bg-slate-50 min-h-[100dvh]">
+    <div className="pb-[calc(72px+env(safe-area-inset-bottom))] bg-slate-50 min-h-[calc(100dvh-72px)]">
       {/* ── Navy Header ── */}
       <div className="bg-gradient-to-br from-[#1e3a5f] to-[#0f172a] pt-12 pb-20 px-5 rounded-b-[2.5rem] shadow-xl relative overflow-hidden">
         <div className="absolute -top-20 -right-20 w-64 h-64 bg-blue-400/10 rounded-full blur-3xl" />
@@ -62,11 +67,14 @@ function CandidateWalletPage() {
             </div>
             
             <div className="mt-8 flex gap-3 w-full max-w-[280px]">
-              <button disabled className="flex-1 bg-white text-[#1e3a5f] p-3 rounded-2xl font-bold text-sm shadow-xl shadow-blue-900/20 active:scale-95 transition-all flex flex-col items-center gap-1 opacity-50 cursor-not-allowed">
+              <button disabled className="flex-1 bg-white/10 backdrop-blur-md border border-white/20 text-white p-3 rounded-2xl font-bold text-sm flex flex-col items-center gap-1 opacity-50 cursor-not-allowed">
                 <PlusCircle className="w-5 h-5" />
                 Nạp tiền
               </button>
-              <button disabled className="flex-1 bg-white/10 backdrop-blur-md border border-white/20 text-white p-3 rounded-2xl font-bold text-sm active:scale-95 transition-all flex flex-col items-center gap-1 opacity-50 cursor-not-allowed">
+              <button 
+                onClick={() => setShowWithdrawSheet(true)}
+                className="flex-1 bg-white text-[#1e3a5f] p-3 rounded-2xl font-bold text-sm shadow-xl shadow-blue-900/20 active:scale-95 transition-all flex flex-col items-center gap-1 cursor-pointer"
+              >
                 <CreditCard className="w-5 h-5" />
                 Rút tiền
               </button>
@@ -181,6 +189,15 @@ function CandidateWalletPage() {
           </div>
         </div>
       </div>
+
+      {userId && (
+        <WithdrawBottomSheet 
+          isOpen={showWithdrawSheet}
+          onClose={() => setShowWithdrawSheet(false)}
+          userId={userId}
+          balance={balance}
+        />
+      )}
     </div>
   );
 }

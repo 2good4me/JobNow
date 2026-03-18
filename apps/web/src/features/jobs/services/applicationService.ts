@@ -283,7 +283,8 @@ export async function updateApplicationStatus(
  */
 export async function completeApplicationWithPayment(
     applicationId: string,
-    paymentMethod: 'APP' | 'CASH'
+    paymentMethod: 'APP' | 'CASH',
+    employerId: string
 ): Promise<Application> {
     try {
         const appRef = doc(db, 'applications', applicationId);
@@ -305,6 +306,7 @@ export async function completeApplicationWithPayment(
             status: newStatus,
             payment_status: newPaymentStatus,
             payment_method: paymentMethod,
+            employerId: employerId, // Ensure employer info is on the app doc if not already
             updated_at: serverTimestamp()
         });
 
@@ -317,14 +319,33 @@ export async function completeApplicationWithPayment(
                 const jobSnap = await getDoc(doc(db, 'jobs', jobId));
                 if (jobSnap.exists()) {
                     const jobData = jobSnap.data();
-                    amount = Number(jobData.salary || 0);
+                    const salary = Number(jobData.salary || 0);
+                    const salaryType = jobData.salaryType;
                     jobTitle = String(jobData.title || 'Công việc');
+
+                    if (salaryType === 'HOURLY') {
+                        // Calculate actual hours worked
+                        const checkInMillis = timestampToMillis(data.check_in_time || data.checkInTime);
+                        const checkOutMillis = timestampToMillis(data.check_out_time || data.checkOutTime || Date.now());
+
+                        if (checkInMillis > 0 && checkOutMillis > checkInMillis) {
+                            const hoursWorked = (checkOutMillis - checkInMillis) / (1000 * 60 * 60);
+                            // Round to 2 decimal places or as per business rules
+                            amount = Math.round(hoursWorked * salary);
+                            console.log(`[applicationService] Hourly calc: ${hoursWorked.toFixed(2)}h * ${salary} = ${amount}`);
+                        } else {
+                            // Fallback if timings are missing (maybe paid for 1 hour min or something)
+                            amount = salary; 
+                        }
+                    } else {
+                        amount = salary;
+                    }
                 }
             }
 
             if (amount > 0) {
-                await processAppPayment(candidateId, amount, jobTitle, applicationId);
-                console.log(`[applicationService] Processed APP payment of ${amount} to ${candidateId}`);
+                await processAppPayment(employerId, candidateId, amount, jobTitle, applicationId);
+                console.log(`[applicationService] Processed APP payment of ${amount} to ${candidateId} from ${employerId}`);
             }
         }
 

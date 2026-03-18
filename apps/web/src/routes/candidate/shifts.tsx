@@ -1,17 +1,52 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { CalendarDays, Clock, MessageCircle, Timer, CheckCircle2, History, Star, DollarSign, Loader2 } from 'lucide-react';
+import { CalendarDays, Clock, MessageCircle, Timer, CheckCircle2, History, Star, DollarSign, Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useMyApplicationsRealtime } from '@/features/jobs/hooks/useMyApplicationsRealtime';
 import { useGeolocation } from '@/features/jobs/hooks/useGeolocation';
 import { useCheckIn, useCheckOut } from '@/features/jobs/hooks/useCheckIn';
 import { useConfirmPayment } from '@/features/jobs/hooks/useManageApplicants';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ReviewModal } from '@/features/jobs/components/ReviewModal';
 import { toast } from 'sonner';
 
 export const Route = createFileRoute('/candidate/shifts')({
   component: CandidateShifts,
 });
+
+function WorkTimer({ checkInTime }: { checkInTime: any }) {
+  const [duration, setDuration] = useState('');
+
+  useEffect(() => {
+    if (!checkInTime) return;
+    
+    // Handle Firestore Timestamp or Date
+    const start = checkInTime.toDate?.() || new Date(checkInTime);
+    
+    const update = () => {
+      const now = new Date();
+      const diff = Math.max(0, now.getTime() - start.getTime());
+      
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      
+      setDuration(
+        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+      );
+    };
+
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [checkInTime]);
+
+  return (
+    <div className="flex items-center gap-1.5 text-emerald-600 font-mono font-bold text-sm">
+      <Timer className="w-3.5 h-3.5 animate-pulse" />
+      {duration || '00:00:00'}
+    </div>
+  );
+}
 
 function CandidateShifts() {
   const { userProfile } = useAuth();
@@ -61,7 +96,23 @@ function CandidateShifts() {
             <h1 className="text-xl font-bold text-slate-900 font-heading">Ca làm của tôi</h1>
             <span className="text-xs font-semibold text-slate-500">Realtime</span>
           </div>
-          <p className="text-xs text-slate-500">Vị trí hiện tại: {geo.latitude.toFixed(4)}, {geo.longitude.toFixed(4)}</p>
+          <div className="flex flex-col gap-1">
+            <p className={`text-xs ${geo.isDefault ? 'text-amber-600 font-bold flex items-center gap-1' : 'text-slate-500'}`}>
+              {geo.isDefault ? (
+                <>
+                  <AlertCircle className="w-3 h-3" />
+                  Vị trí mặc định: {geo.latitude.toFixed(4)}, {geo.longitude.toFixed(4)} (GPS chưa bật)
+                </>
+              ) : (
+                <>Vị trí hiện tại: {geo.latitude.toFixed(4)}, {geo.longitude.toFixed(4)}</>
+              )}
+            </p>
+            {geo.isDefault && (
+              <p className="text-[10px] text-slate-400 italic">
+                Vui lòng cấp quyền GPS để check-in chính xác.
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -82,17 +133,29 @@ function CandidateShifts() {
               {activeShifts.map((shift) => (
                 <div key={shift.id} className="bg-white rounded-2xl border-l-4 border-emerald-500 border border-slate-100 shadow-sm p-4">
                   <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <h3 className="font-bold text-slate-900">{shift.jobTitle || 'Công việc không xác định'}</h3>
-                      <p className="text-xs text-slate-500 mt-0.5 font-medium">Mã đơn: ...{shift.id.slice(-6).toUpperCase()}</p>
+                    <div className="flex-1 min-w-0 pr-2">
+                      <h3 className="font-bold text-slate-900 truncate">{shift.jobTitle || 'Công việc không xác định'}</h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-[10px] text-slate-400 font-medium">Mã đơn: ...{shift.id.slice(-6).toUpperCase()}</p>
+                        {(shift as any).isLate || (shift as any).is_late ? (
+                          <span className="px-1.5 py-0.5 bg-rose-50 text-rose-600 text-[9px] font-black rounded border border-rose-100">MUỘN</span>
+                        ) : null}
+                      </div>
                     </div>
-                    <span className="px-2.5 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-full">ĐANG LÀM</span>
+                    <div className="text-right shrink-0">
+                      <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[9px] font-bold rounded-full border border-emerald-100 block mb-1">ĐANG LÀM</span>
+                      <WorkTimer checkInTime={(shift as any).check_in_time || (shift as any).checkInTime} />
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 mt-4">
                     <Link
                       to="/candidate/chat"
-                      search={{ applicationId: shift.id }}
+                      search={{ 
+                        applicationId: shift.id,
+                        jobId: shift.jobId,
+                        employerId: shift.employerId
+                      }}
                       className="px-4 py-2 rounded-xl border border-indigo-200 text-indigo-600 bg-indigo-50 text-sm font-bold inline-flex items-center gap-1.5 active:scale-95 transition-all"
                     >
                       <MessageCircle className="w-4 h-4" />
@@ -167,7 +230,11 @@ function CandidateShifts() {
                   <div className="flex flex-wrap items-center gap-2">
                     <Link
                       to="/candidate/chat"
-                      search={{ applicationId: shift.id }}
+                      search={{ 
+                        applicationId: shift.id,
+                        jobId: shift.jobId,
+                        employerId: shift.employerId
+                      }}
                       className="px-4 py-2 rounded-xl border border-indigo-200 text-indigo-600 bg-indigo-50 text-sm font-bold inline-flex items-center gap-1.5 active:scale-95 transition-all"
                     >
                       <MessageCircle className="w-4 h-4" />

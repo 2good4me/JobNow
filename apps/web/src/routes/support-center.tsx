@@ -89,7 +89,7 @@ function FloatingChat({ open, onClose }: { open: boolean; onClose: () => void })
         setMessages((prev) => [...prev, { role: 'user', text }]);
         setLoading(true);
         try {
-            const res = await fetch('https://viethoa127.app.n8n.cloud/webhook/06609eaf-18fe-4153-bbb4-a4c8f32da184/chat', {
+            const res = await fetch('http://localhost:5678/webhook/06609eaf-18fe-4153-bbb4-a4c8f32da184/chat', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'sendMessage', chatInput: text, sessionId }),
             });

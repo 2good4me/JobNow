@@ -38,6 +38,10 @@ export interface Application {
     // ─── Denormalized job/shift info ───
     jobTitle?: string;
     shiftTime?: string;
+    employerName?: string;
+    isLate?: boolean;
+    lateMinutes?: number;
+    checkInTime?: any;
 }
 
 /**
@@ -67,6 +71,10 @@ export interface ApplicationDoc {
     // ─── Denormalized job/shift info ───
     job_title?: string;
     shift_time?: string;
+    employer_name?: string;
+    is_late?: boolean;
+    late_minutes?: number;
+    check_in_time?: any;
 }
 
 export interface ApplyJobInput {
