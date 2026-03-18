@@ -204,9 +204,10 @@ export async function processWithdrawal(userId: string, amount: number, bankAcco
 
 /**
  * Handle in-app payment from employer to candidate.
- * Transfers (adds) amount to candidate's balance.
+ * Deducts amount from employer's balance and adds to candidate's balance.
  */
 export async function processAppPayment(
+    employerId: string,
     candidateId: string,
     amount: number,
     jobTitle: string,
@@ -214,27 +215,48 @@ export async function processAppPayment(
 ): Promise<void> {
     if (amount <= 0) return;
 
-    const userRef = doc(db, 'users', candidateId);
-    const newTxRef = doc(collection(db, 'transactions'));
+    const employerRef = doc(db, 'users', employerId);
+    const candidateRef = doc(db, 'users', candidateId);
+    const employerTxRef = doc(collection(db, 'transactions'));
+    const candidateTxRef = doc(collection(db, 'transactions'));
 
     await runTransaction(db, async (transaction) => {
-        const userDoc = await transaction.get(userRef);
-        if (!userDoc.exists()) {
-            throw new Error('Ứng viên không tồn tại trong hệ thống.');
+        const [employerDoc, candidateDoc] = await Promise.all([
+            transaction.get(employerRef),
+            transaction.get(candidateRef)
+        ]);
+
+        if (!employerDoc.exists()) throw new Error('Nhà tuyển dụng không tồn tại.');
+        if (!candidateDoc.exists()) throw new Error('Ứng viên không tồn tại.');
+
+        const employerBalance = employerDoc.data().balance || 0;
+        if (employerBalance < amount) {
+            throw new Error('Số dư tài khoản của bạn không đủ để thực hiện thanh toán. Vui lòng nạp thêm tiền.');
         }
 
-        const currentBalance = userDoc.data().balance || 0;
-        const newBalance = currentBalance + amount;
+        const candidateBalance = candidateDoc.data().balance || 0;
 
-        // Update balance
-        transaction.update(userRef, { balance: newBalance });
+        // Update balances
+        transaction.update(employerRef, { balance: employerBalance - amount });
+        transaction.update(candidateRef, { balance: candidateBalance + amount });
 
-        // Add transaction log
-        transaction.set(newTxRef, {
+        // Add transaction log for employer (SENT)
+        transaction.set(employerTxRef, {
+            userId: employerId,
+            type: 'PAYMENT',
+            amount: -amount, // Negative to show deduction
+            description: `Thanh toán lương cho: ${jobTitle}`,
+            relatedApplicationId: applicationId,
+            status: 'COMPLETED',
+            created_at: serverTimestamp(),
+        });
+
+        // Add transaction log for candidate (RECEIVED)
+        transaction.set(candidateTxRef, {
             userId: candidateId,
             type: 'PAYMENT',
-            amount,
-            description: `Thanh toán từ công việc: ${jobTitle}`,
+            amount: amount,
+            description: `Nhận lương từ công việc: ${jobTitle}`,
             relatedApplicationId: applicationId,
             status: 'COMPLETED',
             created_at: serverTimestamp(),

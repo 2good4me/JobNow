@@ -20,22 +20,18 @@ export function WithdrawBottomSheet({ isOpen, onClose, userId, balance }: Withdr
 
   if (!isOpen) return null;
 
-  const handleCustomAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/[^0-9]/g, '');
     let num = val ? parseInt(val, 10) : 0;
-    
-    // Prevent overdrawing directly in input
-    if (num > balance) {
-      num = balance;
-    }
-    
-    setCustomAmount(num ? num.toString() : '');
+    if (num > balance) num = balance;
+    setCustomAmount(num ? num.toLocaleString('en-US') : '');
     setAmount(num);
   };
 
+
   const setMaxAmount = () => {
     setAmount(balance);
-    setCustomAmount(balance.toString());
+    setCustomAmount(balance.toLocaleString('en-US'));
   };
 
   const handleSubmit = () => {
@@ -78,7 +74,7 @@ export function WithdrawBottomSheet({ isOpen, onClose, userId, balance }: Withdr
   return (
     <>
       <div className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm transition-opacity" onClick={onClose} />
-      <div className="fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-3xl shadow-2xl p-6 transform transition-transform animate-in slide-in-from-bottom pb-10">
+      <div className="fixed inset-x-0 bottom-0 z-60 bg-white rounded-t-3xl shadow-2xl p-6 transform transition-transform animate-in slide-in-from-bottom pb-[calc(72px+env(safe-area-inset-bottom))] max-h-[calc(100dvh-72px)] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-slate-800">Rút tiền về tài khoản</h2>
           <button onClick={onClose} className="p-2 -mr-2 rounded-full hover:bg-slate-100 text-slate-500">
@@ -92,16 +88,17 @@ export function WithdrawBottomSheet({ isOpen, onClose, userId, balance }: Withdr
             <div className="flex justify-between items-end">
               <label className="text-sm font-semibold text-slate-700">Số tiền rút</label>
               <div className="text-xs text-slate-500">
-                Số dư: <span className="font-bold text-slate-700">{balance.toLocaleString('vi-VN')}đ</span>
+                Số dư: <span className="font-bold text-slate-700">{balance.toLocaleString('en-US')}đ</span>
               </div>
             </div>
             <div className="relative">
               <input
                 type="text"
+                inputMode="numeric"
                 value={customAmount}
-                onChange={handleCustomAmountChange}
+                onChange={handleAmountChange}
+                className="w-full pl-10 pr-4 py-4 bg-white border-2 border-slate-100 rounded-2xl focus:border-rose-500 outline-none font-bold text-xl transition-all"
                 placeholder="0"
-                className="w-full text-right text-3xl font-bold text-slate-900 border-b-2 border-slate-200 focus:border-red-500 bg-transparent py-2 pr-12 outline-none transition-colors placeholder:text-slate-300"
               />
               <span className="absolute right-0 top-1/2 -translate-y-1/2 text-lg font-bold text-slate-500">
                 đ

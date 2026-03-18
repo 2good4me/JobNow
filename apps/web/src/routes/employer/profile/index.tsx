@@ -18,6 +18,7 @@ import {
   Phone,
   Settings,
   ShieldCheck,
+  Wallet,
 } from 'lucide-react';
 import { ReputationStatsCard } from '@/features/auth/components/ReputationStatsCard';
 import { AchievementBadges, PREDEFINED_ACHIEVEMENTS } from '@/features/auth/components/AchievementBadges';
@@ -365,6 +366,15 @@ function EmployerProfilePage() {
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
           <h3 className="text-[13px] font-bold text-slate-400 uppercase tracking-wider mb-3">Quản trị</h3>
           <div className="space-y-1.5">
+            <Link
+              to="/employer/wallet"
+              className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 text-slate-700 transition-colors"
+            >
+              <span className="flex items-center gap-2.5 text-sm font-semibold">
+                <Wallet className="w-4 h-4 text-emerald-500" /> Ví JobNow của tôi
+              </span>
+              <ChevronRight className="w-4 h-4 text-slate-400" />
+            </Link>
             <Link
               to="/employer/profile/edit"
               className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 text-slate-700 transition-colors"

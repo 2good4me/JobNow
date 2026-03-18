@@ -380,8 +380,8 @@ function EmployerPostJobRoute() {
         salaryType: mapPayType(form.payType),
         location: {
           address: form.address,
-          latitude: form.latitude ?? 10.7769,
-          longitude: form.longitude ?? 106.7009,
+          latitude: form.latitude ?? 21.0180,
+          longitude: form.longitude ?? 105.7657,
         },
         geohash: '',
         isGpsRequired: true,

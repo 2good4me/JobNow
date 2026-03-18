@@ -22,7 +22,8 @@ export default function Step2Details({ form, setForm, errors, locationGpsError }
         (error) => {
           console.error('Geolocation error:', error);
           alert('Không thể lấy vị trí GPS. Vui lòng kiểm tra quyền truy cập.');
-        }
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
       );
     } else {
       alert('Trình duyệt của bạn không hỗ trợ Geolocation API.');

@@ -113,5 +113,8 @@ export function mapApplicationDocToApplication(id: string, data: Partial<Applica
         jobTitle: getValue(data, ['job_title', 'jobTitle']) as string | undefined,
         shiftTime: getValue(data, ['shift_time', 'shiftTime']) as string | undefined,
         employerName: getValue(data, ['employer_name', 'employerName']) as string | undefined,
+        isLate: getValue(data, ['is_late', 'isLate']) as boolean | undefined,
+        lateMinutes: getValue(data, ['late_minutes', 'lateMinutes']) as number | undefined,
+        checkInTime: getValue(data, ['check_in_time', 'checkInTime']),
     };
 }

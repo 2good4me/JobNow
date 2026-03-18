@@ -275,6 +275,8 @@ function EmployerApplicantsRoute() {
                   candidateSkills={applicant.candidateSkills}
                   candidateRating={applicant.candidateRating}
                   candidateVerified={applicant.candidateVerified}
+                  checkInTime={applicant.checkInTime}
+                  isLate={applicant.isLate}
                 />
               ))}
 

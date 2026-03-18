@@ -1,8 +1,8 @@
-import { Check, Clock3, Shield, UserRoundCheck, X, Briefcase, Loader2, Phone, MessageCircle, Star } from 'lucide-react';
+import { Check, Clock3, Shield, UserRoundCheck, X, Briefcase, Loader2, Phone, MessageCircle, Star, Timer, AlertCircle } from 'lucide-react';
 import type { Application } from '@jobnow/types';
-import { useUpdateApplicationStatus, useCompleteApplication } from '@/features/jobs/hooks/useManageApplicants';
+import { useUpdateApplicationStatus, useCompleteApplication, useForceCheckOut, useSimulateWorkTime } from '@/features/jobs/hooks/useManageApplicants';
 import { useCandidateProfile } from '@/features/jobs/hooks/useCandidateProfile';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { ReviewModal } from '@/features/jobs/components/ReviewModal';
 import { useAuth } from '@/features/auth/context/AuthContext';
@@ -21,6 +21,8 @@ type ApplicantCardProps = {
   candidateSkills?: string[];
   candidateRating?: number;
   candidateVerified?: boolean;
+  checkInTime?: any;
+  isLate?: boolean;
 };
 
 /* ── Micro confetti burst ── */
@@ -44,6 +46,38 @@ function ConfettiBurst() {
   );
 }
 
+/* ── Work Timer Component ── */
+function WorkTimer({ startTime }: { startTime: any }) {
+  const [duration, setDuration] = useState<string>('00:00:00');
+
+  useEffect(() => {
+    if (!startTime) return;
+
+    const start = startTime.toDate?.() || new Date(startTime);
+    
+    const update = () => {
+      const now = new Date();
+      const diff = Math.max(0, now.getTime() - start.getTime());
+      
+      const seconds = Math.floor((diff / 1000) % 60);
+      const minutes = Math.floor((diff / (1000 * 60)) % 60);
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+
+      setDuration(
+        `${hours.toString().padStart(2, '0')}:${minutes
+          .toString()
+          .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+      );
+    };
+
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [startTime]);
+
+  return <span className="font-mono text-indigo-600 font-bold">{duration}</span>;
+}
+
 export function ApplicantCard({
   applicationId,
   candidateId,
@@ -57,6 +91,8 @@ export function ApplicantCard({
   candidateSkills: dnSkills,
   candidateRating: dnRating,
   candidateVerified: dnVerified,
+  checkInTime,
+  isLate,
 }: ApplicantCardProps) {
   const { mutate: updateStatus, isPending } = useUpdateApplicationStatus();
   // Only fetch candidate profile if denormalized data is missing (backward compat)
@@ -67,6 +103,8 @@ export function ApplicantCard({
   const navigate = useNavigate();
   const [showConfetti, setShowConfetti] = useState(false);
   const { mutate: completeWithPayment, isPending: isPaying } = useCompleteApplication();
+  const { mutate: forceCheckOut, isPending: isForcing } = useForceCheckOut();
+  const { mutate: simulateWorkTime, isPending: isSimulating } = useSimulateWorkTime();
   const [showPayOptions, setShowPayOptions] = useState(false);
 
   // Prefer denormalized data, fallback to fetched profile
@@ -151,10 +189,16 @@ export function ApplicantCard({
   const canReject = !['REJECTED', 'WORK_FINISHED', 'CASH_CONFIRMATION', 'COMPLETED', 'CANCELLED'].includes(status);
   const canPay = status === 'WORK_FINISHED';
   const canReview = status === 'COMPLETED';
+  const canForceEnd = status === 'CHECKED_IN';
 
   const handlePay = (method: 'APP' | 'CASH') => {
+    if (!user?.uid) {
+      alert('Không tìm thấy thông tin nhà tuyển dụng. Vui lòng thử lại.');
+      return;
+    }
+
     completeWithPayment(
-      { id: applicationId, paymentMethod: method },
+      { id: applicationId, paymentMethod: method, employerId: user.uid },
       {
         onSuccess: () => {
           setShowPayOptions(false);
@@ -225,6 +269,44 @@ export function ApplicantCard({
               <Briefcase className="h-3 w-3 shrink-0" /> {jobTitle} {shiftTime && `• Ca: ${shiftTime}`}
             </p>
           )}
+
+          {/* Monitoring Info (Check-in time & Timer) */}
+          {status === 'CHECKED_IN' && checkInTime && (
+            <div className="mt-2 flex flex-col gap-1 rounded-xl bg-indigo-50/50 p-2 border border-indigo-100">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-indigo-500 uppercase">Đang làm việc</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      simulateWorkTime({ applicationId, hoursAgo: 8 });
+                    }}
+                    disabled={isSimulating}
+                    className="px-1.5 py-0.5 rounded-md bg-indigo-100 text-[9px] font-bold text-indigo-700 hover:bg-indigo-200 transition-colors"
+                    title="Giả lập đã làm được 8 tiếng để test tính lương"
+                  >
+                    {isSimulating ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : 'TEST: +8h'}
+                  </button>
+                  {isLate && (
+                    <span className="px-1.5 py-0.5 rounded-md bg-rose-100 text-[9px] font-black text-rose-600 flex items-center gap-0.5">
+                      <AlertCircle className="w-2.5 h-2.5" /> MUỘN
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center justify-between mt-0.5">
+                <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                  <Clock3 className="w-3 h-3 text-indigo-400" />
+                  <span>Vào lúc: <b>{checkInTime.toDate?.().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) || new Date(checkInTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</b></span>
+                </div>
+                <div className="flex items-center gap-1 text-xs">
+                  <Timer className="w-3 h-3 text-indigo-400" />
+                  <WorkTimer startTime={checkInTime} />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -282,6 +364,24 @@ export function ApplicantCard({
             className="flex flex-[1.3] items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-50/50 active:bg-emerald-100 disabled:opacity-50"
           >
             <Check className="h-4 w-4" /> Duyệt
+          </button>
+        )}
+
+        {/* Force End Shift */}
+        {canForceEnd && (
+          <button
+            type="button"
+            disabled={isForcing}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (confirm('Bạn có chắc chắn muốn kết thúc sớm ca làm của ứng viên này? (Hành động này không thể hoàn tác)')) {
+                forceCheckOut({ applicationId, employerId: user?.uid || '' });
+              }
+            }}
+            className="flex flex-[1.5] items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-rose-600 bg-rose-50/30 transition-colors hover:bg-rose-100 active:bg-rose-200 disabled:opacity-50"
+          >
+            {isForcing ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+            Kết thúc ca
           </button>
         )}
 
