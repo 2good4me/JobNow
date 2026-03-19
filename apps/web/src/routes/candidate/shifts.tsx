@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { CalendarDays, Clock, MessageCircle, Timer, CheckCircle2, History, Star, DollarSign, Loader2, AlertCircle } from 'lucide-react';
+import { CalendarDays, Clock, MessageCircle, Timer, CheckCircle2, History, Star, DollarSign, Loader2, AlertCircle, X, LogIn, LogOut, Clock3 } from 'lucide-react';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useMyApplicationsRealtime } from '@/features/jobs/hooks/useMyApplicationsRealtime';
 import { useGeolocation } from '@/features/jobs/hooks/useGeolocation';
@@ -8,6 +8,130 @@ import { useConfirmPayment } from '@/features/jobs/hooks/useManageApplicants';
 import { useState, useEffect } from 'react';
 import { ReviewModal } from '@/features/jobs/components/ReviewModal';
 import { toast } from 'sonner';
+import type { Application } from '@jobnow/types';
+
+/* ── Shift Detail Modal ───────────────────────── */
+function ShiftDetailModal({ shift, onClose }: { shift: Application; onClose: () => void }) {
+  const checkIn = shift.checkInTime;
+  const checkOut = (shift as any).checkOutTime;
+
+  const toDate = (ts: any): Date | null => {
+    if (!ts) return null;
+    if (ts?.toDate) return ts.toDate();
+    return new Date(ts);
+  };
+
+  const checkInDate = toDate(checkIn);
+  const checkOutDate = toDate(checkOut);
+
+  const formatTime = (dt: Date | null) => {
+    if (!dt) return '—';
+    return dt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  };
+
+  const formatDate = (dt: Date | null) => {
+    if (!dt) return '';
+    return dt.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
+
+  let durationText = '—';
+  if (checkInDate && checkOutDate) {
+    const diffMs = checkOutDate.getTime() - checkInDate.getTime();
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    durationText = `${hours} giờ ${minutes} phút`;
+  } else if (checkInDate && !checkOutDate) {
+    durationText = 'Chưa check-out';
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-white shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <div>
+            <h3 className="font-bold text-slate-900 text-base">{shift.jobTitle || 'Chi tiết ca làm'}</h3>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 transition-colors text-slate-400">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="px-5 py-4 space-y-4">
+          {/* Ca làm */}
+          {shift.shiftTime && (
+            <div className="flex items-center gap-3 bg-slate-50 rounded-2xl px-4 py-3">
+              <Clock3 className="w-4 h-4 text-slate-400 shrink-0" />
+              <div>
+                <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">Ca làm</p>
+                <p className="font-bold text-slate-700 text-sm">{shift.shiftTime}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Check-in */}
+          <div className="flex items-center gap-3 bg-emerald-50 rounded-2xl px-4 py-3">
+            <LogIn className="w-4 h-4 text-emerald-500 shrink-0" />
+            <div>
+              <p className="text-[11px] text-emerald-600 font-medium uppercase tracking-wider">Thời gian Check-in</p>
+              <p className="font-bold text-slate-800 text-sm">
+                {checkInDate ? `${formatTime(checkInDate)}` : '—'}
+              </p>
+              {checkInDate && <p className="text-[11px] text-slate-400">{formatDate(checkInDate)}</p>}
+            </div>
+          </div>
+
+          {/* Check-out */}
+          <div className="flex items-center gap-3 bg-blue-50 rounded-2xl px-4 py-3">
+            <LogOut className="w-4 h-4 text-blue-500 shrink-0" />
+            <div>
+              <p className="text-[11px] text-blue-600 font-medium uppercase tracking-wider">Thời gian Check-out</p>
+              <p className="font-bold text-slate-800 text-sm">
+                {checkOutDate ? `${formatTime(checkOutDate)}` : '—'}
+              </p>
+              {checkOutDate && <p className="text-[11px] text-slate-400">{formatDate(checkOutDate)}</p>}
+            </div>
+          </div>
+
+          {/* Tổng giờ */}
+          <div className="flex items-center gap-3 bg-indigo-50 rounded-2xl px-4 py-3">
+            <Timer className="w-4 h-4 text-indigo-500 shrink-0" />
+            <div>
+              <p className="text-[11px] text-indigo-600 font-medium uppercase tracking-wider">Tổng thời gian làm việc</p>
+              <p className="font-bold text-indigo-700 text-base">{durationText}</p>
+            </div>
+          </div>
+
+          {shift.isLate && (
+            <div className="flex items-center gap-2 bg-rose-50 rounded-2xl px-4 py-3 border border-rose-100">
+              <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+              <p className="text-sm font-bold text-rose-600">
+                Check-in muộn {shift.lateMinutes ? `${shift.lateMinutes} phút` : ''}
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="px-5 pb-5">
+          <button
+            onClick={onClose}
+            className="w-full py-3 rounded-2xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 transition-colors"
+          >
+            Đóng
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 export const Route = createFileRoute('/candidate/shifts')({
   component: CandidateShifts,
@@ -59,6 +183,9 @@ function CandidateShifts() {
   const checkOutMutation = useCheckOut();
   const { mutate: confirmPayment, isPending: isConfirming } = useConfirmPayment();
 
+  // State for Shift Detail Modal
+  const [selectedShift, setSelectedShift] = useState<Application | null>(null);
+
   // State for Review Modal
   const [reviewData, setReviewData] = useState<{
     isOpen: boolean;
@@ -84,34 +211,44 @@ function CandidateShifts() {
       applicationId: app.id,
       employerId: app.employerId || app.employer_id, // Support both
       employerName: app.employerName || 'Nhà tuyển dụng',
-      jobTitle: app.jobTitle || `Đơn ID: ...${app.id.slice(-6).toUpperCase()}`,
+      jobTitle: app.jobTitle || 'Công việc',
     });
   };
 
   return (
-    <div className="pb-24 bg-slate-50 min-h-screen">
-      <div className="bg-white border-b border-slate-100 px-4 pt-4 pb-3 sticky top-0 z-40">
-        <div className="max-w-lg mx-auto">
-          <div className="flex items-center justify-between mb-2">
-            <h1 className="text-xl font-bold text-slate-900 font-heading">Ca làm của tôi</h1>
-            <span className="text-xs font-semibold text-slate-500">Realtime</span>
-          </div>
-          <div className="flex flex-col gap-1">
-            <p className={`text-xs ${geo.isDefault ? 'text-amber-600 font-bold flex items-center gap-1' : 'text-slate-500'}`}>
-              {geo.isDefault ? (
-                <>
-                  <AlertCircle className="w-3 h-3" />
-                  Vị trí mặc định: {geo.latitude.toFixed(4)}, {geo.longitude.toFixed(4)} (GPS chưa bật)
-                </>
-              ) : (
-                <>Vị trí hiện tại: {geo.latitude.toFixed(4)}, {geo.longitude.toFixed(4)}</>
-              )}
-            </p>
-            {geo.isDefault && (
-              <p className="text-[10px] text-slate-400 italic">
-                Vui lòng cấp quyền GPS để check-in chính xác.
+    <div className="pb-24 bg-[#F5F7FF] min-h-screen">
+      {/* ── Gradient Header ── */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-[#1e3a5f] via-[#1e40af] to-[#3b82f6] px-5 pt-14 pb-8">
+        <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
+        <div className="relative z-10 max-w-lg mx-auto">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-white text-xl font-bold">Ca làm của tôi</h1>
+              <p className={`text-[12px] mt-0.5 ${geo.isDefault ? 'text-amber-300 flex items-center gap-1' : 'text-blue-200'}`}>
+                {geo.isDefault ? (
+                  <><AlertCircle className="w-3 h-3 inline" /> Vị trí mặc định – GPS chưa bật</>
+                ) : (
+                  <>Vị trí: {geo.latitude.toFixed(4)}, {geo.longitude.toFixed(4)}</>
+                )}
               </p>
-            )}
+            </div>
+            <span className="text-blue-200 text-xs font-bold bg-white/10 px-3 py-1 rounded-full border border-white/20">Realtime</span>
+          </div>
+
+          {/* Mini stats */}
+          <div className="flex gap-3">
+            <div className="flex-1 bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-center">
+              <p className="text-white text-lg font-black">{activeShifts.length}</p>
+              <p className="text-blue-200 text-[10px] font-bold uppercase">Đang làm</p>
+            </div>
+            <div className="flex-1 bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-center">
+              <p className="text-white text-lg font-black">{upcoming.length}</p>
+              <p className="text-blue-200 text-[10px] font-bold uppercase">Sắp tới</p>
+            </div>
+            <div className="flex-1 bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-center">
+              <p className="text-white text-lg font-black">{historyItems.length}</p>
+              <p className="text-blue-200 text-[10px] font-bold uppercase">Lịch sử</p>
+            </div>
           </div>
         </div>
       </div>
@@ -136,7 +273,6 @@ function CandidateShifts() {
                     <div className="flex-1 min-w-0 pr-2">
                       <h3 className="font-bold text-slate-900 truncate">{shift.jobTitle || 'Công việc không xác định'}</h3>
                       <div className="flex items-center gap-2 mt-1">
-                        <p className="text-[10px] text-slate-400 font-medium">Mã đơn: ...{shift.id.slice(-6).toUpperCase()}</p>
                         {(shift as any).isLate || (shift as any).is_late ? (
                           <span className="px-1.5 py-0.5 bg-rose-50 text-rose-600 text-[9px] font-black rounded border border-rose-100">MUỘN</span>
                         ) : null}
@@ -211,7 +347,6 @@ function CandidateShifts() {
                   <div className="flex items-start justify-between mb-2">
                     <div>
                       <h3 className="font-bold text-slate-900 text-sm">{shift.jobTitle || 'Công việc'}</h3>
-                      <p className="text-[11px] text-slate-400 font-medium font-mono">Mã đơn: ...{shift.id.slice(-6).toUpperCase()}</p>
                     </div>
                     <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
                       shift.status === 'APPROVED' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'
@@ -285,23 +420,35 @@ function CandidateShifts() {
           ) : (
             <div className="space-y-3">
               {historyItems.map((shift) => (
-                <div key={shift.id} className="bg-white rounded-2xl border-l-4 border-slate-300 border border-slate-100 shadow-sm p-4 opacity-100">
+                <div
+                  key={shift.id}
+                  className="bg-white rounded-2xl border-l-4 border-slate-300 border border-slate-100 shadow-sm p-4 opacity-100 cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => setSelectedShift(shift)}
+                >
                   <div className="flex items-start justify-between mb-3">
                     <div>
                       <h3 className="font-bold text-slate-800 text-sm">{shift.jobTitle || 'Công việc'}</h3>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase">Xong</span>
-                        <p className="text-[11px] text-slate-400 font-mono text-xs">Mã: ...{shift.id.slice(-6).toUpperCase()}</p>
+                        {shift.updatedAt && (
+                          <p className="text-[11px] text-slate-400">
+                            {(shift.updatedAt.toDate?.() ?? new Date(shift.updatedAt)).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                          </p>
+                        )}
                       </div>
                     </div>
-                    <div className="bg-emerald-50 p-1.5 rounded-full">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-slate-400 font-medium">Xem chi tiết →</span>
+                      <div className="bg-emerald-50 p-1.5 rounded-full">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      </div>
                     </div>
                   </div>
 
                   {shift.status === 'CASH_CONFIRMATION' ? (
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         confirmPayment(shift.id, {
                           onSuccess: () => toast.success('Xác nhận nhận tiền thành công!')
                         });
@@ -314,7 +461,10 @@ function CandidateShifts() {
                     </button>
                   ) : (
                     <button
-                      onClick={() => openReviewModal(shift)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openReviewModal(shift);
+                      }}
                       className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 text-[13px] font-bold hover:bg-amber-100 transition-colors active:scale-[0.98]"
                     >
                       <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
@@ -327,6 +477,11 @@ function CandidateShifts() {
           )}
         </div>
       </div>
+
+      {/* Shift Detail Modal */}
+      {selectedShift && (
+        <ShiftDetailModal shift={selectedShift} onClose={() => setSelectedShift(null)} />
+      )}
 
       {/* Review Modal */}
       <ReviewModal

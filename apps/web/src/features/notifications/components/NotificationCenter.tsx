@@ -137,7 +137,7 @@ function NotificationItem({
 /* ── Main Component ────────────────────────────── */
 
 export function NotificationCenter() {
-    const { userProfile } = useAuth();
+    const { userProfile, role } = useAuth();
     const userId = userProfile?.uid;
     const [activeTab, setActiveTab] = useState<FilterTab>('ALL');
 
@@ -152,11 +152,24 @@ export function NotificationCenter() {
             markRead.mutate(n.id);
         }
 
-        // 2. Navigate based on type and data
+        // 2. Navigate based on type, role and data
         const data = n.data || {};
         const { applicationId, jobId } = data;
 
-        // Candidate flows
+        // --- Employer flows ---
+        if (role === 'EMPLOYER') {
+            if (n.type === 'NEW_APPLICATION' || jobId) {
+                navigate({ 
+                    to: '/employer/applicants' as any, 
+                    search: { jobId } 
+                } as any);
+                return;
+            }
+            
+            // Other employer routes can be added here
+        }
+
+        // --- Candidate flows (Default) ---
         if (n.type === 'APPLICATION_APPROVED' || 
             n.type === 'APPLICATION_REJECTED' || 
             n.type === 'APPLICATION_UPDATE' ||
@@ -168,19 +181,8 @@ export function NotificationCenter() {
             
             if (applicationId) {
                 navigate({ 
-                    to: '/candidate/applications/$applicationId', 
+                    to: '/candidate/applications/$applicationId' as any, 
                     params: { applicationId } 
-                } as any);
-                return;
-            }
-        }
-
-        // Employer flows
-        if (n.type === 'NEW_APPLICATION') {
-            if (jobId) {
-                navigate({ 
-                    to: '/employer/applicants', 
-                    search: { jobId } 
                 } as any);
                 return;
             }

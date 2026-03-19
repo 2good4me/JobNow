@@ -51,30 +51,55 @@ function formatBotMessage(text: string) {
 interface ChatMessage { role: 'user' | 'bot'; text: string; }
 
 /* ── Floating Chat Panel ───────────────────────── */
+const CHAT_STORAGE_KEY = 'jobnow_chat_messages';
+const CHAT_SESSION_KEY = 'jobnow_chat_session';
+
 function FloatingChat({ open, onClose }: { open: boolean; onClose: () => void }) {
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [messages, setMessages] = useState<ChatMessage[]>(() => {
+        const saved = localStorage.getItem(CHAT_STORAGE_KEY);
+        return saved ? JSON.parse(saved) : [];
+    });
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
-    const [sessionId, setSessionId] = useState('');
+    const [sessionId, setSessionId] = useState(() => {
+        return localStorage.getItem(CHAT_SESSION_KEY) || crypto.randomUUID();
+    });
     const containerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
+    // Save to localStorage whenever messages or sessionId change
+    useEffect(() => {
+        localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+    }, [messages]);
+
+    useEffect(() => {
+        localStorage.setItem(CHAT_SESSION_KEY, sessionId);
+    }, [sessionId]);
+
     useEffect(() => {
         if (!open) return;
-        setSessionId(crypto.randomUUID());
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    const lat = pos.coords.latitude.toFixed(2);
-                    const lng = pos.coords.longitude.toFixed(2);
-                    setMessages([{ role: 'bot', text: `Chào bạn! 👋 Tôi đã thấy bạn đang ở tọa độ (${lat}, ${lng}). Bạn muốn tìm việc gì quanh đây?` }]);
-                },
-                () => setMessages([{ role: 'bot', text: 'Chào bạn! 👋 Tôi là Trợ lý Tìm việc GPS của JobNow. Bạn muốn tìm việc gì hôm nay?' }]),
-            );
-        } else {
-            setMessages([{ role: 'bot', text: 'Chào bạn! 👋 Tôi là Trợ lý Tìm việc GPS của JobNow. Bạn muốn tìm việc gì hôm nay?' }]);
+
+        // Only add welcome message if no history exists
+        if (messages.length === 0) {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        const lat = pos.coords.latitude.toFixed(2);
+                        const lng = pos.coords.longitude.toFixed(2);
+                        const welcomeMsg: ChatMessage = { role: 'bot', text: `Chào bạn! 👋 Tôi đã thấy bạn đang ở tọa độ (${lat}, ${lng}). Bạn muốn tìm việc gì quanh đây?` };
+                        setMessages([welcomeMsg]);
+                    },
+                    () => {
+                        const welcomeMsg: ChatMessage = { role: 'bot', text: 'Chào bạn! 👋 Tôi là Trợ lý Tìm việc GPS của JobNow. Bạn muốn tìm việc gì hôm nay?' };
+                        setMessages([welcomeMsg]);
+                    },
+                );
+            } else {
+                const welcomeMsg: ChatMessage = { role: 'bot', text: 'Chào bạn! 👋 Tôi là Trợ lý Tìm việc GPS của JobNow. Bạn muốn tìm việc gì hôm nay?' };
+                setMessages([welcomeMsg]);
+            }
         }
-    }, [open]);
+    }, [open, messages.length]);
 
     useEffect(() => {
         if (containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight;

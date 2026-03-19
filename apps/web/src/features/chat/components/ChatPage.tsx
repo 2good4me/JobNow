@@ -118,7 +118,7 @@ export function ChatPage({ userId, role }: ChatPageProps) {
     }, [search.applicationId, search.jobId, search.employerId, conversations, queryResult.isLoading, navigate, selectedConversation]);
 
     return (
-        <div className="flex h-[calc(100dvh-64px)] md:h-[calc(100dvh-70px)] bg-white dark:bg-gray-950 overflow-hidden relative">
+        <div className="flex h-[calc(100dvh-64px-72px)] bg-white dark:bg-gray-950 overflow-hidden relative">
             {/* Mobile view changes based on selection */}
             <div
                 className={`w-full md:w-1/3 lg:w-1/4 border-r border-gray-100 dark:border-gray-800 flex flex-col bg-white dark:bg-gray-950 absolute md:static inset-0 z-10 transition-transform duration-300 ${selectedConversation ? '-translate-x-full md:translate-x-0' : 'translate-x-0'

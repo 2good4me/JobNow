@@ -119,9 +119,9 @@ export function ChatRoom({ conversation, currentUserId, onBack }: ChatRoomProps)
     };
 
     return (
-        <div className="flex flex-col h-full relative overflow-hidden bg-white dark:bg-gray-950 max-h-[100dvh]">
+        <div className="flex flex-col h-full relative overflow-hidden bg-white dark:bg-gray-950">
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800/60 sticky top-0 z-10">
+            <div className="flex items-center justify-between px-4 py-3 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800/60 z-10">
                 <div className="flex items-center gap-3">
                     <button
                         onClick={onBack}

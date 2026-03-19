@@ -103,6 +103,7 @@ function RootLayout() {
     const isEmployerRoute = role === 'EMPLOYER' && !isAuthPage;
     const isAdminRoute = location.pathname.startsWith(ADMIN_ROUTES_PREFIX);
     const isFullScreenFlow = location.pathname.startsWith('/employer/post-job');
+    const isChatRoute = location.pathname.includes('/chat');
 
     // Whether to show mobile-first app layout
     const isAppLayout = isCandidateRoute || isEmployerRoute;
@@ -149,7 +150,7 @@ function RootLayout() {
             <GlobalHeader isAppLayout={isAppLayout} />
 
             {/* ── Main Content ─────────────────────────── */}
-            <main className={`flex-1 w-full ${isFullScreenFlow ? 'pb-0' : 'pb-20'} ${isAppLayout ? '' : 'bg-slate-50/50'}`}>
+            <main className={`flex-1 w-full ${(isFullScreenFlow || isChatRoute) ? 'pb-0' : 'pb-20'} ${isAppLayout ? '' : 'bg-slate-50/50'}`}>
                 <Outlet />
             </main>
 

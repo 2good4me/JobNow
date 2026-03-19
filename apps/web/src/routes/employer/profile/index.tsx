@@ -7,7 +7,6 @@ import { getFollowerCount, getFollowingCount } from '@/features/auth/services/fo
 import type { ComponentType } from 'react';
 import {
   BadgeCheck,
-  Bell,
   Briefcase,
   Building2,
   ChevronRight,
@@ -171,13 +170,6 @@ function EmployerProfilePage() {
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-lg font-bold text-white/90 tracking-tight">Tài khoản</h1>
-            <button
-              type="button"
-              onClick={() => navigate({ to: '/employer/notifications' })}
-              className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-md hover:bg-white/20 transition-colors"
-            >
-              <Bell className="w-5 h-5 text-white" />
-            </button>
           </div>
 
           <div className="flex flex-col items-center">

@@ -320,10 +320,11 @@ export async function completeApplicationWithPayment(
                 if (jobSnap.exists()) {
                     const jobData = jobSnap.data();
                     const salary = Number(jobData.salary || 0);
-                    const salaryType = jobData.salaryType;
+                    // Critical: salary_type is stored in snake_case in Firestore
+                    const sTypeRaw = jobData.salary_type || jobData.salaryType || 'HOURLY';
                     jobTitle = String(jobData.title || 'Công việc');
 
-                    if (salaryType === 'HOURLY') {
+                    if (sTypeRaw === 'HOURLY') {
                         // Calculate actual hours worked
                         const checkInMillis = timestampToMillis(data.check_in_time || data.checkInTime);
                         const checkOutMillis = timestampToMillis(data.check_out_time || data.checkOutTime || Date.now());
@@ -332,13 +333,15 @@ export async function completeApplicationWithPayment(
                             const hoursWorked = (checkOutMillis - checkInMillis) / (1000 * 60 * 60);
                             // Round to 2 decimal places or as per business rules
                             amount = Math.round(hoursWorked * salary);
-                            console.log(`[applicationService] Hourly calc: ${hoursWorked.toFixed(2)}h * ${salary} = ${amount}`);
+                            console.log(`[applicationService] Hourly calc for ${applicationId}: ${hoursWorked.toFixed(2)}h * ${salary} = ${amount}`);
                         } else {
-                            // Fallback if timings are missing (maybe paid for 1 hour min or something)
+                            // Fallback if timings are missing
                             amount = salary; 
+                            console.warn(`[applicationService] Missing timings for ${applicationId}, paying flat rate: ${amount}`);
                         }
                     } else {
                         amount = salary;
+                        console.log(`[applicationService] Flat pay for ${applicationId} (${sTypeRaw}): ${amount}`);
                     }
                 }
             }
