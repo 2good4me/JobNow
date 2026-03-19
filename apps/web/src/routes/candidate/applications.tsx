@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { ArrowLeft, Briefcase, Calendar, CheckCircle2, Clock, MapPin, XCircle, Trash2, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Briefcase, Calendar, Clock, MapPin, Trash2, ChevronRight, Search } from 'lucide-react';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useMyApplicationsRealtime } from '@/features/jobs/hooks/useMyApplicationsRealtime';
 import { useState } from 'react';
@@ -19,55 +19,48 @@ function CandidateApplications() {
     const navigate = useNavigate();
     const { userProfile } = useAuth();
     const [activeFilter, setActiveFilter] = useState<FilterStatus>('ALL');
+    const [searchText, setSearchText] = useState('');
     const updateStatusMutation = useUpdateApplicationStatus();
     const { mutate: confirmPayment, isPending: isConfirming } = useConfirmPayment();
     
-    // Review modal state
     const [reviewAppId, setReviewAppId] = useState<string | null>(null);
     const [reviewTargetId, setReviewTargetId] = useState<string | null>(null);
     const [reviewTargetName, setReviewTargetName] = useState<string>('');
     const [reviewJobTitle, setReviewJobTitle] = useState<string>('');
 
-    // Fetch user applications
     const { data: applications = [], isLoading } = useMyApplicationsRealtime({
         candidateId: userProfile?.uid,
-        limit: 100, // Fetch up to 100 recent applications
+        limit: 100,
     });
 
     const filteredApplications = applications.filter(app => {
-        if (activeFilter === 'ALL') return true;
-        if (activeFilter === 'PENDING') return app.status === 'NEW' || app.status === 'PENDING';
-        return app.status === activeFilter;
+        // Status filter
+        if (activeFilter === 'PENDING' && app.status !== 'NEW' && app.status !== 'PENDING') return false;
+        if (activeFilter === 'APPROVED' && app.status !== 'APPROVED') return false;
+        if (activeFilter === 'REJECTED' && app.status !== 'REJECTED') return false;
+        // Search filter
+        if (searchText && !app.jobTitle?.toLowerCase().includes(searchText.toLowerCase())) return false;
+        return true;
     });
 
     const getStatusTheme = (status: string) => {
         switch (status) {
-            case 'APPROVED':
-                return { bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-200', label: 'Đã nhận', icon: CheckCircle2 };
-            case 'REJECTED':
-                return { bg: 'bg-red-50', text: 'text-red-600', border: 'border-red-200', label: 'Từ chối', icon: XCircle };
+            case 'APPROVED': return { bg: 'bg-emerald-500', text: 'text-white', label: 'Đã nhận', borderColor: 'border-emerald-400' };
+            case 'REJECTED': return { bg: 'bg-rose-500', text: 'text-white', label: 'Từ chối', borderColor: 'border-rose-400' };
             case 'NEW':
-            case 'PENDING':
-                return { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200', label: 'Chờ duyệt', icon: Clock };
-            case 'CHECKED_IN':
-                return { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200', label: 'Đang làm', icon: Briefcase };
-            case 'WORK_FINISHED':
-                return { bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'border-indigo-200', label: 'Chờ thanh toán', icon: CheckCircle2 };
-            case 'COMPLETED':
-                return { bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-200', label: 'Hoàn thành', icon: CheckCircle2 };
-            case 'CASH_CONFIRMATION':
-                return { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', label: 'Chờ xác nhận TM', icon: DollarSign };
-            case 'CANCELLED':
-                return { bg: 'bg-slate-100', text: 'text-slate-500', border: 'border-slate-200', label: 'Đã hủy', icon: XCircle };
-            default:
-                return { bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-200', label: status, icon: Clock };
+            case 'PENDING': return { bg: 'bg-amber-400', text: 'text-white', label: 'Chờ duyệt', borderColor: 'border-amber-300' };
+            case 'CHECKED_IN': return { bg: 'bg-blue-500', text: 'text-white', label: 'Đang làm', borderColor: 'border-blue-400' };
+            case 'WORK_FINISHED': return { bg: 'bg-indigo-500', text: 'text-white', label: 'Chờ TT', borderColor: 'border-indigo-400' };
+            case 'COMPLETED': return { bg: 'bg-slate-400', text: 'text-white', label: 'Hoàn thành', borderColor: 'border-slate-300' };
+            case 'CASH_CONFIRMATION': return { bg: 'bg-teal-500', text: 'text-white', label: 'Chờ xác nhận', borderColor: 'border-teal-400' };
+            case 'CANCELLED': return { bg: 'bg-slate-300', text: 'text-slate-600', label: 'Đã hủy', borderColor: 'border-slate-200' };
+            default: return { bg: 'bg-slate-100', text: 'text-slate-600', label: status, borderColor: 'border-slate-200' };
         }
     };
 
     const handleCancelApplication = async (e: React.MouseEvent, applicationId: string) => {
         e.preventDefault();
         e.stopPropagation();
-
         toast('Rút đơn ứng tuyển?', {
             description: 'Bạn có chắc chắn muốn hủy đơn ứng tuyển này không?',
             action: {
@@ -76,7 +69,7 @@ function CandidateApplications() {
                     try {
                         await updateStatusMutation.mutateAsync({ id: applicationId, status: 'CANCELLED' });
                         toast.success('Đã rút đơn ứng tuyển thành công');
-                    } catch (error) {
+                    } catch {
                         toast.error('Không thể hủy đơn, vui lòng thử lại');
                     }
                 }
@@ -92,65 +85,75 @@ function CandidateApplications() {
     ];
 
     return (
-        <div className="min-h-[100dvh] bg-slate-50 pb-24 font-sans text-slate-800">
+        <div className="min-h-[100dvh] bg-[#F5F7FF] pb-24 font-sans text-slate-800">
             {/* Header */}
-            <div className="bg-white border-b border-slate-100 sticky top-0 z-40">
-                <div className="p-4 flex items-center gap-3">
+            <div className="bg-gradient-to-br from-[#1e3a5f] to-[#1e40af] px-5 pt-14 pb-6">
+                <div className="flex items-center gap-3 mb-4">
                     <button
                         onClick={() => navigate({ to: '/candidate/profile' })}
-                        className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-50 hover:bg-slate-100 transition-colors"
+                        className="w-10 h-10 rounded-full flex items-center justify-center bg-white/10 text-white hover:bg-white/20 transition-colors"
                     >
-                        <ArrowLeft className="w-5 h-5 text-slate-600" />
+                        <ArrowLeft className="w-5 h-5" />
                     </button>
-                    <h1 className="text-lg font-bold text-slate-900">Việc làm đã ứng tuyển</h1>
+                    <h1 className="text-white text-lg font-bold flex-1">Việc làm đã ứng tuyển</h1>
+                    <div className="bg-white/20 text-white text-[12px] font-bold px-2.5 py-1 rounded-xl">
+                        {applications.length} đơn
+                    </div>
                 </div>
 
-                {/* Status Tabs */}
-                <div className="flex px-4 pb-2 gap-2 overflow-x-auto no-scrollbar">
-                    {filters.map((f) => (
-                        <button
-                            key={f.value}
-                            onClick={() => setActiveFilter(f.value)}
-                            className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap border-2 ${activeFilter === f.value
-                                    ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-100'
-                                    : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'
-                                }`}
-                        >
-                            {f.label}
-                        </button>
-                    ))}
+                {/* Search bar */}
+                <div className="flex items-center gap-2 bg-white/10 border border-white/20 rounded-xl px-3 py-2.5">
+                    <Search className="w-4 h-4 text-white/60 shrink-0" />
+                    <input
+                        type="text"
+                        placeholder="Tìm theo tên công việc..."
+                        value={searchText}
+                        onChange={e => setSearchText(e.target.value)}
+                        className="bg-transparent text-white text-[14px] placeholder:text-white/50 flex-1 outline-none"
+                    />
                 </div>
             </div>
 
+            {/* Status Tabs */}
+            <div className="bg-white border-b border-slate-100 px-5 py-3 flex gap-2 overflow-x-auto no-scrollbar">
+                {filters.map((f) => (
+                    <button
+                        key={f.value}
+                        onClick={() => setActiveFilter(f.value)}
+                        className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap border-2 flex-shrink-0 ${
+                            activeFilter === f.value
+                                ? 'bg-[#1e3a5f] border-[#1e3a5f] text-white shadow-md'
+                                : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+                        }`}
+                    >
+                        {f.label}
+                    </button>
+                ))}
+            </div>
+
             {/* List */}
-            <div className="p-4 max-w-lg mx-auto space-y-4">
+            <div className="p-4 max-w-lg mx-auto space-y-3">
                 {isLoading ? (
-                    <div className="flex flex-col items-center justify-center py-10">
-                        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-3"></div>
+                    <div className="flex flex-col items-center justify-center py-16">
+                        <div className="w-8 h-8 border-4 border-[#1e3a5f] border-t-transparent rounded-full animate-spin mb-3" />
                         <p className="text-sm font-medium text-slate-500">Đang tải danh sách...</p>
                     </div>
                 ) : filteredApplications.length === 0 ? (
-                    <div className="text-center py-12 px-4 shadow-sm bg-white rounded-3xl border border-slate-100">
-                        <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <div className="text-center py-16 px-4 bg-white rounded-3xl border border-slate-100 shadow-sm mt-2">
+                        <div className="w-16 h-16 bg-[#1e3a5f]/10 text-[#1e3a5f] rounded-full flex items-center justify-center mx-auto mb-4">
                             <Briefcase className="w-8 h-8" />
                         </div>
-                        <h2 className="text-lg font-bold text-slate-900 mb-2">Không tìm thấy ứng tuyển</h2>
+                        <h2 className="text-lg font-bold text-slate-900 mb-2">Chưa có đơn nào</h2>
                         <p className="text-sm text-slate-500 mb-6 font-medium">
-                            {activeFilter === 'ALL'
-                                ? 'Bạn chưa ứng tuyển công việc nào.'
-                                : `Bạn không có đơn ứng tuyển nào ở trạng thái này.`}
+                            {activeFilter === 'ALL' ? 'Bạn chưa ứng tuyển công việc nào.' : 'Không có đơn ở trạng thái này.'}
                         </p>
-                        <Link
-                            to="/jobs"
-                            className="bg-blue-600 text-white font-bold px-6 py-2.5 rounded-xl shadow-md hover:bg-blue-700 transition-all"
-                        >
+                        <Link to="/jobs" className="bg-[#1e3a5f] text-white font-bold px-6 py-2.5 rounded-xl shadow-md">
                             Tìm việc làm
                         </Link>
                     </div>
                 ) : (
                     filteredApplications.map((app) => {
                         const theme = getStatusTheme(app.status);
-                        const StatusIcon = theme.icon;
                         const canCancel = app.status === 'NEW' || app.status === 'PENDING';
 
                         return (
@@ -158,83 +161,83 @@ function CandidateApplications() {
                                 key={app.id}
                                 to="/candidate/applications/$applicationId"
                                 params={{ applicationId: app.id }}
-                                className="block bg-white border border-slate-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group"
+                                className="block bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
                             >
-                                <div className="flex justify-between items-start mb-3">
-                                    <div className="pr-4 flex-1">
-                                        <h3 className="font-bold text-slate-900 mb-1 group-hover:text-blue-600 transition-colors line-clamp-1">
-                                            {app.jobTitle || 'Công việc đã ứng tuyển'}
-                                        </h3>
-                                        <div className="flex items-center gap-1.5 text-blue-600 font-semibold text-xs mb-1">
-                                            <Clock className="w-3.5 h-3.5" />
-                                            <span>Ca làm: {app.shiftTime || 'Chưa xác định'}</span>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <p className="text-[11px] text-slate-400 font-medium">Mã Đơn: #{app.id.slice(-6).toUpperCase()}</p>
-                                            {canCancel && (
-                                                <button
-                                                    onClick={(e) => handleCancelApplication(e, app.id)}
-                                                    className="flex items-center gap-1 text-[11px] font-bold text-red-500 hover:text-red-600 transition-colors bg-red-50 px-2 py-0.5 rounded-full"
-                                                >
-                                                    <Trash2 className="w-3 h-3" /> Rút đơn
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col items-end gap-2">
-                                        <div className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${theme.bg} ${theme.text} ${theme.border}`}>
-                                            <StatusIcon className="w-3.5 h-3.5" />
-                                            <span className="text-[11px] font-bold tracking-wide uppercase">{theme.label}</span>
-                                        </div>
-                                        {app.status === 'CASH_CONFIRMATION' && (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    confirmPayment(app.id, {
-                                                        onSuccess: () => toast.success('Xác nhận nhận tiền thành công!')
-                                                    });
-                                                }}
-                                                disabled={isConfirming}
-                                                className="flex items-center gap-1.5 px-3 py-1 bg-emerald-600 text-white rounded-full text-[11px] font-bold hover:bg-emerald-700 transition-colors shadow-sm active:scale-95 disabled:opacity-50"
-                                            >
-                                                {isConfirming ? <Loader2 className="w-3 h-3 animate-spin" /> : <DollarSign className="w-3 h-3" />}
-                                                XÁC NHẬN
-                                            </button>
-                                        )}
-                                        {app.status === 'COMPLETED' && (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    setReviewAppId(app.id);
-                                                    setReviewTargetId(app.employerId);
-                                                    setReviewTargetName('Nhà tuyển dụng');
-                                                    setReviewJobTitle(app.jobTitle || 'Công việc');
-                                                }}
-                                                className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-600 border border-amber-200 rounded-full text-[11px] font-bold hover:bg-amber-100 transition-colors shadow-sm active:scale-95"
-                                            >
-                                                <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
-                                                ĐÁNH GIÁ
-                                            </button>
-                                        )}
+                                {/* Status stripe on top */}
+                                <div className={`${theme.bg} px-4 py-2 flex items-center justify-between`}>
+                                    <span className={`text-[11px] font-black uppercase tracking-wider ${theme.text}`}>
+                                        {theme.label}
+                                    </span>
+                                    <div className="flex items-center gap-1.5 text-white/80 text-[11px]">
+                                        <Calendar className="w-3 h-3" />
+                                        {app.createdAt?.toDate?.()?.toLocaleDateString('vi-VN') || 'N/A'}
                                     </div>
                                 </div>
 
-                                <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 font-medium pt-2 border-t border-slate-50">
-                                    <div className="flex items-center gap-3">
+                                <div className="p-4">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div className="flex-1 pr-3">
+                                            <h3 className="font-bold text-slate-900 text-[15px] mb-1 line-clamp-2">
+                                                {app.jobTitle || 'Công việc đã ứng tuyển'}
+                                            </h3>
+                                            <div className="flex items-center gap-1 text-indigo-600 text-[12px] font-semibold">
+                                                <Clock className="w-3.5 h-3.5" />
+                                                <span>Ca: {app.shiftTime || 'Chưa xác định'}</span>
+                                            </div>
+                                        </div>
+                                        {canCancel && (
+                                            <button
+                                                onClick={(e) => handleCancelApplication(e, app.id)}
+                                                className="flex items-center gap-1 text-[11px] font-bold text-rose-500 bg-rose-50 border border-rose-100 px-2.5 py-1.5 rounded-xl shrink-0"
+                                            >
+                                                <Trash2 className="w-3 h-3" /> Rút đơn
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Action buttons for special statuses */}
+                                    {app.status === 'CASH_CONFIRMATION' && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                confirmPayment(app.id, {
+                                                    onSuccess: () => toast.success('Xác nhận nhận tiền thành công!')
+                                                });
+                                            }}
+                                            disabled={isConfirming}
+                                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-teal-600 text-white text-[13px] font-black active:scale-95 transition-all disabled:opacity-50"
+                                        >
+                                            {isConfirming ? <Loader2 className="w-4 h-4 animate-spin" /> : <DollarSign className="w-4 h-4" />}
+                                            XÁC NHẬN ĐÃ NHẬN TIỀN
+                                        </button>
+                                    )}
+                                    {app.status === 'COMPLETED' && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                setReviewAppId(app.id);
+                                                setReviewTargetId(app.employerId);
+                                                setReviewTargetName('Nhà tuyển dụng');
+                                                setReviewJobTitle(app.jobTitle || 'Công việc');
+                                            }}
+                                            className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border-2 border-amber-200 bg-amber-50 text-amber-700 text-[13px] font-bold active:scale-[0.98] transition-colors"
+                                        >
+                                            <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
+                                            Đánh giá nhà tuyển dụng
+                                        </button>
+                                    )}
+
+                                    {/* Footer */}
+                                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-50 text-xs text-slate-400 font-medium">
                                         <div className="flex items-center gap-1">
                                             <MapPin className="w-3.5 h-3.5 text-slate-300" />
-                                            <span>Chi tiết</span>
+                                            <span>Chi tiết đơn</span>
                                         </div>
-                                        <span className="text-slate-200">•</span>
-                                        <div className="flex items-center gap-1">
-                                            <Calendar className="w-3.5 h-3.5 text-slate-300" />
-                                            <span>{app.createdAt?.toDate?.()?.toLocaleDateString('vi-VN') || 'N/A'}</span>
+                                        <div className="text-indigo-600 font-bold flex items-center gap-0.5">
+                                            Xem <ChevronRight className="w-3 h-3" />
                                         </div>
-                                    </div>
-                                    <div className="text-blue-600 font-bold flex items-center gap-0.5">
-                                        Xem <ChevronRight className="w-3 h-3" />
                                     </div>
                                 </div>
                             </Link>

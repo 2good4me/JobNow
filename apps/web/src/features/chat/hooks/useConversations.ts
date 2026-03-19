@@ -54,16 +54,15 @@ export function useConversations({ userId, role, limit = 20 }: UseConversationsI
 
     conversations.forEach((conv) => {
       const participantId = role === 'CANDIDATE' ? conv.employerId : conv.candidateId;
-      const key = participantId || conv.id; // Use participant ID as key
+      const key = participantId || conv.id; 
       
+      const convTime = Math.max(getMs(conv.lastMessageAt), getMs(conv.updatedAt), getMs(conv.createdAt));
       const existing = map.get(key);
+      
       if (!existing) {
         map.set(key, conv);
       } else {
-        // Keep the one with the most recent activity
-        const convTime = Math.max(getMs(conv.updatedAt), getMs(conv.lastMessageAt), getMs(conv.createdAt));
-        const existingTime = Math.max(getMs(existing.updatedAt), getMs(existing.lastMessageAt), getMs(existing.createdAt));
-        
+        const existingTime = Math.max(getMs(existing.lastMessageAt), getMs(existing.updatedAt), getMs(existing.createdAt));
         if (convTime > existingTime) {
           map.set(key, conv);
         }
@@ -71,8 +70,8 @@ export function useConversations({ userId, role, limit = 20 }: UseConversationsI
     });
     
     return Array.from(map.values()).sort((a, b) => {
-      const timeA = Math.max(getMs(a.updatedAt), getMs(a.lastMessageAt), getMs(a.createdAt));
-      const timeB = Math.max(getMs(b.updatedAt), getMs(b.lastMessageAt), getMs(b.createdAt));
+      const timeB = Math.max(getMs(b.lastMessageAt), getMs(b.updatedAt), getMs(b.createdAt));
+      const timeA = Math.max(getMs(a.lastMessageAt), getMs(a.updatedAt), getMs(a.createdAt));
       return timeB - timeA;
     });
   }, [conversations, role]);

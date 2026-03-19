@@ -22,6 +22,7 @@ type ApplicantCardProps = {
   candidateRating?: number;
   candidateVerified?: boolean;
   checkInTime?: any;
+  checkOutTime?: any;
   isLate?: boolean;
 };
 
@@ -92,6 +93,7 @@ export function ApplicantCard({
   candidateRating: dnRating,
   candidateVerified: dnVerified,
   checkInTime,
+  checkOutTime,
   isLate,
 }: ApplicantCardProps) {
   const { mutate: updateStatus, isPending } = useUpdateApplicationStatus();
@@ -106,6 +108,7 @@ export function ApplicantCard({
   const { mutate: forceCheckOut, isPending: isForcing } = useForceCheckOut();
   const { mutate: simulateWorkTime, isPending: isSimulating } = useSimulateWorkTime();
   const [showPayOptions, setShowPayOptions] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   // Prefer denormalized data, fallback to fetched profile
   const fullName = dnName || candidate?.fullName || 'Ứng viên';
@@ -225,8 +228,14 @@ export function ApplicantCard({
               <div className="flex h-full w-full items-center justify-center bg-slate-100">
                 <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
               </div>
-            ) : avatarUrl ? (
-              <img alt={fullName} className="h-full w-full object-cover" src={avatarUrl} loading="lazy" />
+            ) : (avatarUrl && avatarUrl !== 'not found' && !imgError) ? (
+              <img 
+                alt={fullName} 
+                className="h-full w-full object-cover" 
+                src={avatarUrl} 
+                loading="lazy" 
+                onError={() => setImgError(true)}
+              />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-indigo-500 to-blue-600">
                 <span className="text-lg font-bold text-white">{initial}</span>
@@ -307,6 +316,42 @@ export function ApplicantCard({
               </div>
             </div>
           )}
+          {/* Shift Summary (for completed/work-finished status - employer view) */}
+          {(status === 'COMPLETED' || status === 'WORK_FINISHED' || status === 'CASH_CONFIRMATION') && checkInTime && (() => {
+            const toDate = (ts: any): Date | null => {
+              if (!ts) return null;
+              return ts?.toDate?.() ?? new Date(ts);
+            };
+            const inDate = toDate(checkInTime);
+            const outDate = toDate(checkOutTime);
+            let dur = '';
+            if (inDate && outDate) {
+              const diffMs = outDate.getTime() - inDate.getTime();
+              const h = Math.floor(diffMs / 3600000);
+              const m = Math.floor((diffMs % 3600000) / 60000);
+              dur = `${h} giờ ${m} phút`;
+            }
+            const fmtTime = (d: Date | null) => d ? d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—';
+            return (
+              <div className="mt-2 rounded-xl bg-slate-50 border border-slate-100 p-2.5 space-y-1.5">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Chi tiết ca làm</p>
+                <div className="grid grid-cols-3 gap-1">
+                  <div className="flex flex-col items-center bg-emerald-50 rounded-lg py-1.5">
+                    <span className="text-[9px] text-emerald-600 font-semibold uppercase">Check-in</span>
+                    <span className="text-[11px] font-bold text-slate-700">{fmtTime(inDate)}</span>
+                  </div>
+                  <div className="flex flex-col items-center bg-blue-50 rounded-lg py-1.5">
+                    <span className="text-[9px] text-blue-600 font-semibold uppercase">Check-out</span>
+                    <span className="text-[11px] font-bold text-slate-700">{fmtTime(outDate)}</span>
+                  </div>
+                  <div className="flex flex-col items-center bg-indigo-50 rounded-lg py-1.5">
+                    <span className="text-[9px] text-indigo-600 font-semibold uppercase">Tổng giờ</span>
+                    <span className="text-[11px] font-bold text-indigo-700">{dur || '—'}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
 

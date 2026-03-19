@@ -59,28 +59,49 @@ export async function fetchAllJobs(): Promise<Job[]> {
     const jobsRef = collection(db, 'jobs');
     const q = query(jobsRef, orderBy('created_at', 'desc'));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(docSnap => {
-        const raw = docSnap.data();
-        const normalized: JobDoc = {
-            employer_id: String(raw.employer_id ?? raw.employerId ?? ''),
-            category_id: String(raw.category_id ?? raw.categoryId ?? ''),
-            title: String(raw.title ?? ''),
-            description: String(raw.description ?? ''),
-            salary: Number(raw.salary ?? 0),
-            salary_type: (raw.salary_type ?? raw.salaryType ?? 'HOURLY') as any,
-            location: {
-                latitude: Number(raw.location?.latitude ?? 0),
-                longitude: Number(raw.location?.longitude ?? 0),
-            },
-            geohash: String(raw.geohash ?? ''),
-            is_gps_required: Boolean(raw.is_gps_required ?? raw.isGpsRequired ?? false),
-            status: (raw.status ?? 'OPEN') as any,
-            shifts: Array.isArray(raw.shifts) ? raw.shifts : [],
-            created_at: raw.created_at ?? raw.createdAt,
-            updated_at: raw.updated_at ?? raw.updatedAt,
-        };
-        return mapJobDocToJob(docSnap.id, normalized);
-    });
+    return snapshot.docs
+        .map(docSnap => {
+            const raw = docSnap.data();
+            const shiftCapacity = (raw.shift_capacity ?? raw.shiftCapacity ?? {}) as Record<string, any>;
+            const normalized: JobDoc = {
+                employer_id: String(raw.employer_id ?? raw.employerId ?? ''),
+                employer_name: String(raw.employer_name ?? raw.employerName ?? ''),
+                category_id: String(raw.category_id ?? raw.categoryId ?? ''),
+                category: String(raw.category ?? ''),
+                title: String(raw.title ?? ''),
+                description: String(raw.description ?? ''),
+                salary: Number(raw.salary ?? 0),
+                salary_type: (raw.salary_type ?? raw.salaryType ?? 'HOURLY') as any,
+                address: String(raw.address ?? raw.address_text ?? ''),
+                location: {
+                    latitude: Number(raw.location?.latitude ?? 0),
+                    longitude: Number(raw.location?.longitude ?? 0),
+                },
+                geohash: String(raw.geohash ?? ''),
+                is_gps_required: Boolean(raw.is_gps_required ?? raw.isGpsRequired ?? false),
+                status: (raw.status ?? 'OPEN') as any,
+                shifts: Array.isArray(raw.shifts) ? raw.shifts : [],
+                shift_capacity: shiftCapacity,
+                created_at: raw.created_at ?? raw.createdAt,
+                updated_at: raw.updated_at ?? raw.updatedAt,
+                images: Array.isArray(raw.images) ? raw.images : [],
+                is_premium: Boolean(raw.is_premium ?? raw.isPremium ?? false),
+            };
+            return mapJobDocToJob(docSnap.id, normalized);
+        })
+        .filter(job => {
+            // Hide jobs where ALL shifts are fully booked (remaining_slots <= 0)
+            // If no shift_capacity data exists, show the job (assume slots available)
+            const raw = snapshot.docs.find(d => d.id === job.id)?.data();
+            if (!raw) return true;
+            const shiftCapacity = (raw.shift_capacity ?? raw.shiftCapacity) as Record<string, any> | undefined;
+            if (!shiftCapacity || Object.keys(shiftCapacity).length === 0) return true;
+            // Show job if at least one shift still has remaining slots
+            const hasOpenSlot = Object.values(shiftCapacity).some(
+                (cap: any) => !cap || cap.remaining_slots === undefined || Number(cap.remaining_slots) > 0
+            );
+            return hasOpenSlot;
+        });
 }
 
 export async function getJobById(jobId: string): Promise<Job | null> {

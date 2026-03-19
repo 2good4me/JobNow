@@ -42,6 +42,7 @@ export interface Application {
     isLate?: boolean;
     lateMinutes?: number;
     checkInTime?: any;
+    checkOutTime?: any;
 }
 
 /**
@@ -75,6 +76,7 @@ export interface ApplicationDoc {
     is_late?: boolean;
     late_minutes?: number;
     check_in_time?: any;
+    check_out_time?: any;
 }
 
 export interface ApplyJobInput {

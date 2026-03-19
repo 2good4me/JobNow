@@ -15,7 +15,7 @@ export const Route = createFileRoute('/employer/applicants')({
   component: EmployerApplicantsRoute,
 });
 
-type ApplicantTab = 'all' | 'pending' | 'approved' | 'rejected';
+type ApplicantTab = 'all' | 'pending' | 'approved' | 'rejected' | 'completed';
 
 /* ── Card Skeleton ── */
 function CardSkeleton() {
@@ -133,17 +133,19 @@ function EmployerApplicantsRoute() {
     return applicants.reduce((acc, a) => {
       acc.all++;
       if (a.status === 'NEW' || a.status === 'PENDING') acc.pending++;
-      else if (a.status === 'APPROVED' || a.status === 'REVIEWED') acc.approved++;
+      else if (a.status === 'APPROVED' || a.status === 'REVIEWED' || a.status === 'CHECKED_IN') acc.approved++;
       else if (a.status === 'REJECTED') acc.rejected++;
+      else if (a.status === 'COMPLETED' || a.status === 'WORK_FINISHED' || a.status === 'CASH_CONFIRMATION') acc.completed++;
       return acc;
-    }, { all: 0, pending: 0, approved: 0, rejected: 0 });
+    }, { all: 0, pending: 0, approved: 0, rejected: 0, completed: 0 });
   }, [applicants]);
 
   const filteredApplicants = useMemo(() => {
     let filtered = applicants;
     if (activeTab === 'pending') filtered = applicants.filter(a => a.status === 'NEW' || a.status === 'PENDING');
-    else if (activeTab === 'approved') filtered = applicants.filter(a => a.status === 'APPROVED' || a.status === 'REVIEWED');
+    else if (activeTab === 'approved') filtered = applicants.filter(a => a.status === 'APPROVED' || a.status === 'REVIEWED' || a.status === 'CHECKED_IN');
     else if (activeTab === 'rejected') filtered = applicants.filter(a => a.status === 'REJECTED');
+    else if (activeTab === 'completed') filtered = applicants.filter(a => a.status === 'COMPLETED' || a.status === 'WORK_FINISHED' || a.status === 'CASH_CONFIRMATION');
 
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
@@ -220,6 +222,13 @@ function EmployerApplicantsRoute() {
                 active={activeTab === 'rejected'}
                 onClick={() => setActiveTab('rejected')}
               />
+              <StatPill
+                label="Hoàn thành"
+                value={stats.completed}
+                color="bg-sky-500 text-white"
+                active={activeTab === 'completed'}
+                onClick={() => setActiveTab('completed')}
+              />
             </div>
           </div>
         </div>
@@ -276,6 +285,7 @@ function EmployerApplicantsRoute() {
                   candidateRating={applicant.candidateRating}
                   candidateVerified={applicant.candidateVerified}
                   checkInTime={applicant.checkInTime}
+                  checkOutTime={(applicant as any).checkOutTime}
                   isLate={applicant.isLate}
                 />
               ))}

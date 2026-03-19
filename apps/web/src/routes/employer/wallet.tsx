@@ -1,11 +1,11 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useWalletBalance, useTransactionHistory } from '@/features/wallet/hooks/useWallet';
-import { 
-  ArrowLeft, 
-  ChevronRight, 
-  TrendingUp, 
-  TrendingDown, 
+import {
+  ArrowLeft,
+  ChevronRight,
+  TrendingUp,
+  TrendingDown,
   Clock,
   RefreshCw,
   CreditCard,
@@ -46,14 +46,14 @@ function EmployerWalletPage() {
 
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-8">
-            <button 
+            <button
               onClick={() => navigate({ to: '/employer' })}
               className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white/90"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <h1 className="text-lg font-bold text-white/90 tracking-tight">Ví của tôi</h1>
-            <button 
+            <button
               onClick={handleRefresh}
               className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white/90"
             >
@@ -67,16 +67,16 @@ function EmployerWalletPage() {
               <span className="text-4xl font-extrabold text-white">{balance.toLocaleString()}</span>
               <span className="text-xl font-bold text-blue-300">đ</span>
             </div>
-            
+
             <div className="mt-8 flex gap-3 w-full max-w-[280px]">
-              <button 
+              <button
                 onClick={() => setShowDepositSheet(true)}
                 className="flex-1 bg-white text-[#1e3a5f] p-3 rounded-2xl font-bold text-sm shadow-xl shadow-blue-900/20 active:scale-95 transition-all flex flex-col items-center gap-1 cursor-pointer"
               >
                 <PlusCircle className="w-5 h-5" />
                 Nạp tiền
               </button>
-              <button 
+              <button
                 onClick={() => setShowWithdrawSheet(true)}
                 className="flex-1 bg-white/10 backdrop-blur-md border border-white/20 text-white p-3 rounded-2xl font-bold text-sm active:scale-95 transition-all flex flex-col items-center gap-1 cursor-pointer"
               >
@@ -90,7 +90,7 @@ function EmployerWalletPage() {
 
       {/* ── Content ── */}
       <div className="px-5 -mt-8 relative z-20 space-y-6">
-        
+
         {/* Quick Actions / Stats */}
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-3">
@@ -146,28 +146,25 @@ function EmployerWalletPage() {
             ) : (
               transactions.map((tx) => (
                 <div key={tx.id} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-4 active:scale-[0.98] transition-all">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-                    tx.type === 'DEPOSIT' || tx.type === 'REFUND' 
-                      ? 'bg-emerald-50 text-emerald-600' 
-                      : 'bg-rose-50 text-rose-600'
-                  }`}>
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${tx.type === 'DEPOSIT' || tx.type === 'REFUND'
+                    ? 'bg-emerald-50 text-emerald-600'
+                    : 'bg-rose-50 text-rose-600'
+                    }`}>
                     {tx.type === 'DEPOSIT' || tx.type === 'REFUND' ? <TrendingUp className="w-6 h-6" /> : <TrendingDown className="w-6 h-6" />}
                   </div>
-                  
+
                   <div className="flex-1 min-w-0">
                     <p className="text-[14px] font-bold text-slate-900 truncate">{tx.description || (tx.type === 'DEPOSIT' ? 'Nạp tiền' : 'Giao dịch')}</p>
                     <p className="text-[11px] text-slate-500 font-medium">{format(tx.createdAt, 'HH:mm, dd/MM/yyyy', { locale: vi })}</p>
                   </div>
 
                   <div className="text-right">
-                    <p className={`text-[15px] font-extrabold ${
-                      tx.type === 'DEPOSIT' || tx.type === 'REFUND' ? 'text-emerald-600' : 'text-rose-600'
-                    }`}>
-                      {tx.type === 'DEPOSIT' || tx.type === 'REFUND' ? '+' : '-'}{tx.amount.toLocaleString()}đ
+                    <p className={`text-[15px] font-extrabold ${tx.type === 'DEPOSIT' || tx.type === 'REFUND' ? 'text-emerald-600' : 'text-rose-600'
+                      }`}>
+                      {tx.type === 'DEPOSIT' || tx.type === 'REFUND' ? '+' : '-'}{Math.abs(tx.amount).toLocaleString()}đ
                     </p>
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
-                      tx.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
-                    }`}>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${tx.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
+                      }`}>
                       {tx.status === 'COMPLETED' ? 'Thành công' : 'Đang xử lý'}
                     </span>
                   </div>
@@ -185,7 +182,7 @@ function EmployerWalletPage() {
               <h4 className="text-white font-bold mb-1">Cần hỗ trợ về thanh toán?</h4>
               <p className="text-indigo-100 text-[12px]">Liên hệ ngay với bộ phận CSKH để được giải đáp thắc mắc.</p>
             </div>
-            <button 
+            <button
               onClick={() => navigate({ to: '/support-center' })}
               className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-indigo-600 shrink-0 shadow-lg"
             >

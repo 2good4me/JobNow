@@ -6,6 +6,27 @@ import type { Conversation } from '@jobnow/types';
 import { getConversationUnreadCount } from '../services/chatService';
 
 import { useUserProfile } from '../hooks/useUserProfile';
+import { useState } from 'react';
+
+function ChatAvatar({ avatar, displayName, isSelected }: { avatar?: string | null; displayName: string; isSelected: boolean }) {
+    const [imgError, setImgError] = useState(false);
+    const hasAvatar = avatar && avatar !== 'not found' && !imgError;
+
+    return (
+        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm transition-transform group-hover:scale-105 ${isSelected ? 'bg-blue-600' : 'bg-slate-700'}`}>
+            {hasAvatar ? (
+                <img 
+                    src={avatar} 
+                    alt={displayName} 
+                    className="w-full h-full rounded-full object-cover" 
+                    onError={() => setImgError(true)}
+                />
+            ) : (
+                displayName.charAt(0).toUpperCase()
+            )}
+        </div>
+    );
+}
 
 interface ChatListProps {
     userId: string;
@@ -48,16 +69,8 @@ function ChatListItem({
             className={`p-4 flex items-center cursor-pointer transition-all duration-200 border-b border-gray-100/50 dark:border-gray-800/50 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 ${isSelected ? 'bg-blue-50/80 dark:bg-blue-900/20 ring-1 ring-inset ring-blue-100 dark:ring-blue-900/30 shadow-sm' : ''
                 }`}
         >
-            {/* Avatar */}
             <div className="relative group">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm transition-transform group-hover:scale-105 ${isSelected ? 'bg-blue-600' : 'bg-slate-700'
-                    }`}>
-                    {avatar ? (
-                        <img src={avatar} alt={displayName} className="w-full h-full rounded-full object-cover" />
-                    ) : (
-                        displayName.charAt(0).toUpperCase()
-                    )}
-                </div>
+                <ChatAvatar avatar={avatar} displayName={displayName} isSelected={isSelected} />
                 {unreadCount > 0 && (
                     <div className="absolute -top-1 -right-1 min-w-[20px] h-5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center px-1 border-2 border-white shadow-sm transition-transform scale-100 animate-in zoom-in">
                         {unreadCount > 99 ? '99+' : unreadCount}

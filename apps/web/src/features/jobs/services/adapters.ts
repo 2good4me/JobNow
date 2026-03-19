@@ -116,5 +116,6 @@ export function mapApplicationDocToApplication(id: string, data: Partial<Applica
         isLate: getValue(data, ['is_late', 'isLate']) as boolean | undefined,
         lateMinutes: getValue(data, ['late_minutes', 'lateMinutes']) as number | undefined,
         checkInTime: getValue(data, ['check_in_time', 'checkInTime']),
+        checkOutTime: getValue(data, ['check_out_time', 'checkOutTime']),
     };
 }

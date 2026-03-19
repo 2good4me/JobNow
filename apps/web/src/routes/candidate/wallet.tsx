@@ -158,7 +158,7 @@ function CandidateWalletPage() {
                     <p className={`text-[15px] font-extrabold ${
                       tx.type === 'DEPOSIT' || tx.type === 'PAYMENT' ? 'text-emerald-600' : 'text-rose-600'
                     }`}>
-                      {tx.type === 'DEPOSIT' || tx.type === 'PAYMENT' ? '+' : '-'}{tx.amount.toLocaleString()}đ
+                      {tx.type === 'DEPOSIT' || tx.type === 'PAYMENT' ? '+' : '-'}{Math.abs(tx.amount).toLocaleString()}đ
                     </p>
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
                       tx.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
