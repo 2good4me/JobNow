@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useWalletBalance, useTransactionHistory } from '@/features/wallet/hooks/useWallet';
@@ -17,10 +18,14 @@ import { vi } from 'date-fns/locale';
 import { useState } from 'react';
 import { DepositBottomSheet } from './-components/wallet/DepositBottomSheet';
 import { WithdrawBottomSheet } from './-components/wallet/WithdrawBottomSheet';
+=======
+import { createFileRoute, Outlet } from '@tanstack/react-router';
+>>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
 
 export const Route = createFileRoute('/employer/wallet')({
-  component: EmployerWalletPage,
+  component: () => <Outlet />,
 });
+<<<<<<< HEAD
 
 function EmployerWalletPage() {
   const navigate = useNavigate();
@@ -211,3 +216,5 @@ function EmployerWalletPage() {
     </div>
   );
 }
+=======
+>>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b

@@ -54,12 +54,12 @@ export function RecentPostedJobs({ jobs, isLoading, onViewAll }: RecentPostedJob
   /* ── Empty ────────────────────────────────────── */
   if (displayedJobs.length === 0) {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 p-6 text-center">
-        <div className="w-14 h-14 bg-slate-50 rounded-xl flex items-center justify-center mx-auto mb-3 border border-slate-100">
-          <Briefcase className="w-5 h-5 text-slate-300" />
+      <div className="bg-white dark:bg-[#1E293B] rounded-xl border border-slate-200 dark:border-slate-700 p-6 text-center transition-colors duration-300">
+        <div className="w-14 h-14 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center mx-auto mb-3 border border-slate-100 dark:border-slate-700/50">
+          <Briefcase className="w-5 h-5 text-slate-300 dark:text-slate-500" />
         </div>
-        <p className="font-semibold text-slate-700 text-sm mb-1">Chưa có hoạt động</p>
-        <p className="text-slate-500 text-xs">Đăng tin tuyển dụng để bắt đầu.</p>
+        <p className="font-semibold text-slate-700 dark:text-slate-200 text-sm mb-1">Chưa có hoạt động</p>
+        <p className="text-slate-500 dark:text-slate-400 text-xs">Đăng tin tuyển dụng để bắt đầu.</p>
       </div>
     );
   }
@@ -69,11 +69,11 @@ export function RecentPostedJobs({ jobs, isLoading, onViewAll }: RecentPostedJob
     <div>
       {/* Section header */}
       <div className="flex items-center justify-between mb-3">
-        <h2 className="font-bold text-slate-900 text-base">Tin tuyển dụng gần đây</h2>
+        <h2 className="font-bold text-slate-900 dark:text-slate-100 text-base">Tin tuyển dụng gần đây</h2>
         {onViewAll && (
           <button
             onClick={onViewAll}
-            className="text-sm font-medium text-sky-700 hover:text-sky-800 transition-colors flex items-center gap-0.5"
+            className="text-sm font-medium text-sky-700 dark:text-sky-500 hover:text-sky-800 dark:hover:text-sky-400 transition-colors flex items-center gap-0.5"
           >
             Xem tất cả
             <ChevronRight className="w-4 h-4" />
@@ -82,8 +82,8 @@ export function RecentPostedJobs({ jobs, isLoading, onViewAll }: RecentPostedJob
       </div>
 
       {/* Cards */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="divide-y divide-slate-100">
+      <div className="bg-white dark:bg-[#1E293B] rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden transition-colors duration-300">
+        <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
           {displayedJobs.map((job) => {
             const timeAgo = getRelativeTimeString(job.createdAt);
             const statusKey = (job.status || 'ACTIVE').toUpperCase();
@@ -93,11 +93,11 @@ export function RecentPostedJobs({ jobs, isLoading, onViewAll }: RecentPostedJob
               <button
                 key={job.id}
                 onClick={() => navigate({ to: '/employer/job-detail', search: { jobId: job.id } as any })}
-                className="w-full flex flex-col gap-3 p-4 transition-colors hover:bg-slate-50 active:bg-slate-100 text-left group cursor-pointer"
+                className="w-full flex flex-col gap-3 p-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 active:bg-slate-100 dark:active:bg-slate-800/80 text-left group cursor-pointer"
               >
                 {/* Top row: title + badge */}
                 <div className="flex justify-between items-start gap-3">
-                  <h3 className="font-semibold text-slate-900 text-sm line-clamp-1 group-hover:text-sky-700 transition-colors">
+                  <h3 className="font-semibold text-slate-900 dark:text-slate-200 text-sm line-clamp-1 group-hover:text-sky-700 dark:group-hover:text-sky-400 transition-colors">
                     {job.title}
                   </h3>
                   <span className={`shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium border ${style.bg} ${style.text}`}>

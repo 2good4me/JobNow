@@ -182,11 +182,15 @@ function JobManagementRoute() {
   }, []);
 
   return (
+<<<<<<< HEAD
     <div className="flex flex-col min-h-screen bg-[#F8FAFC] pb-24 max-w-lg mx-auto w-full">
+=======
+    <div className="flex flex-col min-h-screen bg-[#F8FAFC] dark:bg-slate-900 pb-24 transition-colors duration-300">
+>>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
       {/* Header */}
-      <header className="sticky top-0 z-30 flex items-center bg-white/90 backdrop-blur-xl px-4 py-4 border-b border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)]">
+      <header className="sticky top-0 z-30 flex items-center bg-white/90 dark:bg-[#1f2937] backdrop-blur-xl px-4 py-4 border-b border-slate-100 dark:border-slate-800 shadow-[0_4px_20px_rgb(0,0,0,0.02)] transition-colors duration-300">
         <div className="flex-1" />
-        <h1 className="text-lg font-bold tracking-tight flex-1 flex justify-center text-slate-900">
+        <h1 className="text-lg font-bold tracking-tight flex-1 flex justify-center text-slate-900 dark:text-slate-100">
           Quản lý tin đăng
         </h1>
         <div className="flex flex-1 items-center justify-end gap-2 text-slate-500">
@@ -224,11 +228,11 @@ function JobManagementRoute() {
       </div>
 
       {/* Tabs Section */}
-      <div className="sticky top-[60px] z-20 px-4 py-3 bg-[#F8FAFC]/90 backdrop-blur-md">
-        <div className="flex h-12 w-full items-center justify-center rounded-2xl bg-slate-200/60 p-1 relative shadow-inner">
+      <div className="sticky top-[60px] z-20 px-4 py-3 bg-[#F8FAFC]/90 dark:bg-slate-900/90 backdrop-blur-md transition-colors duration-300">
+        <div className="flex h-12 w-full items-center justify-center rounded-2xl bg-slate-200/60 dark:bg-slate-800/80 p-1 relative shadow-inner">
           {/* Active Tab Background Pill */}
           <div
-            className="absolute h-10 bg-white rounded-xl shadow-sm transition-all duration-300 ease-out"
+            className="absolute h-10 bg-white dark:bg-slate-700/80 rounded-xl shadow-sm transition-all duration-300 ease-out"
             style={{
               width: 'calc(33.33% - 6px)',
               left: activeTab === 'active' ? '4px' : activeTab === 'pending' ? 'calc(33.33% + 2px)' : 'calc(66.66% + 0px)'
@@ -241,8 +245,8 @@ function JobManagementRoute() {
               className={`
                 relative z-10 flex h-full grow items-center justify-center rounded-xl px-2 text-[14px] font-bold transition-colors duration-200
                 ${activeTab === tab.value
-                  ? 'text-indigo-600'
-                  : 'text-slate-500 hover:text-slate-700'
+                  ? 'text-indigo-600 dark:text-indigo-400'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                 }
               `}
             >
@@ -274,8 +278,8 @@ function JobManagementRoute() {
               <div
                 key={job.id}
                 onClick={() => navigate({ to: '/employer/job-detail', search: { jobId: job.id } })}
-                className={`relative flex flex-col rounded-2xl bg-white p-4 border transition-all duration-200 cursor-pointer
-                  ${isClosed ? 'border-slate-100 opacity-80' : 'border-slate-200 hover:border-indigo-200 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.99] active:bg-slate-50'}
+                className={`relative flex flex-col rounded-2xl bg-white dark:bg-[#1E293B] p-4 border transition-all duration-200 cursor-pointer
+                  ${isClosed ? 'border-slate-100 dark:border-slate-800 opacity-80' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-200 dark:hover:border-indigo-500 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.99] active:bg-slate-50 dark:active:bg-slate-800'}
                 `}
                 style={{ animationDelay: `${index * 50}ms` }}
               >
@@ -283,40 +287,43 @@ function JobManagementRoute() {
                 <div className="flex justify-between items-start mb-3 gap-2">
                   <div className="flex flex-col gap-2 flex-1 pr-8">
                     <span className={`inline-flex w-fit items-center rounded-lg px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide
-                      ${isClosed ? 'bg-slate-100 text-slate-600' :
-                        status === 'DRAFT' ? 'bg-amber-100 text-amber-700' :
-                          'bg-emerald-100 text-emerald-700'
+                      ${isClosed ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400' :
+                        status === 'DRAFT' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-500' :
+                          'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
                       }`}>
                       {isClosed ? 'Đã đóng' : status === 'DRAFT' ? 'Chủ duyệt' : 'Đang mở'}
                     </span>
-                    <h3 className="text-base font-bold text-slate-900 leading-snug break-words">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 leading-snug break-words">
                       {job.title}
                     </h3>
                   </div>
                 </div>
 
-                {/* Settings Menu Button - Absolute positioned to top right */}
                 <div className="absolute top-3 right-3">
                   <button
                     onClick={(e) => { e.stopPropagation(); setOpenMenuId(isMenuOpen ? null : job.id); }}
-                    className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 active:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                    className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 dark:hover:bg-slate-800 active:bg-slate-100 dark:active:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                   >
                     <MoreVertical className="w-5 h-5" />
                   </button>
 
                   {/* Dropdown Menu */}
                   {isMenuOpen && (
-                    <div className="absolute top-10 right-0 w-48 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] border border-slate-100 z-30 py-2 origin-top-right animate-in fade-in zoom-in-95 duration-200">
-                      <button onClick={(e) => { e.stopPropagation(); handleEdit(job.id); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition-colors">
+                    <div className="absolute top-10 right-0 w-48 bg-white dark:bg-[#1E293B] rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] border border-slate-100 dark:border-slate-700 z-30 py-2 origin-top-right animate-in fade-in zoom-in-95 duration-200">
+                      <button onClick={(e) => { e.stopPropagation(); handleEdit(job.id); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-indigo-600 transition-colors">
                         <Edit2 className="w-4 h-4" /> Sửa tin
                       </button>
+<<<<<<< HEAD
                       <button onClick={(e) => { e.stopPropagation(); navigate({ to: '/employer/post-job', search: { duplicateJobId: job.id } as any }); setOpenMenuId(null); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors">
                         <Plus className="w-4 h-4" /> Nhân bản tin
                       </button>
                       <button onClick={(e) => { e.stopPropagation(); handleShare(job.id); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-emerald-600 transition-colors">
+=======
+                      <button onClick={(e) => { e.stopPropagation(); handleShare(job.id); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-emerald-600 transition-colors">
+>>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
                         <Share2 className="w-4 h-4" /> Chia sẻ
                       </button>
-                      <div className="h-px bg-slate-100 my-1"></div>
+                      <div className="h-px bg-slate-100 dark:bg-slate-700 my-1"></div>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleToggleStatus(job.id, status); }}
                         className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition-colors
@@ -332,7 +339,7 @@ function JobManagementRoute() {
 
                 {/* Salary */}
                 <div className="mb-4">
-                  <p className={`text-[15px] font-bold ${isClosed ? 'text-slate-500' : 'text-emerald-600'}`}>
+                  <p className={`text-[15px] font-bold ${isClosed ? 'text-slate-500 dark:text-slate-400' : 'text-emerald-600 dark:text-emerald-500'}`}>
                     {formatSalary(job.salary, (job as any).salary_type || job.salaryType)}
                   </p>
                 </div>
@@ -340,19 +347,19 @@ function JobManagementRoute() {
                 {/* Metrics & Location */}
                 <div className="flex flex-col gap-2.5 mb-5">
                   {job.location?.address && (
-                    <div className="flex items-start gap-1.5 text-slate-500 text-[13px] font-medium leading-relaxed">
-                      <MapPin className="w-4 h-4 shrink-0 mt-0.5 text-slate-400" />
+                    <div className="flex items-start gap-1.5 text-slate-500 dark:text-slate-400 text-[13px] font-medium leading-relaxed">
+                      <MapPin className="w-4 h-4 shrink-0 mt-0.5 text-slate-400 dark:text-slate-500" />
                       <span className="line-clamp-2">{job.location.address}</span>
                     </div>
                   )}
 
                   {/* Inline Metrics */}
                   <div className="flex items-center gap-3 text-[13px] font-medium mt-1">
-                    <div className="flex items-center gap-1.5 text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
+                    <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-100 dark:border-slate-700">
                       <Eye className="w-3.5 h-3.5" />
                       <span>{viewCount} lượt xem</span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100/50">
+                    <div className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2.5 py-1 rounded-lg border border-indigo-100/50 dark:border-indigo-800/50">
                       <Users className="w-3.5 h-3.5" />
                       <span>{appCount} ứng viên</span>
                     </div>
@@ -363,7 +370,7 @@ function JobManagementRoute() {
                 <div className="flex gap-3">
                   <button
                     onClick={(e) => { e.stopPropagation(); navigate({ to: '/employer/applicants', search: { jobId: job.id } }); }}
-                    className="flex-1 flex items-center justify-center h-11 rounded-xl border border-indigo-200 bg-white text-indigo-600 text-sm font-bold hover:bg-indigo-50 active:bg-indigo-100 transition-colors"
+                    className="flex-1 flex items-center justify-center h-11 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-[#1E293B] text-indigo-600 dark:text-indigo-400 text-sm font-bold hover:bg-indigo-50 dark:hover:bg-indigo-900/20 active:bg-indigo-100 dark:active:bg-indigo-800/30 transition-colors"
                   >
                     Quản lý ứng viên
                   </button>

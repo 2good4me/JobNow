@@ -76,6 +76,7 @@ function EmployerDashboard() {
   }
 
   return (
+<<<<<<< HEAD
     <div className="min-h-screen bg-[#F5F7FF] pb-28">
 
       {/* ── Hero Header ── */}
@@ -83,6 +84,17 @@ function EmployerDashboard() {
         {/* Decoration */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
         <div className="absolute bottom-0 left-0 w-40 h-40 bg-blue-400/10 rounded-full translate-y-1/2 -translate-x-1/4" />
+=======
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-28 transition-colors duration-300">
+
+      {/* ── 1. Header — Clean, flat, white ─────────── */}
+      <header className="bg-white dark:bg-[#1f2937] px-5 pt-8 pb-5 transition-colors duration-300">
+        <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">{greeting},</p>
+        <h1 className="text-slate-900 dark:text-slate-100 text-xl font-bold tracking-tight mt-0.5 line-clamp-1">
+          {companyName}
+        </h1>
+      </header>
+>>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
 
         <div className="relative z-10">
           {/* Top bar */}

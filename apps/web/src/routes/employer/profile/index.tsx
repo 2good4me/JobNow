@@ -6,18 +6,29 @@ import { useMemo, useState, useEffect } from 'react';
 import { getFollowerCount, getFollowingCount } from '@/features/auth/services/followService';
 import type { ComponentType } from 'react';
 import {
+<<<<<<< HEAD
   BadgeCheck,
+=======
+>>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
   Briefcase,
   Building2,
   ChevronRight,
+  Eye,
+  EyeOff,
   FileCheck2,
+  LifeBuoy,
   LogOut,
   MapPin,
+  Menu,
   Pencil,
   Phone,
   Settings,
   ShieldCheck,
+<<<<<<< HEAD
   Wallet,
+=======
+  X,
+>>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
 } from 'lucide-react';
 import { ReputationStatsCard } from '@/features/auth/components/ReputationStatsCard';
 import { AchievementBadges, PREDEFINED_ACHIEVEMENTS } from '@/features/auth/components/AchievementBadges';
@@ -88,6 +99,8 @@ function EmployerProfilePage() {
   const { userProfile, signOut } = useAuth();
   const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showBalance, setShowBalance] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const employerId = userProfile?.uid;
 
@@ -134,13 +147,6 @@ function EmployerProfilePage() {
   }
 
   const verificationStatus = userProfile.verification_status || 'UNVERIFIED';
-  const verificationBadge = verificationStatus === 'VERIFIED'
-    ? { color: 'bg-emerald-500', text: 'Đã xác minh' }
-    : verificationStatus === 'PENDING'
-      ? { color: 'bg-amber-500', text: 'Đang xét duyệt' }
-      : { color: 'bg-slate-400', text: 'Chưa xác minh' };
-
-  const displayName = userProfile.company_name || userProfile.full_name || 'Doanh nghiệp';
   const avatarInitial = (userProfile.company_name?.[0] || userProfile.full_name?.[0] || 'D').toUpperCase();
   const profileAchievements = ((userProfile as any).achievementBadges || (userProfile as any).achievementsData || []) as ProfileAchievement[];
   const achievements = profileAchievements.length > 0
@@ -161,7 +167,11 @@ function EmployerProfilePage() {
     }));
 
   return (
+<<<<<<< HEAD
     <div className="flex flex-col min-h-[100dvh] bg-slate-50 pb-24 max-w-lg mx-auto w-full relative shadow-sm">
+=======
+    <div className="pb-24 bg-slate-50 dark:bg-[#0f172a] min-h-[100dvh] transition-colors duration-300">
+>>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
       {/* ── Navy Header ── */}
       <div className="bg-gradient-to-br from-[#1e3a5f] to-[#0f172a] pt-12 pb-16 px-5 rounded-b-[2.5rem] shadow-xl relative overflow-hidden">
         <div className="absolute -top-20 -right-20 w-64 h-64 bg-blue-400/10 rounded-full blur-3xl" />
@@ -170,33 +180,76 @@ function EmployerProfilePage() {
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-lg font-bold text-white/90 tracking-tight">Tài khoản</h1>
+<<<<<<< HEAD
+=======
+            <button 
+              type="button"
+              onClick={() => setIsSidebarOpen(true)}
+              className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-md hover:bg-white/20 transition-colors"
+            >
+              <Menu className="w-5 h-5 text-white" />
+            </button>
+>>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
           </div>
 
-          <div className="flex flex-col items-center">
-            <div className="relative mb-4">
-              <div className="w-[88px] h-[88px] bg-white rounded-2xl p-1 shadow-xl">
-                {userProfile.company_logo_url ? (
-                  <img
-                    src={userProfile.company_logo_url}
-                    alt="Company logo"
-                    className="w-full h-full rounded-xl object-cover bg-slate-100"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="w-full h-full rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center">
-                    <span className="text-3xl font-bold text-white">{avatarInitial}</span>
-                  </div>
-                )}
-              </div>
-              <div className={`absolute -bottom-1.5 -right-1.5 ${verificationBadge.color} text-white p-1.5 rounded-full border-2 border-[#1e3a5f] shadow-md`}>
-                <BadgeCheck className="w-4 h-4" />
+          <div className="flex items-center gap-4">
+            {/* Cột trái: Avatar */}
+            <div className="flex flex-col items-center shrink-0">
+              <div className="relative mb-2">
+                <div className="w-[66px] h-[66px] rounded-full p-[2px] bg-white/20 backdrop-blur-md shadow-xl">
+                  {userProfile.company_logo_url ? (
+                    <img
+                      src={userProfile.company_logo_url}
+                      alt="Company logo"
+                      className="w-full h-full rounded-full object-cover bg-slate-100"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center">
+                      <span className="text-2xl font-bold text-white">{avatarInitial}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-500 to-cyan-400 text-white px-2.5 py-0.5 rounded-full shadow-lg border border-[#1e3a5f] z-10 flex items-center gap-1">
+                  <span className="text-[10px] font-bold uppercase whitespace-nowrap">Nâng Hạng</span>
+                </div>
               </div>
             </div>
 
-            <h2 className="text-xl font-bold text-white mb-1.5">{displayName}</h2>
-            <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${verificationBadge.color} text-white`}>
-              {verificationBadge.text}
-            </span>
+            {/* Cột phải: Thẻ Số Dư */}
+            <Link 
+              to="/employer/wallet"
+              className="flex-1 min-w-0 bg-white/10 hover:bg-white/15 active:bg-white/20 transition-all backdrop-blur-xl border border-white/20 hover:border-white/30 rounded-2xl p-3.5 shadow-2xl text-white block cursor-pointer active:scale-[0.98]"
+            >
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-1 text-[13px] font-medium text-white/90">
+                  <span className="opacity-90">Tổng số dư VND</span>
+                  <ChevronRight className="w-4 h-4 opacity-80" />
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowBalance(!showBalance);
+                  }}
+                  className="text-white/60 hover:text-white transition-colors relative z-10 p-1 -m-1"
+                >
+                  {showBalance ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                </button>
+              </div>
+              <div className="mb-2.5">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl font-extrabold tracking-tight">
+                    {showBalance ? '330,288' : '*******'}
+                  </span>
+                  <span className="text-sm font-bold opacity-90">VND</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 text-cyan-300 text-[10px] font-bold uppercase tracking-wider">
+                Quản lý dòng tiền <ChevronRight className="w-3 h-3" />
+              </div>
+            </Link>
           </div>
         </div>
       </div>
@@ -229,7 +282,7 @@ function EmployerProfilePage() {
         </Box>
 
         {/* Verification badges */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+        <div className="bg-white dark:bg-[#1e293b] rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-300">
           <div className="flex flex-wrap gap-2 mb-3">
             {verificationStatus === 'VERIFIED' && (
               <span className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
@@ -267,7 +320,7 @@ function EmployerProfilePage() {
             <ChevronRight className="h-4 w-4 text-indigo-500" />
           </Link>
 
-          <div className="space-y-2.5 text-sm text-slate-700">
+          <div className="space-y-2.5 text-sm text-slate-700 dark:text-slate-300">
             {userProfile.address_text && (
               <div className="flex items-center gap-2.5">
                 <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
@@ -290,7 +343,7 @@ function EmployerProfilePage() {
         </div>
 
         {/* Achievement Badges Section */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+        <div className="bg-white dark:bg-[#1e293b] rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-300">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-[13px] font-bold text-slate-400 uppercase tracking-wider">
               Huy Hiệu & Thành Tựu
@@ -311,7 +364,7 @@ function EmployerProfilePage() {
 
         {/* Active Jobs — progressive skeleton */}
         {isJobsLoading ? <JobsSkeleton /> : (
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+          <div className="bg-white dark:bg-[#1e293b] rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-300">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-[13px] font-bold text-slate-400 uppercase tracking-wider">
                 Đang tuyển ({stats.activeJobs})
@@ -330,16 +383,16 @@ function EmployerProfilePage() {
                     key={job.id}
                     to="/employer/applicants"
                     search={{ jobId: job.id }}
-                    className="block rounded-xl border border-slate-200 bg-slate-50/80 p-3 hover:bg-slate-100 transition-colors"
+                    className="block rounded-xl border border-slate-200 dark:border-slate-700/50 bg-slate-50/80 dark:bg-slate-800/50 p-3 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
-                          <Briefcase className="w-4 h-4 text-blue-600" />
+                        <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                          <Briefcase className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
-                          <h4 className="text-sm font-bold text-slate-800 line-clamp-1">{job.title}</h4>
-                          <p className="text-xs text-slate-500 mt-0.5">
+                          <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 line-clamp-1">{job.title}</h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                             {job.salary ? `${Number(job.salary).toLocaleString('vi-VN')}đ` : 'Thỏa thuận'}
                             {job.salaryType === 'HOURLY' ? '/giờ' : job.salaryType === 'PER_SHIFT' ? '/ca' : '/tháng'}
                           </p>
@@ -354,6 +407,7 @@ function EmployerProfilePage() {
           </div>
         )}
 
+<<<<<<< HEAD
         {/* Admin Actions */}
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
           <h3 className="text-[13px] font-bold text-slate-400 uppercase tracking-wider mb-3">Quản trị</h3>
@@ -387,23 +441,16 @@ function EmployerProfilePage() {
             </Link>
           </div>
         </div>
+=======
+>>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
 
-        {/* Logout */}
-        <button
-          type="button"
-          onClick={handleLogout}
-          disabled={isLoggingOut}
-          className="w-full flex items-center justify-center gap-2 p-4 bg-white rounded-2xl shadow-sm border border-red-100 active:scale-[0.98] transition-all hover:bg-red-50 text-red-600 disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          <LogOut className="w-5 h-5" />
-          <span className="font-semibold text-[15px]">{isLoggingOut ? 'Đang đăng xuất...' : 'Đăng xuất'}</span>
-        </button>
 
         <p className="text-center text-xs text-slate-400 mt-6 mb-4 font-medium">
           JobNow v1.0.0
         </p>
       </div>
 
+<<<<<<< HEAD
       <FollowListDialog
         isOpen={followDialog.isOpen}
         onClose={() => setFollowDialog(prev => ({ ...prev, isOpen: false }))}
@@ -411,6 +458,80 @@ function EmployerProfilePage() {
         type={followDialog.type}
         title={followDialog.type === 'followers' ? 'Người đang theo dõi bạn' : 'Những người bạn đang theo dõi'}
       />
+=======
+      {/* ── Sidebar Overlay ── */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-[100] backdrop-blur-sm transition-opacity" 
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+      
+      {/* ── Sidebar ── */}
+      <div 
+        className={`fixed top-0 right-0 h-[100dvh] w-72 bg-white dark:bg-[#0f172a] z-[110] shadow-2xl transform transition-transform duration-300 ease-out flex flex-col ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}
+      >
+        <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Cài đặt</h2>
+          <button 
+            type="button"
+            onClick={() => setIsSidebarOpen(false)}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+          >
+            <X className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+          </button>
+        </div>
+        <div className="p-4 flex-1 overflow-y-auto space-y-2">
+          <Link 
+            to="/employer/profile/edit" 
+            onClick={() => setIsSidebarOpen(false)}
+            className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
+          >
+            <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50 transition-colors">
+              <Pencil className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <span className="font-semibold text-sm text-slate-700 dark:text-slate-300">Chỉnh sửa hồ sơ</span>
+          </Link>
+          <Link 
+            to="/employer/profile/settings" 
+            onClick={() => setIsSidebarOpen(false)}
+            className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
+          >
+            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center group-hover:bg-slate-200 dark:group-hover:bg-slate-700 transition-colors">
+              <Settings className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+            </div>
+            <span className="font-semibold text-sm text-slate-700 dark:text-slate-300">Cài đặt & Bảo mật</span>
+          </Link>
+          <Link 
+            to="/employer/profile/support" 
+            onClick={() => setIsSidebarOpen(false)}
+            className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
+          >
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/50 transition-colors">
+              <LifeBuoy className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <span className="font-semibold text-sm text-slate-700 dark:text-slate-300">Hỗ trợ</span>
+          </Link>
+          
+          <div className="h-px bg-slate-100 dark:bg-slate-800 my-4 mx-2" />
+          
+          <button 
+            type="button"
+            onClick={() => {
+              setIsSidebarOpen(false);
+              handleLogout();
+            }}
+            disabled={isLoggingOut}
+            className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors group disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center group-hover:bg-red-100 dark:group-hover:bg-red-900/40 transition-colors">
+              <LogOut className="w-4 h-4" />
+            </div>
+            <span className="font-semibold text-sm">{isLoggingOut ? 'Đang đăng xuất...' : 'Đăng xuất'}</span>
+          </button>
+        </div>
+      </div>
+>>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
     </div>
   );
 }
