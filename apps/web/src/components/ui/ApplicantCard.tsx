@@ -188,8 +188,8 @@ export function ApplicantCard({
   const { user } = useAuth();
   const [reviewOpen, setReviewOpen] = useState(false);
 
-  const canApprove = !['REVIEWED', 'APPROVED', 'CHECKED_IN', 'WORK_FINISHED', 'CASH_CONFIRMATION', 'COMPLETED', 'CANCELLED'].includes(status);
-  const canReject = !['REJECTED', 'WORK_FINISHED', 'CASH_CONFIRMATION', 'COMPLETED', 'CANCELLED'].includes(status);
+  const canApprove = ['NEW', 'PENDING'].includes(status);
+  const canReject = ['NEW', 'PENDING'].includes(status);
   const canPay = status === 'WORK_FINISHED';
   const canReview = status === 'COMPLETED';
   const canForceEnd = status === 'CHECKED_IN';

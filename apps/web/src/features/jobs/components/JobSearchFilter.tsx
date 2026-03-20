@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Search, MapPin, SlidersHorizontal, Map } from 'lucide-react';
 import type { ShiftTimeBucket } from '@jobnow/types';
 
@@ -60,6 +61,19 @@ export function JobSearchFilter({
     onCategoryChange,
     onShiftTimeChange,
 }: JobSearchFilterProps) {
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    const handleClearAll = () => {
+        onKeywordChange('');
+        onRadiusChange(5000); // Mặc định 5km
+        onSalaryMinChange(undefined);
+        onSalaryMaxChange(undefined);
+        onCategoryChange(undefined);
+        onShiftTimeChange(undefined);
+    };
+
+    const hasFilters = Boolean(keyword || salaryMin || salaryMax || categoryId || shiftTime || radius !== 5000);
+
     return (
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 mb-8">
             <div className="flex flex-col gap-3">
@@ -93,53 +107,71 @@ export function JobSearchFilter({
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                    <input
-                        type="number"
-                        min={0}
-                        value={salaryMin ?? ''}
-                        onChange={(e) => onSalaryMinChange(toOptionalNumber(e.target.value))}
-                        className="py-2 px-3 bg-slate-50 rounded-xl text-sm border border-transparent focus:border-primary-200 focus:bg-white focus:outline-none"
-                        placeholder="Lương tối thiểu"
-                    />
-                    <input
-                        type="number"
-                        min={0}
-                        value={salaryMax ?? ''}
-                        onChange={(e) => onSalaryMaxChange(toOptionalNumber(e.target.value))}
-                        className="py-2 px-3 bg-slate-50 rounded-xl text-sm border border-transparent focus:border-primary-200 focus:bg-white focus:outline-none"
-                        placeholder="Lương tối đa"
-                    />
-                    <select
-                        value={categoryId ?? ''}
-                        onChange={(e) => onCategoryChange(e.target.value || undefined)}
-                        className="py-2 px-3 bg-slate-50 rounded-xl text-sm border border-transparent focus:border-primary-200 focus:bg-white focus:outline-none"
-                    >
-                        {CATEGORY_OPTIONS.map((opt) => (
-                            <option key={opt.value || 'all'} value={opt.value}>{opt.label}</option>
-                        ))}
-                    </select>
-                    <select
-                        value={shiftTime ?? ''}
-                        onChange={(e) => onShiftTimeChange((e.target.value || undefined) as ShiftTimeBucket | undefined)}
-                        className="py-2 px-3 bg-slate-50 rounded-xl text-sm border border-transparent focus:border-primary-200 focus:bg-white focus:outline-none"
-                    >
-                        {SHIFT_OPTIONS.map((opt) => (
-                            <option key={opt.value || 'all'} value={opt.value}>{opt.label}</option>
-                        ))}
-                    </select>
-                </div>
+                {isExpanded && (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <input
+                            type="number"
+                            min={0}
+                            value={salaryMin ?? ''}
+                            onChange={(e) => onSalaryMinChange(toOptionalNumber(e.target.value))}
+                            className="py-2 px-3 bg-slate-50 rounded-xl text-sm border border-transparent focus:border-primary-200 focus:bg-white focus:outline-none"
+                            placeholder="Lương tối thiểu"
+                        />
+                        <input
+                            type="number"
+                            min={0}
+                            value={salaryMax ?? ''}
+                            onChange={(e) => onSalaryMaxChange(toOptionalNumber(e.target.value))}
+                            className="py-2 px-3 bg-slate-50 rounded-xl text-sm border border-transparent focus:border-primary-200 focus:bg-white focus:outline-none"
+                            placeholder="Lương tối đa"
+                        />
+                        <select
+                            value={categoryId ?? ''}
+                            onChange={(e) => onCategoryChange(e.target.value || undefined)}
+                            className="py-2 px-3 bg-slate-50 rounded-xl text-sm border border-transparent focus:border-primary-200 focus:bg-white focus:outline-none"
+                        >
+                            {CATEGORY_OPTIONS.map((opt) => (
+                                <option key={opt.value || 'all'} value={opt.value}>{opt.label}</option>
+                            ))}
+                        </select>
+                        <select
+                            value={shiftTime ?? ''}
+                            onChange={(e) => onShiftTimeChange((e.target.value || undefined) as ShiftTimeBucket | undefined)}
+                            className="py-2 px-3 bg-slate-50 rounded-xl text-sm border border-transparent focus:border-primary-200 focus:bg-white focus:outline-none"
+                        >
+                            {SHIFT_OPTIONS.map((opt) => (
+                                <option key={opt.value || 'all'} value={opt.value}>{opt.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
 
-                <div className="flex gap-2">
-                    <button className="flex-grow md:flex-none flex items-center justify-center px-6 py-3 bg-primary-600 text-white rounded-xl shadow-sm hover:bg-primary-500 hover:shadow-md transition-all active:scale-[0.98] font-semibold cursor-pointer">
-                        Tìm kiếm
-                    </button>
-                    <button className="flex items-center justify-center p-3 text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors border border-transparent hover:border-slate-200 cursor-pointer" title="Bộ lọc nâng cao">
-                        <SlidersHorizontal className="w-5 h-5" />
-                    </button>
-                    <button className="flex items-center justify-center p-3 text-primary-600 bg-primary-50 border border-primary-100 hover:bg-primary-100 rounded-xl transition-colors cursor-pointer" title="Xem trên bản đồ">
-                        <Map className="w-5 h-5" />
-                    </button>
+                <div className="flex gap-2 justify-between items-center mt-1">
+                    <div className="flex gap-2">
+                        <button 
+                            onClick={() => setIsExpanded(!isExpanded)}
+                            className={`flex items-center justify-center p-3 sm:px-4 sm:py-2.5 rounded-xl transition-colors border cursor-pointer text-sm font-medium ${isExpanded ? 'bg-primary-50 text-primary-600 border-primary-200' : 'text-slate-600 bg-slate-50 hover:bg-slate-100 border-transparent hover:border-slate-200'}`} 
+                            title="Bộ lọc nâng cao"
+                        >
+                            <SlidersHorizontal className="w-5 h-5 sm:w-4 sm:h-4 sm:mr-2" />
+                            <span className="hidden sm:inline">Lọc nâng cao</span>
+                        </button>
+                        
+                        {hasFilters && (
+                            <button 
+                                onClick={handleClearAll}
+                                className="flex items-center justify-center px-4 py-2.5 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors text-sm font-medium cursor-pointer"
+                            >
+                                Xóa lọc
+                            </button>
+                        )}
+                    </div>
+                    
+                    <div className="flex gap-2">
+                        <button className="flex items-center justify-center p-3 text-primary-600 bg-primary-50 border border-primary-100 hover:bg-primary-100 rounded-xl transition-colors cursor-pointer" title="Xem trên bản đồ">
+                            <Map className="w-5 h-5" />
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

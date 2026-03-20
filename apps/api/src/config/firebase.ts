@@ -19,8 +19,8 @@ if (!admin.apps.length) {
             credential: admin.credential.cert(altServiceAccountPath)
         });
     } else {
-        console.log('Initializing Firebase with default credentials (likely environment variables)');
-        admin.initializeApp();
+        console.log('Initializing Firebase with default credentials & static projectId');
+        admin.initializeApp({ projectId: 'jobnow-80037' });
     }
 }
 

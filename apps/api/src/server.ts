@@ -5,6 +5,7 @@ import { env } from './config/env';
 import './config/firebase';
 import authRoutes from './routes/auth';
 import jobRoutes from './routes/jobs';
+import vnpayRoutes from './routes/vnpay';
 
 // Initialize Express app
 const app = express();
@@ -17,6 +18,7 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/jobs', jobRoutes);
+app.use('/api/vnpay', vnpayRoutes);
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'OK', service: 'JobNow API' });
 });

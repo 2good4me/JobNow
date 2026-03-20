@@ -18,6 +18,7 @@ function ShiftManagementPage() {
   const { data: applications = [] } = useGetEmployerApplications(employerId);
 
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
 
   // Only show active jobs that have shifts
   const activeJobs = useMemo(() =>
@@ -146,9 +147,68 @@ function ShiftManagementPage() {
                 </p>
               </div>
 
-              <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-2">Danh sách ca</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Danh sách ca</h3>
+                <div className="flex bg-slate-200/60 p-1 rounded-lg">
+                  <button 
+                    onClick={() => setViewMode('list')} 
+                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+                  >
+                    Danh sách
+                  </button>
+                  <button 
+                    onClick={() => setViewMode('calendar')} 
+                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${viewMode === 'calendar' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+                  >
+                    Lịch biểu
+                  </button>
+                </div>
+              </div>
 
-              {selectedJob?.shifts?.map((shift, index) => {
+              {viewMode === 'calendar' && selectedJob?.shifts && selectedJob.shifts.length > 0 && (
+                <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm mb-6 overflow-x-auto">
+                  <p className="text-xs text-slate-500 mb-4 font-medium italic">* Hiển thị lịch trình ca làm trong ngày (Từ 06:00 đến 24:00)</p>
+                  <div className="min-w-[300px] relative mt-2 border-l-2 border-slate-100 ml-12" style={{ height: `${(24 - 6) * 48}px` }}>
+                    {Array.from({ length: 24 - 6 + 1 }).map((_, i) => (
+                      <div key={i} className="absolute w-full border-t border-slate-100/50 flex items-center" style={{ top: `${i * 48}px` }}>
+                        <span className="absolute -left-12 text-[10px] text-slate-400 font-bold px-1 bg-white -mt-2">{String(i + 6).padStart(2, '0')}:00</span>
+                      </div>
+                    ))}
+                    
+                    {selectedJob.shifts.map((shift, index) => {
+                       const [startH, startM] = (shift.startTime || '00:00').split(':').map(Number);
+                       const [endH, endM] = (shift.endTime || '00:00').split(':').map(Number);
+                       
+                       const startOffset = (Math.max(6, startH) - 6 + (startM || 0)/60) * 48;
+                       const duration = (endH - startH + ((endM || 0) - (startM || 0))/60) * 48;
+                       
+                       const attendance = getShiftAttendance(selectedJobId, shift.id);
+                       const checkedInCount = attendance.filter(a => a.status === 'CHECKED_IN' || a.status === 'COMPLETED').length;
+
+                       return (
+                         <div 
+                           key={index} 
+                           className="absolute left-2 right-2 rounded-lg bg-blue-50/80 border-l-4 border-blue-500 p-2 overflow-hidden shadow-sm hover:shadow-md transition-all hover:bg-blue-100 cursor-pointer" 
+                           style={{ top: `${startOffset}px`, height: `${Math.max(30, duration)}px` }}
+                         >
+                           <div className="flex justify-between items-start">
+                             <p className="text-xs font-black text-blue-900 line-clamp-1">Ca {index + 1}: {shift.name}</p>
+                             <p className="text-[10px] font-bold text-blue-700 bg-white/60 px-1 rounded">{shift.startTime} - {shift.endTime}</p>
+                           </div>
+                           {duration > 40 && (
+                             <div className="mt-1 flex items-center gap-1 opacity-80">
+                               <Users className="w-3 h-3 text-blue-600" />
+                               <span className="text-[10px] text-blue-800 font-medium">{checkedInCount}/{attendance.length} NV</span>
+                             </div>
+                           )}
+                         </div>
+                       );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {viewMode === 'list' && selectedJob?.shifts?.map((shift, index) => {
                 const attendance = getShiftAttendance(selectedJobId, shift.id);
                 const shiftStatus = getShiftStatus(shift.startTime, shift.endTime);
                 const StatusIcon = shiftStatus.icon;
@@ -227,7 +287,7 @@ function ShiftManagementPage() {
               );
               })}
 
-              {(!selectedJob?.shifts || selectedJob.shifts.length === 0) && (
+              {viewMode === 'list' && (!selectedJob?.shifts || selectedJob.shifts.length === 0) && (
                 <div className="py-8 text-center text-sm text-slate-400">
                   <AlertCircle className="h-8 w-8 mx-auto mb-2 text-slate-300" />
                   Tin này chưa có ca làm nào.

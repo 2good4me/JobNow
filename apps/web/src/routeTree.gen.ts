@@ -22,6 +22,7 @@ import { Route as EmployerIndexRouteImport } from './routes/employer/index'
 import { Route as CandidateIndexRouteImport } from './routes/candidate/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as EmployerWalletRouteImport } from './routes/employer/wallet'
+import { Route as EmployerVnpayReturnRouteImport } from './routes/employer/vnpay-return'
 import { Route as EmployerVerificationRouteImport } from './routes/employer/verification'
 import { Route as EmployerShiftManagementRouteImport } from './routes/employer/shift-management'
 import { Route as EmployerQrDisplayRouteImport } from './routes/employer/qr-display'
@@ -132,6 +133,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
 const EmployerWalletRoute = EmployerWalletRouteImport.update({
   id: '/employer/wallet',
   path: '/employer/wallet',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmployerVnpayReturnRoute = EmployerVnpayReturnRouteImport.update({
+  id: '/employer/vnpay-return',
+  path: '/employer/vnpay-return',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EmployerVerificationRoute = EmployerVerificationRouteImport.update({
@@ -413,6 +419,7 @@ export interface FileRoutesByFullPath {
   '/employer/qr-display': typeof EmployerQrDisplayRoute
   '/employer/shift-management': typeof EmployerShiftManagementRoute
   '/employer/verification': typeof EmployerVerificationRouteWithChildren
+  '/employer/vnpay-return': typeof EmployerVnpayReturnRoute
   '/employer/wallet': typeof EmployerWalletRoute
   '/admin/': typeof AdminIndexRoute
   '/candidate/': typeof CandidateIndexRoute
@@ -470,6 +477,7 @@ export interface FileRoutesByTo {
   '/employer/post-job': typeof EmployerPostJobRoute
   '/employer/qr-display': typeof EmployerQrDisplayRoute
   '/employer/shift-management': typeof EmployerShiftManagementRoute
+  '/employer/vnpay-return': typeof EmployerVnpayReturnRoute
   '/employer/wallet': typeof EmployerWalletRoute
   '/admin': typeof AdminIndexRoute
   '/candidate': typeof CandidateIndexRoute
@@ -532,6 +540,7 @@ export interface FileRoutesById {
   '/employer/qr-display': typeof EmployerQrDisplayRoute
   '/employer/shift-management': typeof EmployerShiftManagementRoute
   '/employer/verification': typeof EmployerVerificationRouteWithChildren
+  '/employer/vnpay-return': typeof EmployerVnpayReturnRoute
   '/employer/wallet': typeof EmployerWalletRoute
   '/admin/': typeof AdminIndexRoute
   '/candidate/': typeof CandidateIndexRoute
@@ -595,6 +604,7 @@ export interface FileRouteTypes {
     | '/employer/qr-display'
     | '/employer/shift-management'
     | '/employer/verification'
+    | '/employer/vnpay-return'
     | '/employer/wallet'
     | '/admin/'
     | '/candidate/'
@@ -652,6 +662,7 @@ export interface FileRouteTypes {
     | '/employer/post-job'
     | '/employer/qr-display'
     | '/employer/shift-management'
+    | '/employer/vnpay-return'
     | '/employer/wallet'
     | '/admin'
     | '/candidate'
@@ -713,6 +724,7 @@ export interface FileRouteTypes {
     | '/employer/qr-display'
     | '/employer/shift-management'
     | '/employer/verification'
+    | '/employer/vnpay-return'
     | '/employer/wallet'
     | '/admin/'
     | '/candidate/'
@@ -769,6 +781,7 @@ export interface RootRouteChildren {
   EmployerQrDisplayRoute: typeof EmployerQrDisplayRoute
   EmployerShiftManagementRoute: typeof EmployerShiftManagementRoute
   EmployerVerificationRoute: typeof EmployerVerificationRouteWithChildren
+  EmployerVnpayReturnRoute: typeof EmployerVnpayReturnRoute
   EmployerWalletRoute: typeof EmployerWalletRoute
   CandidateIndexRoute: typeof CandidateIndexRoute
   EmployerIndexRoute: typeof EmployerIndexRoute
@@ -870,6 +883,13 @@ declare module '@tanstack/react-router' {
       path: '/employer/wallet'
       fullPath: '/employer/wallet'
       preLoaderRoute: typeof EmployerWalletRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/employer/vnpay-return': {
+      id: '/employer/vnpay-return'
+      path: '/employer/vnpay-return'
+      fullPath: '/employer/vnpay-return'
+      preLoaderRoute: typeof EmployerVnpayReturnRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/employer/verification': {
@@ -1334,6 +1354,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmployerQrDisplayRoute: EmployerQrDisplayRoute,
   EmployerShiftManagementRoute: EmployerShiftManagementRoute,
   EmployerVerificationRoute: EmployerVerificationRouteWithChildren,
+  EmployerVnpayReturnRoute: EmployerVnpayReturnRoute,
   EmployerWalletRoute: EmployerWalletRoute,
   CandidateIndexRoute: CandidateIndexRoute,
   EmployerIndexRoute: EmployerIndexRoute,

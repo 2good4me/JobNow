@@ -26,9 +26,10 @@ export function ChatRoom({ conversation, currentUserId, onBack }: ChatRoomProps)
     
     const { data: participantProfile } = useUserProfile(participantId);
 
+    const [loadLimit, setLoadLimit] = useState(50);
     const { data: messages, isLoading } = useMessages({
         conversationId: conversation.id,
-        limit: 50
+        limit: loadLimit
     });
 
     const { mutate: sendMessage, isPending: isSending } = useSendMessage();
@@ -42,8 +43,16 @@ export function ChatRoom({ conversation, currentUserId, onBack }: ChatRoomProps)
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
+    const lastMessageId = useRef<string | null>(null);
+
     useEffect(() => {
-        scrollToBottom();
+        if (!messages || messages.length === 0) return;
+        const currentLastMessage = messages[messages.length - 1];
+        // Only scroll to bottom if the last message changes (e.g. init load or new message)
+        if (currentLastMessage.id !== lastMessageId.current) {
+            scrollToBottom();
+            lastMessageId.current = currentLastMessage.id;
+        }
     }, [messages]);
 
     const handleSend = (e: React.FormEvent) => {
@@ -175,7 +184,19 @@ export function ChatRoom({ conversation, currentUserId, onBack }: ChatRoomProps)
                         <p className="text-sm mt-1">Gửi tin nhắn đầu tiên để kết nối.</p>
                     </div>
                 ) : (
-                    messages.map((msg, idx) => {
+                    <>
+                        {messages.length >= loadLimit && (
+                            <div className="flex justify-center my-2">
+                                <button
+                                    onClick={() => setLoadLimit(prev => prev + 50)}
+                                    disabled={isLoading}
+                                    className="text-[11px] font-bold uppercase tracking-wider text-blue-500 bg-blue-50 px-4 py-1.5 rounded-full hover:bg-blue-100 transition-colors"
+                                >
+                                    {isLoading ? 'Đang tải...' : 'Tải thêm tin nhắn cũ'}
+                                </button>
+                            </div>
+                        )}
+                        {messages.map((msg, idx) => {
                         const isCurrentUser = msg.senderId === currentUserId;
                         const showAvatar = idx === 0 || messages[idx - 1].senderId !== msg.senderId;
                         return (
@@ -187,7 +208,8 @@ export function ChatRoom({ conversation, currentUserId, onBack }: ChatRoomProps)
                                 showAvatar={showAvatar}
                             />
                         );
-                    })
+                    })}
+                    </>
                 )}
                 <div ref={messagesEndRef} />
             </div>

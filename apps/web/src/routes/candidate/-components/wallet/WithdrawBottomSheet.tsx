@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, ChevronRight, Search, Building2, User, ShieldCheck, ArrowLeft, Check } from 'lucide-react';
+import { useAuth } from '@/features/auth/context/AuthContext';
 import { useWithdraw } from '@/features/wallet/hooks/useWallet';
 import { toast } from 'sonner';
 
@@ -11,6 +12,7 @@ interface WithdrawBottomSheetProps {
 }
 
 const BANKS = [
+  { id: 'vnpay', name: 'Ví VNPAY', fullName: 'Ví điện tử VNPAY', color: 'bg-red-600' },
   { id: 'vcb', name: 'Vietcombank', fullName: 'NH TMCP Ngoại Thương Việt Nam', color: 'bg-emerald-600' },
   { id: 'tcb', name: 'Techcombank', fullName: 'NH TMCP Kỹ Thương Việt Nam', color: 'bg-red-600' },
   { id: 'bidv', name: 'BIDV', fullName: 'NH TMCP Đầu tư và Phát triển VN', color: 'bg-blue-800' },
@@ -27,7 +29,27 @@ const PRESET_AMOUNTS = [50000, 100000, 200000, 500000, 1000000, 2000000];
 
 type Step = 'amount' | 'bank' | 'account' | 'confirm';
 
+function removeVietnameseTones(str: string) {
+  if (!str) return '';
+  str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
+  str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e");
+  str = str.replace(/ì|í|ị|ỉ|ĩ/g, "i");
+  str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o");
+  str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u");
+  str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y");
+  str = str.replace(/đ/g, "d");
+  str = str.replace(/À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g, "A");
+  str = str.replace(/È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ/g, "E");
+  str = str.replace(/Ì|Í|Ị|Ỉ|Ĩ/g, "I");
+  str = str.replace(/Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ/g, "O");
+  str = str.replace(/Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ/g, "U");
+  str = str.replace(/Ỳ|Ý|Ỵ|Ỷ|Ỹ/g, "Y");
+  str = str.replace(/Đ/g, "D");
+  return str.toUpperCase();
+}
+
 export function WithdrawBottomSheet({ isOpen, onClose, userId, balance }: WithdrawBottomSheetProps) {
+  const { userProfile } = useAuth();
   const [step, setStep] = useState<Step>('amount');
   const [amount, setAmount] = useState<number>(0);
   const [customAmount, setCustomAmount] = useState('');
@@ -79,9 +101,10 @@ export function WithdrawBottomSheet({ isOpen, onClose, userId, balance }: Withdr
   const verifyAccount = () => {
     if (bankAccount.length < 6) return;
     setIsVerifying(true);
-    // Simulate API call
+    // Simulate Napas Banking API call
     setTimeout(() => {
-      setAccountHolder('NGUYEN VAN A (MOCK)');
+      const name = userProfile?.full_name ? removeVietnameseTones(userProfile?.full_name) : 'NGUYEN VAN A';
+      setAccountHolder(name);
       setIsVerifying(false);
     }, 1200);
   };

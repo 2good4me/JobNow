@@ -25,6 +25,7 @@ export function DepositBottomSheet({ isOpen, onClose, userId }: DepositBottomShe
   const [method, setMethod] = useState(PAYMENT_METHODS[0].id);
   const [step, setStep] = useState<Step>('input');
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutes
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const timerRef = useRef<any>(null);
 
   const { mutate: deposit, isPending } = useDeposit();
@@ -73,11 +74,34 @@ export function DepositBottomSheet({ isOpen, onClose, userId }: DepositBottomShe
     setAmount(num);
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (amount < 10000) {
       toast.error('Số tiền nạp tối thiểu là 10.000đ');
       return;
     }
+
+    if (method === 'vnpay') {
+      setIsRedirecting(true);
+      try {
+        const res = await fetch('/api/vnpay/create-payment-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount, userId })
+        });
+        const data = await res.json();
+        if (data.url) {
+          window.location.href = data.url;
+        } else {
+          toast.error('Lỗi khởi tạo cổng VNPay');
+          setIsRedirecting(false);
+        }
+      } catch (err) {
+        toast.error('Lỗi kết nối máy chủ thanh toán');
+        setIsRedirecting(false);
+      }
+      return;
+    }
+
     setStep('qr');
     setTimeLeft(600);
   };
@@ -218,10 +242,18 @@ export function DepositBottomSheet({ isOpen, onClose, userId }: DepositBottomShe
 
               <button
                 onClick={handleContinue}
-                disabled={amount < 10000}
-                className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-30 disabled:grayscale transition-all text-white font-black rounded-2xl shadow-xl shadow-indigo-600/20 active:scale-[0.98] flex items-center justify-center gap-2"
+                disabled={amount < 10000 || isRedirecting}
+                className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:grayscale transition-all text-white font-black rounded-2xl shadow-xl shadow-indigo-600/20 active:scale-[0.98] flex items-center justify-center gap-2"
               >
-                Tiếp tục <ArrowLeft className="w-5 h-5 rotate-180" />
+                {isRedirecting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" /> Đang chuyển hường...
+                  </>
+                ) : (
+                  <>
+                    Tiếp tục <ArrowLeft className="w-5 h-5 rotate-180" />
+                  </>
+                )}
               </button>
             </div>
           )}
