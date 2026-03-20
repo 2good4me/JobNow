@@ -35,6 +35,14 @@ function CandidateDashboard() {
   const { userProfile } = useAuth();
   const { data: jobs = [], isLoading, isError } = useAllJobs();
   const [activeCategory, setActiveCategory] = useState('Tất cả');
+  const [selectedDistrict, setSelectedDistrict] = useState('Hà Đông'); // Mặc định như user nói
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+
+  const DISTRICTS = [
+    'Ba Đình', 'Hoàn Kiếm', 'Tây Hồ', 'Long Biên', 'Cầu Giấy',
+    'Đống Đa', 'Hai Bà Trưng', 'Hoàng Mai', 'Thanh Xuân',
+    'Nam Từ Liêm', 'Bắc Từ Liêm', 'Hà Đông'
+  ];
 
   const { data: applications = [] } = useMyApplicationsRealtime({
     candidateId: userProfile?.uid,
@@ -51,16 +59,27 @@ function CandidateDashboard() {
 
   const greeting = getGreeting();
 
-  const filteredJobs = activeCategory === 'Tất cả'
-    ? jobs
-    : jobs.filter((job: any) => {
-        const text = `${job.title} ${job.description}`.toLowerCase();
-        if (activeCategory === 'F&B') return text.includes('phục vụ') || text.includes('pha chế') || text.includes('nhà hàng') || text.includes('f&b');
-        if (activeCategory === 'Giao hàng') return text.includes('giao hàng') || text.includes('shipper');
-        if (activeCategory === 'Bán hàng') return text.includes('bán hàng') || text.includes('sale') || text.includes('thu ngân');
-        if (activeCategory === 'Sự kiện') return text.includes('sự kiện') || text.includes('event') || text.includes('pg');
-        return false;
-      });
+  const filteredJobs = jobs.filter((job: any) => {
+    // Filter by Category
+    if (activeCategory !== 'Tất cả') {
+      const text = `${job.title} ${job.description}`.toLowerCase();
+      let categoryMatch = false;
+      if (activeCategory === 'F&B') categoryMatch = text.includes('phục vụ') || text.includes('pha chế') || text.includes('nhà hàng') || text.includes('f&b');
+      else if (activeCategory === 'Giao hàng') categoryMatch = text.includes('giao hàng') || text.includes('shipper');
+      else if (activeCategory === 'Bán hàng') categoryMatch = text.includes('bán hàng') || text.includes('sale') || text.includes('thu ngân');
+      else if (activeCategory === 'Sự kiện') categoryMatch = text.includes('sự kiện') || text.includes('event') || text.includes('pg');
+      
+      if (!categoryMatch) return false;
+    }
+
+    // Filter by District
+    const address = (job.location?.address || job.address || '').toLowerCase();
+    if (!address.includes(selectedDistrict.toLowerCase())) {
+      return false;
+    }
+
+    return true;
+  });
 
   if (isLoading) {
     return (
@@ -117,16 +136,49 @@ function CandidateDashboard() {
             </div>
           </div>
           {/* Search Bar */}
-          <button
-            onClick={() => navigate({ to: '/jobs' })}
-            className="w-full flex items-center gap-3 bg-white/15 backdrop-blur-sm border border-white/20 rounded-2xl px-4 py-3 text-white/70 hover:bg-white/20 transition-all active:scale-[0.98]"
-          >
-            <Search className="w-5 h-5 text-white/60 shrink-0" />
-            <span className="text-[14px] text-white/70 text-left flex-1">Tìm kiếm việc làm, công ty...</span>
-            <div className="bg-white/20 rounded-xl px-2 py-1">
-              <MapPin className="w-3.5 h-3.5 text-white/80" />
+          <div className="flex gap-2">
+            <button
+              onClick={() => navigate({ to: '/jobs' })}
+              className="flex-1 flex items-center gap-3 bg-white/15 backdrop-blur-sm border border-white/20 rounded-2xl px-4 py-3 text-white/70 hover:bg-white/20 transition-all active:scale-[0.98]"
+            >
+              <Search className="w-5 h-5 text-white/60 shrink-0" />
+              <span className="text-[14px] text-white/70 text-left flex-1">Tìm việc làm...</span>
+            </button>
+            <button
+              onClick={() => setShowLocationPicker(!showLocationPicker)}
+              className="bg-white/15 backdrop-blur-sm border border-white/20 rounded-2xl px-3 py-3 text-white flex items-center gap-2 hover:bg-white/20 transition-all active:scale-[0.98]"
+            >
+              <div className="bg-emerald-500 rounded-full p-1 shrink-0">
+                <MapPin className="w-3.5 h-3.5 text-white" />
+              </div>
+              <span className="text-[14px] font-bold whitespace-nowrap">{selectedDistrict}</span>
+            </button>
+          </div>
+
+          {/* Location Picker Dropdown */}
+          {showLocationPicker && (
+            <div className="absolute left-5 right-5 mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 p-4 animate-in fade-in slide-in-from-top-2 duration-200">
+              <h3 className="text-slate-800 font-bold text-sm mb-3">Chọn khu vực tìm kiếm</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {DISTRICTS.map(district => (
+                  <button
+                    key={district}
+                    onClick={() => {
+                      setSelectedDistrict(district);
+                      setShowLocationPicker(false);
+                    }}
+                    className={`px-3 py-2 rounded-xl text-[12px] font-bold transition-all text-center ${
+                      selectedDistrict === district
+                        ? 'bg-blue-600 text-white shadow-md shadow-blue-100'
+                        : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-transparent'
+                    }`}
+                  >
+                    {district}
+                  </button>
+                ))}
+              </div>
             </div>
-          </button>
+          )}
         </div>
       </div>
 
