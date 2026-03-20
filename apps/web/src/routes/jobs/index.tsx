@@ -3,17 +3,51 @@ import { useState, useMemo } from 'react';
 import { useAllJobs } from '@/features/jobs/hooks/useAllJobs';
 import {
   ArrowLeft, Search, Mic, Map as MapIcon,
-  List, CheckCircle2
+  List, CheckCircle2, MapPin, Navigation
 } from 'lucide-react';
 import { JobCard } from '@/features/jobs/components/JobCard';
+import { MapPicker } from '@/features/jobs/components/MapPicker';
 
 export const Route = createFileRoute('/jobs/')({
   component: CandidateSearchDashboard,
 });
 
+const DISTRICTS = [
+  'Tất cả',
+  'Ba Đình',
+  'Hoàn Kiếm',
+  'Tây Hồ',
+  'Long Biên',
+  'Cầu Giấy',
+  'Đống Đa',
+  'Hai Bà Trưng',
+  'Hoàng Mai',
+  'Thanh Xuân',
+  'Nam Từ Liêm',
+  'Bắc Từ Liêm',
+  'Hà Đông',
+];
+
+// Helper to calculate distance in km between two lat/lng coordinates
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371; // Radius of the earth in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // Distance in km
+}
+
 function CandidateSearchDashboard() {
   const [searchText, setSearchText] = useState('');
   const [distance, setDistance] = useState(5);
+  const [selectedDistrict, setSelectedDistrict] = useState('Tất cả');
+  const [selectedLocation, setSelectedLocation] = useState<{lat: number, lng: number, address?: string} | null>(null);
+  const [showMapPicker, setShowMapPicker] = useState(false);
+  
   const [minWage, setMinWage] = useState(20);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedTime, setSelectedTime] = useState<string>('');
@@ -33,7 +67,7 @@ function CandidateSearchDashboard() {
         const employerMatch = job.employerName?.toLowerCase().includes(searchLower);
         if (!titleMatch && !employerMatch) return false;
       }
-      // 2. Minimum wage (minWage is in 'k', job.salary is in absolute numbers)
+      // 2. Minimum wage
       if (job.salary && job.salary < minWage * 1000) {
         return false;
       }
@@ -41,7 +75,31 @@ function CandidateSearchDashboard() {
       if (verifiedOnly && !job.isPremium) {
         return false;
       }
-      // 4. Categories (naive matching on title/description for now since we lack actual mapping)
+      
+      // 4a. GPS Location filter (takes precedence if selected)
+      if (selectedLocation) {
+         if (job.location?.latitude && job.location?.longitude) {
+           const jobDist = calculateDistance(
+             selectedLocation.lat, selectedLocation.lng, 
+             job.location.latitude, job.location.longitude
+           );
+           if (jobDist > distance) {
+             return false;
+           }
+         } else {
+           // If job has no GPS, filter it out when using GPS search mode
+           return false;
+         }
+      } 
+      // 4b. District filter (fallback if no GPS location selected)
+      else if (selectedDistrict !== 'Tất cả') {
+        const address = (job.location?.address || job.address || '').toLowerCase();
+        if (!address.includes(selectedDistrict.toLowerCase())) {
+          return false;
+        }
+      }
+      
+      // 5. Categories
       if (selectedCategories.length > 0) {
         const textToSearch = `${job.title} ${job.description}`.toLowerCase();
         const matchesCategory = selectedCategories.some(cat => {
@@ -55,16 +113,19 @@ function CandidateSearchDashboard() {
       }
       return true;
     });
-  }, [jobs, searchText, minWage, verifiedOnly, selectedCategories]);
+  }, [jobs, searchText, minWage, verifiedOnly, selectedDistrict, selectedLocation, distance, selectedCategories]);
 
   const handleResetFilters = () => {
     setDistance(5);
+    setSelectedDistrict('Tất cả');
+    setSelectedLocation(null);
     setMinWage(20);
     setSelectedCategories([]);
     setSelectedTime('');
     setSelectedShifts([]);
     setVerifiedOnly(false);
   };
+
 
   const toggleCategory = (cat: string) => {
     setSelectedCategories(prev =>
@@ -144,6 +205,44 @@ function CandidateSearchDashboard() {
                 <button onClick={handleResetFilters} className="text-blue-500 text-[14px] font-semibold">Đặt lại</button>
                 <button onClick={() => setShowFilters(false)} className="text-slate-500 text-[14px] font-semibold">Đóng</button>
               </div>
+            </div>
+
+            {/* District Selection */}
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-3">
+                <div className="text-slate-600 font-medium text-[14px] flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-blue-600" />
+                  Khu vực tìm kiếm
+                </div>
+                <button
+                  onClick={() => setShowMapPicker(true)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-bold transition-all ${
+                    selectedLocation 
+                      ? 'bg-emerald-100 text-emerald-700' 
+                      : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                  }`}
+                >
+                  <Navigation className="w-3.5 h-3.5" />
+                  {selectedLocation ? (selectedLocation.address ? `Ghim tại: ${selectedLocation.address}` : 'Đã ghim vị trí GPS') : 'Ghim trên bản đồ'}
+                </button>
+              </div>
+              
+              {!selectedLocation && (
+                <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                  {DISTRICTS.map(district => (
+                    <button
+                      key={district}
+                      onClick={() => setSelectedDistrict(district)}
+                      className={`px-4 py-2 rounded-full text-[13px] font-medium transition-colors ${selectedDistrict === district
+                        ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                        }`}
+                    >
+                      {district}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Distance Filter */}
@@ -312,6 +411,18 @@ function CandidateSearchDashboard() {
         </div>
 
       </div>
+
+      {showMapPicker && (
+        <MapPicker 
+          onClose={() => setShowMapPicker(false)}
+          onSelect={(lat, lng, address) => {
+             setSelectedLocation({lat, lng, address});
+             setSelectedDistrict('Tất cả'); // clear district if GPS is used
+             setShowMapPicker(false);
+          }}
+          initialLocation={selectedLocation || undefined}
+        />
+      )}
     </div>
   );
 }
