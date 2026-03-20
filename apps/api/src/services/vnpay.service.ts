@@ -1,0 +1,82 @@
+import crypto from 'crypto';
+
+export class VNPayService {
+    private tmnCode = 'RYKLU502';
+    private hashSecret = 'KYETK5S9KYQUG0EN1TRKE9717289BT10';
+    private vnpUrl = 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html';
+
+    public createPaymentUrl(ipAddr: string, amount: number, orderInfo: string, orderId: string, returnUrl: string) {
+        let vnp_Params: Record<string, any> = {
+            'vnp_Version': '2.1.0',
+            'vnp_Command': 'pay',
+            'vnp_TmnCode': this.tmnCode,
+            'vnp_Locale': 'vn',
+            'vnp_CurrCode': 'VND',
+            'vnp_TxnRef': orderId,
+            'vnp_OrderInfo': orderInfo,
+            'vnp_OrderType': 'topup',
+            'vnp_Amount': (amount * 100).toString(),
+            'vnp_ReturnUrl': returnUrl,
+            'vnp_IpAddr': ipAddr || '127.0.0.1',
+            'vnp_CreateDate': this.formatDate(new Date())
+        };
+
+        vnp_Params = this.sortObject(vnp_Params);
+        
+        let signData = Object.keys(vnp_Params)
+            .map(key => `${key}=${vnp_Params[key]}`)
+            .join('&');
+            
+        const hmac = crypto.createHmac("sha512", this.hashSecret);
+        const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest("hex"); 
+        
+        vnp_Params['vnp_SecureHash'] = signed;
+        
+        let vnpUrl = this.vnpUrl + '?' + Object.keys(vnp_Params)
+            .map(key => `${key}=${vnp_Params[key]}`)
+            .join('&');
+        
+        return vnpUrl;
+    }
+
+    public verifyIpn(query: Record<string, any>): boolean {
+        let vnp_Params = { ...query };
+        let secureHash = vnp_Params['vnp_SecureHash'];
+
+        delete vnp_Params['vnp_SecureHash'];
+        delete vnp_Params['vnp_SecureHashType'];
+
+        vnp_Params = this.sortObject(vnp_Params);
+
+        let signData = Object.keys(vnp_Params)
+            .map(key => `${key}=${vnp_Params[key]}`)
+            .join('&');
+            
+        const hmac = crypto.createHmac("sha512", this.hashSecret);
+        const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest("hex"); 
+        
+        return secureHash === signed;
+    }
+
+    private sortObject(obj: Record<string, any>) {
+        const sorted: Record<string, any> = {};
+        const str = Object.keys(obj).sort();
+        for (let i = 0; i < str.length; i++) {
+            const val = obj[str[i]]?.toString() || '';
+            sorted[str[i]] = encodeURIComponent(val).replace(/%20/g, "+");
+        }
+        return sorted;
+    }
+
+    private formatDate(date: Date) {
+        const yyyy = date.getFullYear().toString();
+        const mm = (date.getMonth() + 1).toString().padStart(2, '0');
+        const dd  = date.getDate().toString().padStart(2, '0');
+        const hh = date.getHours().toString().padStart(2, '0');
+        const min = date.getMinutes().toString().padStart(2, '0');
+        const ss = date.getSeconds().toString().padStart(2, '0');
+        return yyyy + mm + dd + hh + min + ss;
+    }
+}
+
+export const vnpayService = new VNPayService();

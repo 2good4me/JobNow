@@ -76,10 +76,16 @@ export function useConversations({ userId, role, limit = 20 }: UseConversationsI
     });
   }, [conversations, role]);
 
-  const unreadCount = useMemo(() => {
-    if (!role) return 0;
-    return deduplicated.reduce((sum, item) => sum + getConversationUnreadCount(item, role), 0);
-  }, [deduplicated, role]);
+  const unreadCountQuery = useQuery({
+    queryKey: ['chat', 'unreadCount', userId],
+    queryFn: () => {
+      if (!conversations) return 0;
+      return deduplicated.reduce((sum, item) => sum + getConversationUnreadCount(item, userId ?? ''), 0);
+    },
+    enabled: !!userId && !!conversations,
+  });
+
+  const unreadCount = unreadCountQuery.data ?? 0;
 
   return {
     ...queryResult,

@@ -7,6 +7,7 @@ import { EmployerBottomNav } from '../components/ui/EmployerBottomNav';
 import { GlobalHeader } from '../components/ui/GlobalHeader';
 import { Toaster } from 'sonner';
 import { useOnlineStatus } from '../features/auth/hooks/useOnlineStatus';
+import { useFCM } from '../hooks/useFCM';
 
 export const Route = createRootRoute({
     component: RootLayout,
@@ -33,6 +34,9 @@ function RootLayout() {
     
     // Heartbeat for online status
     useOnlineStatus();
+    // Initialize standard notifications
+    useFCM();
+    
     const isAuthPage = AUTH_ROUTES.some((r) => location.pathname.startsWith(r));
     const guestOnboardingSeen = hasSeenGuestOnboarding();
     const shouldRedirectGuestToOnboarding =

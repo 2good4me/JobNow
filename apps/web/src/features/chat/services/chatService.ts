@@ -27,8 +27,6 @@ import type {
 } from '@jobnow/types';
 import { auth, db } from '@/config/firebase';
 
-type ChatRole = 'CANDIDATE' | 'EMPLOYER';
-
 type StartConversationResult = {
   conversationId: string;
   status: ConversationStatus;
@@ -97,39 +95,57 @@ function mapMessage(conversationId: string, snapshot: QueryDocumentSnapshot): Me
   };
 }
 
-export function getConversationUnreadCount(conversation: Conversation, role: ChatRole): number {
-  return role === 'CANDIDATE' ? conversation.candidateUnreadCount : conversation.employerUnreadCount;
+export function getConversationUnreadCount(conversation: Conversation, currentUserId: string): number {
+  return currentUserId === conversation.candidateId ? conversation.candidateUnreadCount : conversation.employerUnreadCount;
 }
 
-export async function listConversations(params: ListConversationsParams): Promise<Conversation[]> {
-  const participantField = params.role === 'CANDIDATE' ? 'candidate_id' : 'employer_id';
-  const ref = collection(db, 'conversations');
-  const q = query(
-    ref,
-    where(participantField, '==', params.userId),
-    orderBy('updated_at', 'desc'),
-    limit(params.limit ?? 20)
-  );
+const getTime = (t: any) => t?.toMillis?.() || Date.parse(t) || 0;
 
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(mapConversation);
+export async function listConversations(params: ListConversationsParams): Promise<Conversation[]> {
+  const q1 = query(collection(db, 'conversations'), where('candidate_id', '==', params.userId), orderBy('updated_at', 'desc'), limit(params.limit ?? 20));
+  const q2 = query(collection(db, 'conversations'), where('employer_id', '==', params.userId), orderBy('updated_at', 'desc'), limit(params.limit ?? 20));
+
+  const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+  
+  const map = new Map<string, Conversation>();
+  snap1.docs.forEach(d => map.set(d.id, mapConversation(d)));
+  snap2.docs.forEach(d => map.set(d.id, mapConversation(d)));
+  
+  return Array.from(map.values())
+    .sort((a,b) => getTime(b.updatedAt) - getTime(a.updatedAt))
+    .slice(0, params.limit ?? 20);
 }
 
 export function subscribeConversations(
   params: ListConversationsParams,
   onUpdate: (conversations: Conversation[]) => void
 ): Unsubscribe {
-  const participantField = params.role === 'CANDIDATE' ? 'candidate_id' : 'employer_id';
-  const q = query(
-    collection(db, 'conversations'),
-    where(participantField, '==', params.userId),
-    orderBy('updated_at', 'desc'),
-    limit(params.limit ?? 20)
-  );
+  let list1: Conversation[] = [];
+  let list2: Conversation[] = [];
+  
+  const merge = () => {
+     const map = new Map<string, Conversation>();
+     list1.forEach(c => map.set(c.id, c));
+     list2.forEach(c => map.set(c.id, c));
+     const merged = Array.from(map.values())
+       .sort((a,b) => getTime(b.updatedAt) - getTime(a.updatedAt));
+     onUpdate(merged.slice(0, params.limit ?? 20));
+  };
 
-  return onSnapshot(q, (snapshot) => {
-    onUpdate(snapshot.docs.map(mapConversation));
+  const q1 = query(collection(db, 'conversations'), where('candidate_id', '==', params.userId), orderBy('updated_at', 'desc'), limit(params.limit ?? 20));
+  const q2 = query(collection(db, 'conversations'), where('employer_id', '==', params.userId), orderBy('updated_at', 'desc'), limit(params.limit ?? 20));
+
+  const unsub1 = onSnapshot(q1, snap => {
+      list1 = snap.docs.map(mapConversation);
+      merge();
   });
+  
+  const unsub2 = onSnapshot(q2, snap => {
+      list2 = snap.docs.map(mapConversation);
+      merge();
+  });
+  
+  return () => { unsub1(); unsub2(); };
 }
 
 export async function getConversationById(conversationId: string): Promise<Conversation | null> {
@@ -591,4 +607,43 @@ export async function ensureConversationForApplication(applicationId: string): P
   }
 
   return conversation;
+}
+
+export async function createOrGetDirectConversation(targetUserId: string, targetName: string, targetAvatar: string, currentUserFullName: string, currentUserAvatar: string): Promise<string> {
+    const uid = auth.currentUser?.uid;
+    if (!uid) throw new Error('Cần đăng nhập để nhắn tin');
+    if (uid === targetUserId) throw new Error('Không thể chat với chính mình');
+    
+    // Sort UIDs deterministically to always generate the same ID regardless of who clicks first
+    const sortedUids = [uid, targetUserId].sort();
+    const deterministicId = `dm_${sortedUids[0]}_${sortedUids[1]}`;
+    
+    const convRef = doc(db, 'conversations', deterministicId);
+    const snap = await getDoc(convRef);
+    if (snap.exists()) {
+       return snap.id;
+    }
+    
+    const newDoc = {
+       application_id: '',
+       job_id: '',
+       candidate_id: uid, 
+       employer_id: targetUserId,
+       status: 'ACTIVE',
+       chat_permission: 'TWO_WAY',
+       chatPermission: 'TWO_WAY',
+       candidate_unread_count: 0,
+       employer_unread_count: 0,
+       candidate_name: currentUserFullName || 'Người dùng',
+       candidate_avatar: currentUserAvatar || '',
+       employer_name: targetName || 'Người dùng',
+       employer_avatar: targetAvatar || '',
+       created_at: serverTimestamp(),
+       updated_at: serverTimestamp(),
+       candidateId: uid,
+       employerId: targetUserId
+    };
+    
+    await setDoc(convRef, newDoc);
+    return deterministicId;
 }

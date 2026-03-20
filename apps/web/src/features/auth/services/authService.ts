@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, query, limit, getDocs } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 
 export interface UserProfile {
@@ -43,5 +43,42 @@ export async function updateUserActiveStatus(uid: string) {
         }, { merge: true });
     } catch (error) {
         console.error('Error updating active status:', error);
+    }
+}
+
+/**
+ * MOCK FULL TEXT SEARCH FOR USERS
+ * Searches by fullName or email (In-memory filter for small scale demo)
+ */
+export async function searchGlobalUsers(keyword: string): Promise<UserProfile[]> {
+    if (!keyword.trim()) return [];
+    const lower = keyword.toLowerCase();
+    
+    try {
+        const q = query(collection(db, 'users'), limit(500));
+        const snapshot = await getDocs(q);
+        
+        const results: UserProfile[] = [];
+        for (const userDoc of snapshot.docs) {
+            const data = userDoc.data();
+            const fullName = String(data.full_name ?? data.fullName ?? '').toLowerCase();
+            const email = String(data.email ?? '').toLowerCase();
+            
+            if (fullName.includes(lower) || email.includes(lower)) {
+                results.push({
+                    uid: userDoc.id,
+                    fullName: String(data.full_name ?? data.fullName ?? ''),
+                    avatarUrl: String(data.avatar_url ?? data.avatarUrl ?? data.company_logo_url ?? ''),
+                    role: data.role as UserProfile['role'],
+                    company_name: data.company_name,
+                    last_active_at: data.last_active_at
+                });
+            }
+            if (results.length >= 20) break; // Limit fast response
+        }
+        return results;
+    } catch (err) {
+        console.error('Searching global users failed:', err);
+        return [];
     }
 }

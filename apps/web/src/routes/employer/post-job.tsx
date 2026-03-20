@@ -25,8 +25,9 @@ import {
 } from './-schemas/jobFormSchema';
 
 export const Route = createFileRoute('/employer/post-job')({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { editJobId?: string; duplicateJobId?: string } => ({
     editJobId: search.editJobId as string | undefined,
+    duplicateJobId: search.duplicateJobId as string | undefined,
   }),
   component: EmployerPostJobRoute,
 });
@@ -91,7 +92,7 @@ function StepBar({ current, total }: { current: number; total: number }) {
 
 /* ── Main Component ──────────────────────────── */
 function EmployerPostJobRoute() {
-  const { editJobId } = Route.useSearch();
+  const { editJobId, duplicateJobId } = Route.useSearch();
   
   const [step, setStep] = useState(1);
   const [requirementInput, setRequirementInput] = useState('');
@@ -123,7 +124,7 @@ function EmployerPostJobRoute() {
   const navigate = useNavigate();
   const { mutateAsync: createJob, isPending: isCreating } = useCreateJob();
   const { mutateAsync: updateJob, isPending: isUpdating } = useUpdateJob();
-  const { data: existingJob, isLoading: isLoadingJob } = useJobDetail(editJobId);
+  const { data: existingJob, isLoading: isLoadingJob } = useJobDetail(editJobId || duplicateJobId);
   const { data: remoteCategories } = useGetCategories();
   
   const displayCategories = remoteCategories && remoteCategories.length > 0 ? remoteCategories : FALLBACK_CATEGORIES;
@@ -274,9 +275,9 @@ function EmployerPostJobRoute() {
     return 'Cả hai';
   };
 
-  // Pre-populate form when editing
+  // Pre-populate form when editing or duplicating
   useEffect(() => {
-    if (existingJob && editJobId) {
+    if (existingJob && (editJobId || duplicateJobId)) {
       setForm({
         title: existingJob.title,
         category: existingJob.categoryId,
@@ -302,7 +303,31 @@ function EmployerPostJobRoute() {
         longitude: existingJob.location.longitude,
       });
     }
-  }, [existingJob, editJobId]);
+  }, [existingJob, editJobId, duplicateJobId]);
+
+  // Load draft on mount
+  useEffect(() => {
+    if (!editJobId && !duplicateJobId) {
+      const draft = localStorage.getItem('jobnow_draft_job');
+      if (draft) {
+        try {
+          const parsed = JSON.parse(draft);
+          setForm(prev => ({ ...prev, ...parsed, coverImage: null }));
+          toast.info('Đã tải lại bản nháp chưa hoàn thành');
+        } catch(e) {}
+      }
+    }
+  }, [editJobId, duplicateJobId]);
+
+  // Autosave when form changes
+  useEffect(() => {
+    if (!editJobId && !duplicateJobId && form.title) {
+       const timer = setTimeout(() => {
+          localStorage.setItem('jobnow_draft_job', JSON.stringify({ ...form, coverImage: null }));
+       }, 500);
+       return () => clearTimeout(timer);
+    }
+  }, [form, editJobId, duplicateJobId]);
 
   const handleStepChange = (newStep: number) => {
     if (newStep > step) {
@@ -408,7 +433,8 @@ function EmployerPostJobRoute() {
       } else {
         // Create new job
         await createJob(jobData);
-        toast.success('Đăng tin thành công!');
+        toast.success(duplicateJobId ? 'Nhân bản tin thành công!' : 'Đăng tin thành công!');
+        localStorage.removeItem('jobnow_draft_job');
       }
 
       if (imageUploadWarning) {

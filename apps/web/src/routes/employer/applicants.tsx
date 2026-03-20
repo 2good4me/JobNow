@@ -2,9 +2,10 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, BriefcaseBusiness, Search, Users, Share2, Sparkles } from 'lucide-react';
 import { useMemo, useState, useEffect } from 'react';
 import { ApplicantCard } from '@/components/ui/ApplicantCard';
-import { useGetApplicants, useGetEmployerApplications } from '@/features/jobs/hooks/useManageApplicants';
+import { useGetApplicants, useGetEmployerApplications, useUpdateApplicationStatus } from '@/features/jobs/hooks/useManageApplicants';
 import { useJobDetail } from '@/features/jobs/hooks/useEmployerJobs';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { toast } from 'sonner';
 
 export const Route = createFileRoute('/employer/applicants')({
   validateSearch: (search: Record<string, unknown>) => {
@@ -115,7 +116,11 @@ function EmployerApplicantsRoute() {
 
   const [activeTab, setActiveTab] = useState<ApplicantTab>('pending');
   const [searchTerm, setSearchTerm] = useState('');
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBatchApproving, setIsBatchApproving] = useState(false);
 
+  const { mutateAsync: updateStatus } = useUpdateApplicationStatus();
   const { data: jobApplicants = [], isLoading: isJobAppsLoading } = useGetApplicants(jobId || '', employerId);
   const { data: allApplications = [], isLoading: isAllAppsLoading } = useGetEmployerApplications(!jobId ? employerId : undefined);
 
@@ -162,6 +167,65 @@ function EmployerApplicantsRoute() {
         url: window.location.href,
       }).catch(() => { });
     }
+  };
+
+  const handleToggleSelect = (id: string) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedIds(newSet);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === filteredApplicants.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredApplicants.map(a => a.id)));
+    }
+  };
+
+  const handleBatchApprove = async () => {
+    if (selectedIds.size === 0) return;
+    setIsBatchApproving(true);
+    let successCount = 0;
+    try {
+      await Promise.all(
+        Array.from(selectedIds).map(id => 
+          updateStatus({ id, status: 'APPROVED' })
+            .then(() => successCount++)
+            .catch(console.error)
+        )
+      );
+      toast.success(`Đã duyệt thành công ${successCount} ứng viên!`);
+      setSelectedIds(new Set());
+      setIsSelectMode(false);
+    } catch (e) {
+      toast.error('Có lỗi xảy ra khi duyệt hàng loạt');
+    } finally {
+      setIsBatchApproving(false);
+    }
+  };
+
+  const handleExportCSV = () => {
+    const headers = ['Tên ứng viên', 'Trạng thái', 'Ca làm', 'Công việc', 'Ngày nộp'];
+    const rows = filteredApplicants.map(a => [
+      a.candidateName || 'N/A',
+      a.status,
+      a.shiftTime || 'N/A',
+      selectedJob?.title || a.jobTitle || 'N/A',
+      a.appliedAt ? new Date(a.appliedAt.toDate?.() || a.appliedAt).toLocaleDateString('vi-VN') : 'N/A'
+    ]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(r => r.map(c => `"${c}"`).join(','))
+    ].join('\n');
+    
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `ung-vien-${jobId || 'all'}-${new Date().getTime()}.csv`;
+    link.click();
   };
 
   return (
@@ -250,6 +314,25 @@ function EmployerApplicantsRoute() {
               </button>
             )}
           </div>
+          
+          <div className="flex justify-between items-center mt-3 px-1">
+            <button
+              onClick={() => {
+                setIsSelectMode(!isSelectMode);
+                if (isSelectMode) setSelectedIds(new Set());
+              }}
+              className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${isSelectMode ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}
+            >
+              {isSelectMode ? 'Hủy chọn' : 'Chọn nhiều'}
+            </button>
+            
+            <button
+              onClick={handleExportCSV}
+              className="text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors"
+            >
+              Xuất CSV
+            </button>
+          </div>
         </div>
 
         {/* ── Applicant List ── */}
@@ -264,30 +347,70 @@ function EmployerApplicantsRoute() {
           ) : (
             <>
               {/* Funnel hint */}
-              {activeTab === 'pending' && stats.pending > 0 && (
-                <div className="flex items-center gap-2 rounded-xl bg-blue-50 border border-blue-100 px-3 py-2 text-xs text-blue-700 font-medium">
+              {activeTab === 'pending' && stats.pending > 0 && !isSelectMode && (
+                <div className="flex items-center gap-2 rounded-xl bg-blue-50 border border-blue-100 px-3 py-2 text-xs text-blue-700 font-medium mb-3">
                   <Sparkles className="h-4 w-4 shrink-0 text-blue-500" />
                   {stats.pending} ứng viên đang chờ bạn duyệt. Bấm <strong>Duyệt</strong> để nhận ngay!
                 </div>
               )}
 
+              {isSelectMode && (
+                <div className="flex justify-between items-center bg-indigo-50 border border-indigo-100 p-3 rounded-xl mb-3 shadow-inner">
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="checkbox" 
+                      className="w-4 h-4 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                      checked={selectedIds.size > 0 && selectedIds.size === filteredApplicants.length}
+                      onChange={handleSelectAll}
+                    />
+                    <span className="text-sm font-bold text-indigo-800">Chọn tất cả ({selectedIds.size})</span>
+                  </div>
+                  {activeTab === 'pending' && selectedIds.size > 0 && (
+                    <button
+                      onClick={handleBatchApprove}
+                      disabled={isBatchApproving}
+                      className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm disabled:opacity-50"
+                    >
+                      {isBatchApproving ? 'Đang duyệt...' : `Duyệt (${selectedIds.size})`}
+                    </button>
+                  )}
+                </div>
+              )}
+
               {filteredApplicants.map((applicant) => (
-                <ApplicantCard
-                  key={applicant.id}
-                  applicationId={applicant.id}
-                  candidateId={applicant.candidateId}
-                  status={applicant.status}
-                  jobTitle={selectedJob?.title || applicant.jobTitle}
-                  shiftTime={applicant.shiftTime}
-                  candidateName={applicant.candidateName}
-                  candidateAvatar={applicant.candidateAvatar}
-                  candidateSkills={applicant.candidateSkills}
-                  candidateRating={applicant.candidateRating}
-                  candidateVerified={applicant.candidateVerified}
-                  checkInTime={applicant.checkInTime}
-                  checkOutTime={(applicant as any).checkOutTime}
-                  isLate={applicant.isLate}
-                />
+                <div key={applicant.id} className="relative">
+                  {isSelectMode && (
+                    <div 
+                      className="absolute inset-0 z-20 cursor-pointer rounded-2xl bg-slate-900/5 hover:bg-slate-900/10 transition-colors flex items-start justify-end p-4 border border-transparent"
+                      onClick={(e) => { e.preventDefault(); handleToggleSelect(applicant.id); }}
+                    >
+                      <input 
+                        type="checkbox" 
+                        checked={selectedIds.has(applicant.id)}
+                        readOnly
+                        className="w-5 h-5 rounded border-slate-300 shadow-sm text-indigo-600 focus:ring-indigo-500"
+                        style={{ pointerEvents: 'none' }}
+                      />
+                    </div>
+                  )}
+                  <div className={selectedIds.has(applicant.id) ? 'ring-2 ring-indigo-500 rounded-2xl scale-[0.98] transition-transform' : 'transition-transform'}>
+                    <ApplicantCard
+                      applicationId={applicant.id}
+                      candidateId={applicant.candidateId}
+                      status={applicant.status}
+                      jobTitle={selectedJob?.title || applicant.jobTitle}
+                      shiftTime={applicant.shiftTime}
+                      candidateName={applicant.candidateName}
+                      candidateAvatar={applicant.candidateAvatar}
+                      candidateSkills={applicant.candidateSkills}
+                      candidateRating={applicant.candidateRating}
+                      candidateVerified={applicant.candidateVerified}
+                      checkInTime={applicant.checkInTime}
+                      checkOutTime={(applicant as any).checkOutTime}
+                      isLate={applicant.isLate}
+                    />
+                  </div>
+                </div>
               ))}
 
               <p className="text-center text-[11px] text-slate-400 py-4 font-medium">

@@ -201,6 +201,15 @@ function CandidateShifts() {
     jobTitle: '',
   });
 
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+
+  const parseTimes = (timeStr?: string) => {
+    if (!timeStr) return null;
+    const matches = timeStr.match(/(\d{2}:\d{2})/g);
+    if (matches && matches.length >= 2) return { start: matches[0], end: matches[1] };
+    return null;
+  };
+
   const activeShifts = applications.filter((app) => app.status === 'CHECKED_IN');
   const upcoming = applications.filter((app) => app.status === 'APPROVED' || app.status === 'NEW' || app.status === 'PENDING');
   const historyItems = applications.filter((app) => app.status === 'COMPLETED' || app.status === 'CASH_CONFIRMATION');
@@ -254,6 +263,69 @@ function CandidateShifts() {
       </div>
 
       <div className="max-w-lg mx-auto px-4 pt-5 space-y-6">
+        <div className="flex bg-slate-200/60 p-1 rounded-xl w-full mb-2">
+          <button 
+            onClick={() => setViewMode('list')} 
+            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Danh sách
+          </button>
+          <button 
+            onClick={() => setViewMode('calendar')} 
+            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${viewMode === 'calendar' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Thời gian biểu
+          </button>
+        </div>
+
+        {viewMode === 'calendar' ? (
+          <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm mb-6 overflow-x-auto">
+            <p className="text-xs text-slate-500 mb-4 font-medium italic">* Tuyến thời gian các ca làm việc trong ngày</p>
+            <div className="min-w-[300px] relative mt-2 border-l-2 border-slate-100 ml-12" style={{ height: `${(24 - 6) * 48}px` }}>
+              {Array.from({ length: 24 - 6 + 1 }).map((_, i) => (
+                <div key={i} className="absolute w-full border-t border-slate-100/50 flex items-center" style={{ top: `${i * 48}px` }}>
+                  <span className="absolute -left-12 text-[10px] text-slate-400 font-bold px-1 bg-white -mt-2">{String(i + 6).padStart(2, '0')}:00</span>
+                </div>
+              ))}
+              
+              {[...activeShifts, ...upcoming, ...historyItems].map((shift) => {
+                 const times = parseTimes(shift.shiftTime);
+                 if (!times) return null;
+
+                 const [startH, startM] = times.start.split(':').map(Number);
+                 const [endH, endM] = times.end.split(':').map(Number);
+                 
+                 const startOffset = (Math.max(6, startH) - 6 + (startM || 0)/60) * 48;
+                 const duration = (endH - startH + ((endM || 0) - (startM || 0))/60) * 48;
+                 if (startOffset < 0 || duration <= 0) return null;
+
+                 const isActive = shift.status === 'CHECKED_IN';
+                 const isCompleted = shift.status === 'COMPLETED' || shift.status === 'CASH_CONFIRMATION';
+                 const colorClass = isActive ? 'bg-emerald-50/90 border-emerald-500 text-emerald-900' : 
+                                  isCompleted ? 'bg-slate-100 border-slate-400 text-slate-700' : 
+                                  'bg-blue-50/90 border-blue-500 text-blue-900';
+
+                 return (
+                   <div 
+                     key={shift.id} 
+                     onClick={() => setSelectedShift(shift)}
+                     className={`absolute left-2 right-2 rounded-lg border-l-4 p-2 overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer ${colorClass}`} 
+                     style={{ top: `${startOffset}px`, height: `${Math.max(30, duration)}px` }}
+                   >
+                     <div className="flex justify-between items-start">
+                       <p className="text-xs font-black line-clamp-1 flex-1 pr-2">{shift.jobTitle}</p>
+                       <p className="text-[10px] font-bold bg-white/60 px-1 rounded shrink-0">{times.start} - {times.end}</p>
+                     </div>
+                     <span className="text-[9px] font-bold uppercase block mt-1 opacity-80">
+                       {isActive ? 'Đang làm' : isCompleted ? 'Đã xong' : 'Sắp tới'}
+                     </span>
+                   </div>
+                 );
+              })}
+            </div>
+          </div>
+        ) : (
+          <>
         {/* --- ĐANG LÀM --- */}
         <div>
           <h2 className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
@@ -476,6 +548,8 @@ function CandidateShifts() {
             </div>
           )}
         </div>
+        </>
+        )}
       </div>
 
       {/* Shift Detail Modal */}

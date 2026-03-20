@@ -3,6 +3,7 @@ import { getAuth } from "firebase/auth";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 import { getFunctions } from "firebase/functions";
 import { getStorage } from "firebase/storage";
+import { getMessaging } from "firebase/messaging";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAzbJ2ftaStDpXL1LgfHZKMD2LEhNhPpuo",
@@ -24,5 +25,6 @@ export const db = initializeFirestore(app, {
 });
 export const storage = getStorage(app);
 export const functions = getFunctions(app, "asia-southeast1");
+export const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
 
 export default app;

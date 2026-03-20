@@ -310,6 +310,9 @@ function JobManagementRoute() {
                       <button onClick={(e) => { e.stopPropagation(); handleEdit(job.id); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition-colors">
                         <Edit2 className="w-4 h-4" /> Sửa tin
                       </button>
+                      <button onClick={(e) => { e.stopPropagation(); navigate({ to: '/employer/post-job', search: { duplicateJobId: job.id } as any }); setOpenMenuId(null); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors">
+                        <Plus className="w-4 h-4" /> Nhân bản tin
+                      </button>
                       <button onClick={(e) => { e.stopPropagation(); handleShare(job.id); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-emerald-600 transition-colors">
                         <Share2 className="w-4 h-4" /> Chia sẻ
                       </button>
