@@ -7,7 +7,8 @@
         "dev": "vite",
         "build": "vite build",
         "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "test": "vitest"
     },
     "dependencies": {
         "@emotion/react": "^11.11.4",
@@ -43,6 +44,11 @@
         "typescript": "^5.2.2",
         "vite": "^5.1.4",
         "vite-tsconfig-paths": "^4.3.1",
+        "vitest": "latest",
+        "@testing-library/react": "latest",
+        "@testing-library/jest-dom": "latest",
+        "@testing-library/user-event": "latest",
+        "jsdom": "latest",
         "zod": "^3.22.4"
     }
 }
