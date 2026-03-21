@@ -120,8 +120,16 @@ function EmployerPostJobRoute() {
     longitude: null,
   });
 
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (userProfile && userProfile.role === 'EMPLOYER' && userProfile.verification_status !== 'VERIFIED') {
+      toast.error('Vui lòng xác thực CCCD để đăng tin tuyển dụng!');
+      navigate({ to: '/employer/verification' });
+    }
+  }, [userProfile, navigate]);
+
   const { mutateAsync: createJob, isPending: isCreating } = useCreateJob();
   const { mutateAsync: updateJob, isPending: isUpdating } = useUpdateJob();
   const { data: existingJob, isLoading: isLoadingJob } = useJobDetail(editJobId || duplicateJobId);

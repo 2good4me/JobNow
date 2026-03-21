@@ -167,6 +167,12 @@ function JobDetailPage() {
       return;
     }
 
+    if (userProfile.verification_status !== 'VERIFIED') {
+      toast.error('Bạn cần xác thực CCCD để ứng tuyển công việc!');
+      navigate({ to: '/candidate/verification' });
+      return;
+    }
+
     if (!selectedShiftId) {
       toast.error('Vui lòng chọn một ca làm việc');
       return;

@@ -94,7 +94,7 @@ export function GlobalHeader({ isAppLayout }: GlobalHeaderProps) {
         try {
             setIsSigningOut(true);
             await signOut();
-            await navigate({ to: '/login' });
+            await navigate({ to: '/' });
         } catch (error) {
             console.error('Logout failed:', error);
         } finally {

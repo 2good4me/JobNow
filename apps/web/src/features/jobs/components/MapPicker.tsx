@@ -6,7 +6,7 @@ import 'leaflet/dist/leaflet.css';
 // Fix Leaflet's default icon path issues with Vite
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-import { ArrowLeft, Check, Loader2, MapPin, Search } from 'lucide-react';
+import { ArrowLeft, Check, Loader2, MapPin, Search, LocateFixed } from 'lucide-react';
 
 let DefaultIcon = L.icon({
   iconUrl: icon,
@@ -66,6 +66,7 @@ export function MapPicker({ onSelect, onClose, initialLocation }: MapPickerProps
   const [position, setPosition] = useState<L.LatLng | null>(initialLatLng);
   const [address, setAddress] = useState<string>(initialLocation?.address || '');
   const [isLoadingAddress, setIsLoadingAddress] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -126,6 +127,30 @@ export function MapPicker({ onSelect, onClose, initialLocation }: MapPickerProps
     setAddress(shortAddress);
   };
 
+  const handleLocateMe = () => {
+    if (navigator.geolocation) {
+      setIsLocating(true);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          const newPos = new L.LatLng(lat, lng);
+          setPosition(newPos);
+          fetchAddress(lat, lng);
+          setIsLocating(false);
+        },
+        (err) => {
+          console.error("Lỗi lấy vị trí:", err);
+          alert("Không thể lấy vị trí của bạn để định vị.");
+          setIsLocating(false);
+        },
+        { enableHighAccuracy: true }
+      );
+    } else {
+      alert("Trình duyệt của bạn không hỗ trợ định vị.");
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[100] bg-slate-50 flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-300">
       <div className="bg-white px-4 py-3 border-b border-slate-200 flex justify-between items-center shadow-sm z-20 relative">
@@ -144,7 +169,7 @@ export function MapPicker({ onSelect, onClose, initialLocation }: MapPickerProps
       
       <div className="flex-1 relative z-0">
         {/* Search Overlay */}
-        <div className="absolute top-4 left-4 right-4 z-[400]">
+        <div className="absolute top-4 left-4 right-4 z-[1000]">
           <form onSubmit={handleSearch} className="relative flex items-center">
             <input
               type="text"
@@ -194,14 +219,24 @@ export function MapPicker({ onSelect, onClose, initialLocation }: MapPickerProps
         </MapContainer>
         
         {!position && (
-          <div className="absolute top-20 left-1/2 -translate-x-1/2 z-[400] bg-white px-4 py-2 rounded-full shadow-lg text-[13px] font-medium text-slate-700 pointer-events-none whitespace-nowrap">
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 z-[1000] bg-white px-4 py-2 rounded-full shadow-lg text-[13px] font-medium text-slate-700 pointer-events-none whitespace-nowrap">
             Chạm vào bản đồ để chọn vị trí
           </div>
         )}
+
+        <button
+          type="button"
+          onClick={handleLocateMe}
+          disabled={isLocating}
+          className="absolute bottom-6 right-4 z-[1000] p-3 bg-white rounded-full shadow-lg border border-slate-200 text-slate-700 hover:text-blue-600 focus:outline-none flex items-center justify-center transition-colors disabled:opacity-70"
+          title="Vị trí của tôi"
+        >
+          {isLocating ? <Loader2 className="w-6 h-6 animate-spin" /> : <LocateFixed className="w-6 h-6" />}
+        </button>
       </div>
 
       {position && (
-        <div className="bg-white p-4 pb-8 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] z-[400]">
+        <div className="bg-white p-4 pb-8 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] z-[1000] relative">
           <div className="mb-4 flex gap-3 items-start bg-slate-50 p-3 rounded-xl border border-slate-100">
             <div className="mt-0.5">
               {isLoadingAddress ? (

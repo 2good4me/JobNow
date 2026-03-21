@@ -18,6 +18,9 @@ export interface UserProfile {
     skills: string[];
     achievements?: string[];
     identity_images: string[];
+    cccd_number?: string | null;
+    cccd_full_name?: string | null;
+    cccd_dob?: string | null;
     experience?: string;
     education?: {
         school: string;

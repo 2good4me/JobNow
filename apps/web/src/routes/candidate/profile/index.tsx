@@ -115,7 +115,7 @@ function CandidateProfilePage() {
         try {
             setIsLoggingOut(true);
             await signOut();
-            await navigate({ to: '/login' });
+            await navigate({ to: '/' });
         } catch (error) {
             console.error('Logout failed:', error);
         } finally {

@@ -118,7 +118,10 @@ export function ChatList({ userId, role, onSelectConversation, selectedConversat
             setIsSearching(true);
             try {
                 const results = await searchGlobalUsers(searchQuery);
-                setSearchResults(results.filter(u => u.uid !== userId));
+                const existingUserIds = new Set(
+                    conversations?.map(c => role === 'CANDIDATE' ? c.employerId : c.candidateId) || []
+                );
+                setSearchResults(results.filter(u => u.uid !== userId && existingUserIds.has(u.uid)));
             } catch (error) {
                 console.error(error);
             } finally {

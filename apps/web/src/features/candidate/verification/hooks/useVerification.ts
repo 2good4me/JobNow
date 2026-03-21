@@ -14,19 +14,39 @@ export const useSubmitCandidateVerification = () => {
 
             const candidateId = userProfile.uid;
 
-            // Mock an upload simulation instead of using real Firebase since
-            // it's failing to resolve for the user
-            console.log('Simulating file upload for candidate:', candidateId);
+            // Gọi API bằng fetch
+            const formData = new FormData();
+            formData.append('file', _file);
 
-            await new Promise((resolve) => setTimeout(resolve, 1500));
-            const imageUrl = 'https://fakeimg.pl/400x300/';
-
-            console.log('Update simulated firestore for candidate:', candidateId);
-            await updateUserDocument(candidateId, {
-                verification_status: 'PENDING',
+            console.log('Sending CCCD to OCR service...');
+            const response = await fetch('http://localhost:8000/api/verify-cccd', {
+                method: 'POST',
+                body: formData,
             });
 
-            return imageUrl;
+            if (!response.ok) {
+                throw new Error('Không thể kết nối với dịch vụ OCR');
+            }
+
+            const result = await response.json();
+            
+            if (!result.success || !result.data) {
+                throw new Error(result.error || 'Lỗi xử lý hình ảnh');
+            }
+
+            const extracted = result.data;
+            const isSuccess = !!(extracted.cccd_number && extracted.full_name);
+
+            console.log('Update firestore for candidate:', candidateId, extracted);
+            
+            await updateUserDocument(candidateId, {
+                verification_status: isSuccess ? 'VERIFIED' : 'PENDING',
+                cccd_number: extracted.cccd_number || null,
+                cccd_full_name: extracted.full_name || null,
+                cccd_dob: extracted.dob || null,
+            });
+
+            return result;
         },
         onSuccess: async () => {
             await refreshProfile();
