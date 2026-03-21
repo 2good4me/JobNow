@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAllJobs } from '@/features/jobs/hooks/useAllJobs';
 import {
   ArrowLeft, Search, Mic, Map as MapIcon,
@@ -56,6 +56,7 @@ function CandidateSearchDashboard() {
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
   const [showFilters, setShowFilters] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(10);
   const { data: jobs = [], isLoading, isError } = useAllJobs();
 
   const filteredJobs = useMemo(() => {
@@ -114,6 +115,11 @@ function CandidateSearchDashboard() {
       return true;
     });
   }, [jobs, searchText, minWage, verifiedOnly, selectedDistrict, selectedLocation, distance, selectedCategories]);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setVisibleCount(10);
+  }, [filteredJobs]);
 
   const handleResetFilters = () => {
     setDistance(5);
@@ -193,20 +199,24 @@ function CandidateSearchDashboard() {
       <div className="px-4 py-4">
         {/* Advanced Filters Section */}
         {showFilters && (
-          <div className="mb-6 border-b border-slate-200 pb-6 bg-white p-5 rounded-3xl shadow-xl border border-blue-100 animate-in fade-in slide-in-from-top-4 duration-300">
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center gap-2">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm transition-opacity" onClick={() => setShowFilters(false)}>
+            <div 
+              className="w-full h-[85vh] sm:h-auto sm:max-h-[85vh] sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col animate-in slide-in-from-bottom-5 duration-300"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex justify-between items-center p-5 border-b border-slate-100 shrink-0">
                 <h2 className="text-[18px] font-bold text-slate-900">Bộ lọc nâng cao</h2>
-                <button onClick={() => setShowFilters(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
-                  <ArrowLeft className="w-4 h-4 rotate-90" />
-                </button>
+                <div className="flex gap-4">
+                  <button onClick={handleResetFilters} className="text-blue-500 text-[14px] font-semibold">Xóa tất cả</button>
+                  <button onClick={() => setShowFilters(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                    <ArrowLeft className="w-5 h-5 rotate-180" />
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-4">
-                <button onClick={handleResetFilters} className="text-blue-500 text-[14px] font-semibold">Đặt lại</button>
-                <button onClick={() => setShowFilters(false)} className="text-slate-500 text-[14px] font-semibold">Đóng</button>
-              </div>
-            </div>
 
+              {/* Scrollable Content */}
+              <div className="p-5 overflow-y-auto flex-1 custom-scrollbar">
             {/* District Selection */}
             <div className="mb-6">
               <div className="flex justify-between items-center mb-3">
@@ -357,12 +367,18 @@ function CandidateSearchDashboard() {
               </div>
             </div>
 
-            <button 
-              onClick={() => setShowFilters(false)}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-blue-200 transition-all active:scale-[0.98]"
-            >
-              ÁP DỤNG BỘ LỌC
-            </button>
+              </div>
+              
+              {/* Footer Buttons */}
+              <div className="p-5 border-t border-slate-100 shrink-0 bg-white sm:rounded-b-3xl">
+                <button 
+                  onClick={() => setShowFilters(false)}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-blue-200 transition-all active:scale-[0.98]"
+                >
+                  ÁP DỤNG BỘ LỌC
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -394,19 +410,29 @@ function CandidateSearchDashboard() {
           ) : filteredJobs.length === 0 ? (
             <div className="text-center py-10 text-slate-500">Không tìm thấy việc làm phù hợp.</div>
           ) : (
-            filteredJobs.map((job: any) => (
-              <JobCard
-                key={job.id}
-                id={job.id}
-                companyName={job.employerName || 'Nhà tuyển dụng'}
-                title={job.title}
-                wage={job.salary ? `${job.salary.toLocaleString()}đ/${job.salaryType === 'PER_SHIFT' ? 'ca' : 'tháng'}` : 'Thỏa thuận'}
-                distance={job.location?.address?.split(',')[0] || job.address?.split(',')[0] || 'Toàn quốc'}
-                shift={job.employmentType === 'PART_TIME' ? 'Bán thời gian' : 'Toàn thời gian'}
-                logoUrl={job.images?.[0] || `https://api.dicebear.com/7.x/initials/svg?seed=${job.title}&backgroundColor=3b82f6`}
-                hasVerifiedBadge={job.isPremium || false}
-              />
-            ))
+            <>
+              {filteredJobs.slice(0, visibleCount).map((job: any) => (
+                <JobCard
+                  key={job.id}
+                  id={job.id}
+                  companyName={job.employerName || 'Nhà tuyển dụng'}
+                  title={job.title}
+                  wage={job.salary ? `${job.salary.toLocaleString()}đ/${job.salaryType === 'PER_SHIFT' ? 'ca' : 'tháng'}` : 'Thỏa thuận'}
+                  distance={job.location?.address?.split(',')[0] || job.address?.split(',')[0] || 'Toàn quốc'}
+                  shift={job.employmentType === 'PART_TIME' ? 'Bán thời gian' : 'Toàn thời gian'}
+                  logoUrl={job.images?.[0] || `https://api.dicebear.com/7.x/initials/svg?seed=${job.title}&backgroundColor=3b82f6`}
+                  hasVerifiedBadge={job.isPremium || false}
+                />
+              ))}
+              {visibleCount < filteredJobs.length && (
+                <button 
+                  onClick={() => setVisibleCount(prev => prev + 10)}
+                  className="w-full mt-4 py-3 border border-blue-200 bg-blue-50/80 rounded-xl font-bold text-blue-600 hover:bg-blue-100 transition-colors"
+                >
+                  XEM THÊM ({filteredJobs.length - visibleCount} việc làm nữa)
+                </button>
+              )}
+            </>
           )}
         </div>
 

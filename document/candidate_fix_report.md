@@ -88,10 +88,10 @@
 
 
 
-### 17. Job Search UX
+### 17. [DONE] Job Search UX
 - **File:** `routes/jobs/index.tsx`
 - **Vấn đề:** Bộ lọc nâng cao chiếm quá nhiều diện tích, thiếu "Xóa tất cả"
-- **Hướng sửa:** Collapsible filters + nút Clear All + pagination rõ ràng
+- **Hướng sửa:** Collapsible filters + nút Clear All + pagination rõ ràng - Đã thực hiện UI modal filter, nút xóa tất cả và phân trang.
 
 ### 18. [DONE] Push Notification chưa tích hợp thực
 - **Vấn đề:** Toggle setting có nhưng chưa có FCM integration
@@ -101,20 +101,20 @@
 
 ## 🟢 LOW – Nice to have
 
-### 19. Calendar view cho shifts
-- Lịch biểu trực quan thay vì danh sách
+### 19. [DONE] Calendar view cho shifts
+- Lịch biểu trực quan thay vì danh sách - Đã có sẵn trong chế độ Thời gian biểu của `shifts.tsx`.
 
-### 20. Timer đếm giờ khi check-in
-- Hiển thị realtime timer khi đang làm ca
+### 20. [DONE] Timer đếm giờ khi check-in
+- Hiển thị realtime timer khi đang làm ca - Đã hiển thị qua component `WorkTimer` trong `shifts.tsx`.
 
 ### 21. [DONE] Xóa tài khoản (GDPR compliance)
 - Settings → Xóa toàn bộ data + anonymize - Đã thêm mục Vùng nguy hiểm với chức năng Xóa tài khoản.
 
-### 22. Dọn test data trong Firestore
-- Xóa các job titles như "dsfsdf", "bưng bê" với salary bất thường
+### 22. [DONE] Dọn test data trong Firestore
+- Xóa các job titles như "dsfsdf", "bưng bê" với salary bất thường - Đã tạo script Node.js tự động dọn dẹp tại `scripts/cleanup_test_data.ts`.
 
-### 23. Chat page load chậm
-- Cần audit performance của `ChatPage` component
+### 23. [DONE] Chat page load chậm
+- Cần audit performance của `ChatPage` component - Đã tối ưu hóa lại thuật toán deduplication để tránh lag khi có nhiều hội thoại.
 
 ---
 
@@ -124,6 +124,6 @@
 |--------|----------|-----------|
 | 🔴 Critical | 5 | ✅ Đã xong |
 | 🟠 High | 6 | ✅ Đã xong (6/6) |
-| 🟡 Medium | 7 | ✅ Xong 5/7 (12, 13, 14, 15, 18) |
-| 🟢 Low | 5 | ✅ Xong 1/5 (21) |
-| **Tổng** | **23 items** | **17/23 completed** |
+| 🟡 Medium | 7 | ✅ Đã xong (7/7) |
+| 🟢 Low | 5 | ✅ Đã xong (5/5) |
+| **Tổng** | **23 items** | **23/23 completed** |

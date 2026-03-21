@@ -93,7 +93,7 @@ function EmployerProfilePage() {
 
   const { data: jobs = [], isLoading: isJobsLoading } = useGetEmployerJobs(employerId || '');
   const { data: applications = [], isLoading: isAppsLoading } = useGetEmployerApplications(employerId);
-  
+
   const [followerCount, setFollowerCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [followDialog, setFollowDialog] = useState<{ isOpen: boolean; type: 'followers' | 'following' }>({
@@ -216,16 +216,16 @@ function EmployerProfilePage() {
         )}
 
         <Box sx={{ mt: 2, px: 1, display: 'flex', gap: 2 }}>
-            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'bold' }}>
-                {followerCount} Người theo dõi
-            </Typography>
-            <Typography 
-                variant="caption" 
-                sx={{ color: 'text.secondary', fontWeight: 'bold', cursor: 'pointer', '&:hover': { color: 'primary.main' } }}
-                onClick={() => setFollowDialog({ isOpen: true, type: 'following' })}
-            >
-                {followingCount} Đang theo dõi
-            </Typography>
+          <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'bold' }}>
+            {followerCount} Người theo dõi
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{ color: 'text.secondary', fontWeight: 'bold', cursor: 'pointer', '&:hover': { color: 'primary.main' } }}
+            onClick={() => setFollowDialog({ isOpen: true, type: 'following' })}
+          >
+            {followingCount} Đang theo dõi
+          </Typography>
         </Box>
 
         {/* Verification badges */}

@@ -28,10 +28,8 @@ service cloud.firestore {
       allow create: if isOwner(userId) || (
         isSignedIn() && request.resource.data.keys().hasAll(['average_rating', 'total_ratings'])
       );
-      allow update: if isOwner(userId) || (
-        isSignedIn() && (
-          request.resource.data.diff(resource.data).affectedKeys().hasAny(['average_rating', 'total_ratings', 'updated_at', 'updatedAt', 'balance'])
-        )
+      allow update: if (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'balance', 'reputation_score', 'verification_status'])) || (
+        isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['average_rating', 'total_ratings', 'updated_at', 'updatedAt'])
       );
 
       // Wishlist is owner-only

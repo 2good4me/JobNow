@@ -2,21 +2,21 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useState } from 'react';
 import {
-  BadgeCheck,
-  Briefcase,
-  ChevronRight,
-  FileCheck2,
-  Heart,
-  LifeBuoy,
-  LogOut,
-  MapPin,
-  Pencil,
-  Phone,
-  Wallet,
-  GraduationCap,
-  ExternalLink,
-  Settings,
-  ShieldCheck,
+    BadgeCheck,
+    Briefcase,
+    ChevronRight,
+    FileCheck2,
+    Heart,
+    LifeBuoy,
+    LogOut,
+    MapPin,
+    Pencil,
+    Phone,
+    Wallet,
+    GraduationCap,
+    ExternalLink,
+    Settings,
+    ShieldCheck,
 } from 'lucide-react';
 import { useMyApplicationsRealtime } from '@/features/jobs/hooks/useMyApplicationsRealtime';
 import { ReputationStatsCard } from '@/features/auth/components/ReputationStatsCard';
@@ -26,27 +26,27 @@ import { useEffect } from 'react';
 import { FollowListDialog } from '@/components/ui/FollowListDialog';
 
 export const Route = createFileRoute('/candidate/profile/')({
-  component: CandidateProfilePage,
+    component: CandidateProfilePage,
 });
 
 function ProfileSkeleton() {
-  return (
-    <div className="animate-pulse pb-24">
-      <div className="bg-gradient-to-br from-[#1e3a5f] to-[#0f172a] pt-14 pb-16 px-5 rounded-b-[2.5rem]">
-        <div className="h-6 w-40 bg-white/20 rounded-lg mb-6" />
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-24 h-24 bg-white/20 rounded-full" />
-          <div className="h-6 w-44 bg-white/20 rounded-lg" />
-          <div className="h-5 w-32 bg-white/10 rounded-full" />
+    return (
+        <div className="animate-pulse pb-24">
+            <div className="bg-gradient-to-br from-[#1e3a5f] to-[#0f172a] pt-14 pb-16 px-5 rounded-b-[2.5rem]">
+                <div className="h-6 w-40 bg-white/20 rounded-lg mb-6" />
+                <div className="flex flex-col items-center gap-3">
+                    <div className="w-24 h-24 bg-white/20 rounded-full" />
+                    <div className="h-6 w-44 bg-white/20 rounded-lg" />
+                    <div className="h-5 w-32 bg-white/10 rounded-full" />
+                </div>
+            </div>
+            <div className="px-5 -mt-6 space-y-4">
+                <div className="h-20 bg-white rounded-2xl" />
+                <div className="h-40 bg-white rounded-2xl" />
+                <div className="h-48 bg-white rounded-2xl" />
+            </div>
         </div>
-      </div>
-      <div className="px-5 -mt-6 space-y-4">
-        <div className="h-20 bg-white rounded-2xl" />
-        <div className="h-40 bg-white rounded-2xl" />
-        <div className="h-48 bg-white rounded-2xl" />
-      </div>
-    </div>
-  );
+    );
 }
 
 /* ── Inline Skeleton for data sections ── */
@@ -176,7 +176,7 @@ function CandidateProfilePage() {
                         </span>
 
                         <div className="flex items-center gap-4 mt-4 text-white/80">
-                            <button 
+                            <button
                                 onClick={() => setFollowDialog({ isOpen: true, type: 'followers' })}
                                 className="flex flex-col items-center hover:opacity-80 transition-opacity"
                             >
@@ -184,7 +184,7 @@ function CandidateProfilePage() {
                                 <span className="text-[11px] font-medium uppercase tracking-wider">Người theo dõi</span>
                             </button>
                             <div className="w-px h-8 bg-white/20" />
-                            <button 
+                            <button
                                 onClick={() => setFollowDialog({ isOpen: true, type: 'following' })}
                                 className="flex flex-col items-center hover:opacity-80 transition-opacity"
                             >
@@ -287,9 +287,9 @@ function CandidateProfilePage() {
                             </div>
                         )}
                         {userProfile.resume_url && (
-                            <a 
-                                href={userProfile.resume_url} 
-                                target="_blank" 
+                            <a
+                                href={userProfile.resume_url}
+                                target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex items-center gap-2.5 text-blue-600 font-bold hover:underline"
                             >
