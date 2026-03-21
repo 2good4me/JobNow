@@ -41,7 +41,7 @@ export function useConversations({ userId, role, limit = 20 }: UseConversationsI
   // This ensures that even if there are legacy duplicates or per-job threads, 
   // the sidebar list only shows ONE entry per person, favoring the most recent.
   const deduplicated = useMemo(() => {
-    const map = new Map<string, Conversation>();
+    const map = new Map<string, { conv: Conversation, maxTime: number }>();
     
     const getMs = (date: any) => {
       if (!date) return 0;
@@ -59,21 +59,14 @@ export function useConversations({ userId, role, limit = 20 }: UseConversationsI
       const convTime = Math.max(getMs(conv.lastMessageAt), getMs(conv.updatedAt), getMs(conv.createdAt));
       const existing = map.get(key);
       
-      if (!existing) {
-        map.set(key, conv);
-      } else {
-        const existingTime = Math.max(getMs(existing.lastMessageAt), getMs(existing.updatedAt), getMs(existing.createdAt));
-        if (convTime > existingTime) {
-          map.set(key, conv);
-        }
+      if (!existing || convTime > existing.maxTime) {
+        map.set(key, { conv, maxTime: convTime });
       }
     });
     
-    return Array.from(map.values()).sort((a, b) => {
-      const timeB = Math.max(getMs(b.lastMessageAt), getMs(b.updatedAt), getMs(b.createdAt));
-      const timeA = Math.max(getMs(a.lastMessageAt), getMs(a.updatedAt), getMs(a.createdAt));
-      return timeB - timeA;
-    });
+    return Array.from(map.values())
+      .sort((a, b) => b.maxTime - a.maxTime)
+      .map(entry => entry.conv);
   }, [conversations, role]);
 
   const unreadCountQuery = useQuery({

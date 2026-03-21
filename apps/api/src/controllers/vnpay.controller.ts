@@ -62,24 +62,23 @@ export const vnpayIpn = async (req: Request, res: Response) => {
         }
 
         if (vnp_ResponseCode === '00') {
-            // Success - process wallet topup
+            // Success - process user balance topup
             await db.runTransaction(async (t) => {
-                const walletRef = db.collection('wallets').doc(userId);
-                const walletDoc = await t.get(walletRef);
+                const userRef = db.collection('users').doc(userId);
+                const userDoc = await t.get(userRef);
                 
                 let currentBalance = 0;
-                if (walletDoc.exists) {
-                    currentBalance = walletDoc.data()?.balance || 0;
+                if (userDoc.exists) {
+                    currentBalance = userDoc.data()?.balance || 0;
                 }
 
                 // Update Transaction status
                 t.update(txRef, { status: 'COMPLETED', updatedAt: new Date() });
                 
-                // Update Wallet balance
-                t.set(walletRef, { 
+                // Update User balance
+                t.set(userRef, { 
                     balance: currentBalance + vnp_Amount,
-                    userId,
-                    updatedAt: new Date()
+                    updated_at: new Date()
                 }, { merge: true });
             });
             

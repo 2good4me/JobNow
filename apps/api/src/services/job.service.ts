@@ -116,10 +116,19 @@ export class JobService {
         const geohash = geofire.geohashForLocation([data.location.latitude, data.location.longitude]);
         const newJobRef = this.collection.doc();
 
-        const shiftsWithIds = data.shifts.map((shift) => ({
-            ...shift,
-            id: shift.id || db.collection('dummy').doc().id,
-        }));
+        // 1. Fetch employer's verification status for Tier Logic
+        const employerSnap = await db.collection('users').doc(data.employer_id).get();
+        const verificationStatus = employerSnap.exists ? (employerSnap.data()?.verification_status || 'UNVERIFIED') : 'UNVERIFIED';
+
+        // 2. Process shifts with Tier Logic
+        const shiftsWithIds = data.shifts.map((shift, index) => {
+            const shiftStatus = (verificationStatus === 'UNVERIFIED' && index > 0) ? 'LOCKED_TIER_1' : 'OPEN';
+            return {
+                ...shift,
+                id: shift.id || db.collection('dummy').doc().id,
+                status: shiftStatus
+            };
+        });
 
         const jobPayload = {
             ...data,
@@ -129,7 +138,23 @@ export class JobService {
             updated_at: admin.firestore.FieldValue.serverTimestamp(),
         };
 
-        await newJobRef.set(jobPayload);
+        const batch = db.batch();
+        batch.set(newJobRef, jobPayload);
+
+        // 3. Create shifts subcollection (Source of Truth for capacity and status)
+        shiftsWithIds.forEach(shift => {
+            const shiftRef = newJobRef.collection('shifts').doc(shift.id);
+            batch.set(shiftRef, {
+                ...shift,
+                job_id: newJobRef.id,
+                employer_id: data.employer_id,
+                created_at: admin.firestore.FieldValue.serverTimestamp(),
+                updated_at: admin.firestore.FieldValue.serverTimestamp()
+            });
+        });
+
+        await batch.commit();
+        
         return { id: newJobRef.id, ...jobPayload };
     }
 
