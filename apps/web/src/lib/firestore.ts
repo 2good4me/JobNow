@@ -73,6 +73,9 @@ export async function getUserDocument(uid: string): Promise<UserProfile | null> 
         education: data.education || [],
         certifications: data.certifications || [],
         resume_url: data.resume_url || null,
+        cccd_number: data.cccd_number || null,
+        cccd_full_name: data.cccd_full_name || null,
+        cccd_dob: data.cccd_dob || null,
         created_at: data.created_at?.toDate?.() ?? new Date(),
         updated_at: data.updated_at?.toDate?.() ?? new Date(),
         // Employer-specific fields

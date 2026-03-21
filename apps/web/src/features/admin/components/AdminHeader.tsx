@@ -8,7 +8,7 @@ export function AdminHeader() {
 
     const handleSignOut = async () => {
         await signOut();
-        navigate({ to: '/login' });
+        navigate({ to: '/' });
     };
 
     const displayName = userProfile?.full_name || 'Admin';

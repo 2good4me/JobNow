@@ -35,20 +35,20 @@ function CandidateVerificationPage() {
                     <button onClick={() => navigate({ to: '/candidate/profile' })} className="mb-6 w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-sm">
                         <ArrowLeft className="w-5 h-5 text-slate-700" />
                     </button>
-                    <SuccessView status="PENDING" />
+                    <SuccessView status="PENDING" profile={userProfile} />
                 </div>
             </div>
         );
     }
 
-    if (verificationStatus === 'VERIFIED') {
+    if (verificationStatus === 'VERIFIED' && step !== 'UPLOAD') {
         return (
             <div className="min-h-screen bg-slate-50 flex flex-col pt-12">
                 <div className="px-5">
                     <button onClick={() => navigate({ to: '/candidate/profile' })} className="mb-6 w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-sm">
                         <ArrowLeft className="w-5 h-5 text-slate-700" />
                     </button>
-                    <SuccessView status="VERIFIED" />
+                    <SuccessView status="VERIFIED" profile={userProfile} onRetry={() => setStep('UPLOAD')} />
                 </div>
             </div>
         );
@@ -98,7 +98,7 @@ function CandidateVerificationPage() {
                 )}
                 {step === 'SUCCESS' && (
                     <div className="pt-20 px-5">
-                        <SuccessView status="PENDING" />
+                        <SuccessView status="PENDING" profile={userProfile} />
                     </div>
                 )}
             </div>
@@ -250,9 +250,9 @@ function UploadView({ isUploading, onUpload }: { isUploading: boolean, onUpload:
 }
 
 // ── 3. Success / Pending State ──
-function SuccessView({ status }: { status: 'PENDING' | 'VERIFIED' }) {
+function SuccessView({ status, profile, onRetry }: { status: 'PENDING' | 'VERIFIED', profile: any, onRetry?: () => void }) {
     return (
-        <div className="flex flex-col items-center animate-in zoom-in-95 duration-500">
+        <div className="flex flex-col items-center animate-in zoom-in-95 duration-500 pb-12">
 
             <div className="w-full bg-gradient-to-b from-blue-50 to-white rounded-[2rem] p-8 shadow-sm flex flex-col items-center border border-blue-100/50">
 
@@ -299,13 +299,40 @@ function SuccessView({ status }: { status: 'PENDING' | 'VERIFIED' }) {
                     </p>
                 )}
 
-                <Link
-                    to="/candidate/profile"
-                    className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold py-4 rounded-xl shadow-md text-center transition-colors"
-                >
-                    Về Trang chủ
-                </Link>
+                {profile?.cccd_number && (
+                    <div className="w-full bg-white rounded-2xl p-5 shadow-sm border border-slate-200 mb-8 text-left space-y-4">
+                        <h3 className="font-bold text-slate-800 border-b border-slate-100 pb-2 mb-3">Thông tin trích xuất</h3>
+                        <div>
+                            <p className="text-xs text-slate-500 mb-1">Họ và tên</p>
+                            <p className="text-[15px] font-semibold text-slate-900">{profile.cccd_full_name || 'Không xác định'}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-slate-500 mb-1">Số CCCD/CMND</p>
+                            <p className="text-[15px] font-semibold text-slate-900">{profile.cccd_number}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-slate-500 mb-1">Ngày sinh</p>
+                            <p className="text-[15px] font-semibold text-slate-900">{profile.cccd_dob || 'Không xác định'}</p>
+                        </div>
+                    </div>
+                )}
 
+                <div className="w-full flex gap-3">
+                    {onRetry && (
+                        <button
+                            onClick={onRetry}
+                            className="flex-1 bg-white text-blue-600 border-2 border-blue-600 hover:bg-blue-50 font-bold py-4 rounded-xl shadow-md text-center transition-colors"
+                        >
+                            Quét lại
+                        </button>
+                    )}
+                    <Link
+                        to="/candidate/profile"
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold py-4 rounded-xl shadow-md text-center transition-colors block"
+                    >
+                        Về Trang chủ
+                    </Link>
+                </div>
             </div>
         </div>
     );

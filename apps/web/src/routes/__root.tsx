@@ -103,6 +103,18 @@ function RootLayout() {
             if (role === 'ADMIN') navigate({ to: '/admin', replace: true });
         }
     }, [role, needsProfileSetup, loading, location.pathname, navigate]);
+
+    const isProtectedRoute = location.pathname.startsWith('/candidate') || 
+                             location.pathname.startsWith('/employer') || 
+                             location.pathname.startsWith('/admin');
+
+    // Forcefully redirect logged out users from protected routes
+    useEffect(() => {
+        if (!loading && !user && isProtectedRoute) {
+            navigate({ to: '/', replace: true });
+        }
+    }, [loading, user, isProtectedRoute, navigate]);
+
     const isCandidateRoute = role === 'CANDIDATE' && !isAuthPage;
     const isEmployerRoute = role === 'EMPLOYER' && !isAuthPage;
     const isAdminRoute = location.pathname.startsWith(ADMIN_ROUTES_PREFIX);
