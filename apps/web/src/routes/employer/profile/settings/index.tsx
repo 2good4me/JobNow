@@ -1,10 +1,6 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-<<<<<<< HEAD
 import { useState, useEffect } from 'react';
-=======
-import { useState } from 'react';
 import { useTheme } from '@/components/ThemeProvider';
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
 import {
   ArrowLeft,
   Check,
@@ -40,13 +36,9 @@ type LanguageCode = (typeof languageOptions)[number]['value'];
 
 function EmployerSettingsIndexPage() {
   const navigate = useNavigate();
-<<<<<<< HEAD
   const { userProfile, refreshProfile } = useAuth();
-  const [isDarkMode, setIsDarkMode] = useState(false);
-=======
   const { theme, toggleTheme } = useTheme();
   const isDarkMode = theme === 'dark';
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
   const [isPushEnabled, setIsPushEnabled] = useState(true);
   const [isEmailEnabled, setIsEmailEnabled] = useState(true);
   const [isLanguageListOpen, setIsLanguageListOpen] = useState(false);
@@ -57,10 +49,6 @@ function EmployerSettingsIndexPage() {
     if (userProfile) {
       setIsPushEnabled(userProfile.notification_push ?? true);
       setIsEmailEnabled(userProfile.notification_email ?? true);
-      const profileTheme = userProfile.theme_mode;
-      if (profileTheme === 'dark' || profileTheme === 'light') {
-        setIsDarkMode(profileTheme === 'dark');
-      }
       const profileLanguage = userProfile.preferred_language;
       if (profileLanguage === 'vi' || profileLanguage === 'en') {
         setSelectedLanguage(profileLanguage);
@@ -69,10 +57,6 @@ function EmployerSettingsIndexPage() {
   }, [userProfile]);
 
   useEffect(() => {
-    const storedDarkMode = localStorage.getItem(DARK_MODE_STORAGE_KEY);
-    if (storedDarkMode === 'true' || storedDarkMode === 'false') {
-      setIsDarkMode(storedDarkMode === 'true');
-    }
     const storedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY);
     if (storedLanguage === 'vi' || storedLanguage === 'en') {
       setSelectedLanguage(storedLanguage);
@@ -80,33 +64,10 @@ function EmployerSettingsIndexPage() {
   }, []);
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDarkMode);
-    document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
-  }, [isDarkMode]);
-
-  useEffect(() => {
     document.documentElement.lang = selectedLanguage;
   }, [selectedLanguage]);
 
   const selectedLanguageLabel = languageOptions.find(item => item.value === selectedLanguage)?.label || 'Tiếng Việt';
-
-  const handleToggleDarkMode = async () => {
-    const nextState = !isDarkMode;
-    setIsDarkMode(nextState);
-    localStorage.setItem(DARK_MODE_STORAGE_KEY, String(nextState));
-
-    if (!userProfile?.uid) return;
-    try {
-      await updateUserDocument(userProfile.uid, { theme_mode: nextState ? 'dark' : 'light' });
-      await refreshProfile();
-      toast.success('Đã cập nhật chế độ xem');
-    } catch (error) {
-      console.error(error);
-      setIsDarkMode(!nextState);
-      localStorage.setItem(DARK_MODE_STORAGE_KEY, String(!nextState));
-      toast.error('Không thể lưu chế độ xem, vui lòng thử lại');
-    }
-  };
 
   const handleTogglePush = async () => {
     if (!userProfile?.uid) return;
@@ -161,21 +122,15 @@ function EmployerSettingsIndexPage() {
   );
 
   return (
-<<<<<<< HEAD
-    <div className="flex flex-col min-h-screen bg-slate-50 pb-24 max-w-lg mx-auto w-full relative shadow-sm">
-      <header className="sticky top-0 z-40 flex h-14 items-center justify-between bg-white/90 px-4 backdrop-blur-md border-b border-slate-100">
+    <div className="min-h-screen pb-24 bg-slate-50 dark:bg-[#0f172a] transition-colors duration-300">
+      <header className="sticky top-0 z-40 flex h-14 items-center justify-between bg-white/90 dark:bg-[#1f2937]/90 px-4 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 transition-colors">
         <button
           onClick={() => navigate({ to: '/employer/profile' })}
-          className="flex h-10 w-10 items-center justify-center -ml-2 rounded-full text-slate-700 hover:bg-slate-100 active:bg-slate-200 transition-colors"
+          className="flex h-10 w-10 items-center justify-center -ml-2 rounded-full text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 transition-colors"
         >
-=======
-    <div className="min-h-screen pb-24 transition-colors duration-300">
-      <div className="bg-[#1e3a5f] text-white p-4 sticky top-0 z-10 flex items-center">
-        <button onClick={() => navigate({ to: '/employer/profile' })} className="p-2 -ml-2 rounded-full hover:bg-white/10 transition">
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <span className="font-bold text-slate-900 text-base flex-1 text-center pr-8 truncate">Cài đặt & Bảo mật</span>
+        <span className="font-bold text-slate-800 dark:text-slate-100 text-base flex-1 text-center pr-8 truncate">Cài đặt & Bảo mật</span>
       </header>
 
       <div className="max-w-md mx-auto p-4 space-y-4">
@@ -184,13 +139,8 @@ function EmployerSettingsIndexPage() {
 
           <button
             type="button"
-<<<<<<< HEAD
-            onClick={handleToggleDarkMode}
-            className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 text-slate-700 transition-colors"
-=======
             onClick={toggleTheme}
             className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors"
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
           >
             <span className="flex items-center gap-2.5 text-sm font-semibold">
               {isDarkMode ? <Moon className="w-4 h-4 text-amber-500" /> : <Sun className="w-4 h-4 text-amber-500" />} Chế độ xem
@@ -206,13 +156,8 @@ function EmployerSettingsIndexPage() {
             <span className="flex items-center gap-2.5 text-sm font-semibold">
               <Languages className="w-4 h-4 text-slate-500 dark:text-slate-400" /> Ngôn ngữ
             </span>
-<<<<<<< HEAD
-            <span className="flex items-center gap-2 text-sm text-slate-500">
-              {selectedLanguageLabel}
-=======
             <span className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-              {selectedLanguage}
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
+              {selectedLanguageLabel}
               <ChevronRight className={`w-4 h-4 transition-transform ${isLanguageListOpen ? 'rotate-90' : ''}`} />
             </span>
           </button>
@@ -223,16 +168,8 @@ function EmployerSettingsIndexPage() {
                 <button
                   key={language.value}
                   type="button"
-<<<<<<< HEAD
                   onClick={() => handleLanguageSelect(language.value)}
-                  className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-white transition-colors"
-=======
-                  onClick={() => {
-                    setSelectedLanguage(language);
-                    setIsLanguageListOpen(false);
-                  }}
-                  className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 transition-colors"
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
+                  className="w-full flex items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition-colors"
                 >
                   <span>{language.label}</span>
                   {selectedLanguage === language.value ? <Check className="w-4 h-4 text-blue-600" /> : <span className="w-4 h-4" />}
@@ -247,13 +184,8 @@ function EmployerSettingsIndexPage() {
 
           <button
             type="button"
-<<<<<<< HEAD
             onClick={handleTogglePush}
-            className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 text-slate-700 transition-colors"
-=======
-            onClick={() => setIsPushEnabled(prev => !prev)}
             className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors"
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
           >
             <span className="flex items-center gap-2.5 text-sm font-semibold">
               <Smartphone className="w-4 h-4 text-blue-500" /> Push notification
@@ -266,13 +198,8 @@ function EmployerSettingsIndexPage() {
 
           <button
             type="button"
-<<<<<<< HEAD
             onClick={handleToggleEmail}
-            className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 text-slate-700 transition-colors"
-=======
-            onClick={() => setIsEmailEnabled(prev => !prev)}
             className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors"
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
           >
             <span className="flex items-center gap-2.5 text-sm font-semibold">
               <Mail className="w-4 h-4 text-indigo-500 dark:text-indigo-400" /> Email notification

@@ -1,0 +1,69 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - generic [ref=e6]:
+      - link "JobNow" [ref=e7] [cursor=pointer]:
+        - /url: /
+        - img [ref=e9]
+        - generic [ref=e13]: JobNow
+      - generic [ref=e15]:
+        - link "Đăng nhập" [ref=e16] [cursor=pointer]:
+          - /url: /login
+        - link "Đăng ký" [ref=e17] [cursor=pointer]:
+          - /url: /register
+  - main [ref=e18]:
+    - generic [ref=e19]:
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - generic [ref=e22]:
+            - generic [ref=e23]:
+              - paragraph [ref=e24]: Job Wizard
+              - heading "Đăng tin" [level=1] [ref=e25]
+            - generic [ref=e26]: Bước 3/4
+          - generic [ref=e27]:
+            - img [ref=e30]
+            - img [ref=e35]
+            - generic [ref=e39]: "3"
+            - generic [ref=e42]: "4"
+          - generic [ref=e43]:
+            - generic [ref=e44]: Thông tin
+            - generic [ref=e45]: Chi tiết
+            - generic [ref=e46]: Ca làm
+            - generic [ref=e47]: Xem lại
+        - generic [ref=e49]:
+          - generic [ref=e50]:
+            - generic [ref=e51]:
+              - heading "Chọn ca làm việc *" [level=2] [ref=e52]
+              - paragraph [ref=e53]: Thêm các ca làm việc cho công việc này.
+            - button "Thêm ca làm việc" [ref=e54] [cursor=pointer]:
+              - img [ref=e55]
+              - text: Thêm ca làm việc
+          - generic [ref=e56]:
+            - generic [ref=e57]:
+              - img [ref=e58]
+              - heading "Tổng ngân sách dự kiến" [level=3] [ref=e60]
+            - paragraph [ref=e61]: 0 VNĐ
+            - paragraph [ref=e63]: Chi tiết tính toán
+            - generic [ref=e64]:
+              - paragraph [ref=e65]: "Tính là: Lương 50.000đ/giờ × 0.0 giờ làm = 0đ"
+              - text: "0"
+      - generic [ref=e67]:
+        - button "Quay lại" [ref=e68]:
+          - img [ref=e69]
+          - generic [ref=e71]: Quay lại
+        - button "Tiếp tục" [disabled] [ref=e72]:
+          - text: Tiếp tục
+          - img [ref=e73]
+  - contentinfo [ref=e75]:
+    - generic [ref=e76]:
+      - generic [ref=e77]:
+        - img [ref=e78]
+        - generic [ref=e82]: JobNow
+      - generic [ref=e83]:
+        - link "Hỗ trợ" [ref=e84] [cursor=pointer]:
+          - /url: /support-center
+        - paragraph [ref=e85]: © 2026 JobNow Application. All rights reserved.
+  - region "Notifications alt+T"
+```

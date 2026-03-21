@@ -18,11 +18,12 @@ import Step4Review from './-components/post-job/Step4Review';
 import { CategoryBottomSheet } from './-components/post-job/CategoryBottomSheet';
 import {
   jobFormSchema,
-  type JobFormState as JobFormSchemaState,
   type PayType,
   type GenderPreference,
   type Shift,
 } from './-schemas/jobFormSchema';
+import { type JobFormState } from './-types/job-post-types';
+import { nextShiftId } from './-utils/postJobUtils';
 
 export const Route = createFileRoute('/employer/post-job')({
   validateSearch: (search: Record<string, unknown>): { editJobId?: string; duplicateJobId?: string } => ({
@@ -32,32 +33,15 @@ export const Route = createFileRoute('/employer/post-job')({
   component: EmployerPostJobRoute,
 });
 
-// App form state keeps GPS fields nullable until user selects a location.
-export type JobFormState = Omit<JobFormSchemaState, 'latitude' | 'longitude'> & {
-  latitude: number | null;
-  longitude: number | null;
-};
 // Re-export types for use in step components
-export type { PayType, GenderPreference, Shift };
+export type { Shift, JobFormState };
 
 /* ── Constants ───────────────────────────────── */
 export const FALLBACK_CATEGORIES = ['F&B Service', 'Retail', 'Delivery', 'Event Helper'];
-export const payTypes: PayType[] = ['Theo giờ', 'Theo ca', 'Theo ngày'];
-export const genderOptions: GenderPreference[] = ['Nam', 'Nữ', 'Cả hai'];
 
 const STEP_LABELS = ['Thông tin', 'Chi tiết', 'Ca làm', 'Xem lại'] as const;
 
 /* ── Helpers ─────────────────────────────────── */
-let _shiftId = 0;
-export function nextShiftId() {
-  return `shift-${Date.now()}-${++_shiftId}`;
-}
-
-export function formatSalary(val: string) {
-  const num = Number(val.replace(/\D/g, ''));
-  if (!num) return val;
-  return num.toLocaleString('vi-VN');
-}
 
 /* ── Step Progress Bar ───────────────────────── */
 function StepBar({ current, total }: { current: number; total: number }) {
@@ -91,7 +75,7 @@ function StepBar({ current, total }: { current: number; total: number }) {
 }
 
 /* ── Main Component ──────────────────────────── */
-function EmployerPostJobRoute() {
+export function EmployerPostJobRoute() {
   const { editJobId, duplicateJobId } = Route.useSearch();
   
   const [step, setStep] = useState(1);
@@ -458,11 +442,7 @@ function EmployerPostJobRoute() {
   };
 
   return (
-<<<<<<< HEAD
-    <div className="flex flex-col min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-blue-50/40 pb-24 max-w-lg mx-auto w-full relative shadow-sm">
-=======
     <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-blue-50/40 dark:from-slate-900 dark:via-[#111827] dark:to-[#0f172a] pb-24 transition-colors duration-300">
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
       <div className="mx-auto w-full max-w-md px-4 pt-4">
 
         {/* Loading state when fetching job data for editing */}
@@ -479,22 +459,6 @@ function EmployerPostJobRoute() {
         {!(editJobId && isLoadingJob) && (
           <>
             {/* ── Header ──────────────────────────── */}
-<<<<<<< HEAD
-            <header className="sticky top-0 z-40 bg-white/90 p-4 shadow-sm border-b border-slate-100 backdrop-blur-md">
-              <div className="mb-3 flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => navigate({ to: '/employer/job-list' })}
-                  className="w-10 h-10 shrink-0 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 truncate">Job Wizard</p>
-                  <h1 className="text-lg font-bold text-slate-900 truncate">{editJobId ? 'Chỉnh sửa tin' : 'Đăng tin tuyển dụng'}</h1>
-                </div>
-                <span className="shrink-0 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
-=======
             <header className="sticky top-2 z-20 rounded-2xl border border-white/60 dark:border-slate-800 bg-white/80 dark:bg-[#1E293B]/80 p-4 shadow-lg backdrop-blur-md transition-colors duration-300">
               <div className="mb-3 flex items-center justify-between">
                 <div>
@@ -502,7 +466,6 @@ function EmployerPostJobRoute() {
                   <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">{editJobId ? 'Chỉnh sửa tin' : 'Đăng tin'}</h1>
                 </div>
                 <span className="rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-3 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-400">
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
                   Bước {step}/{STEP_LABELS.length}
                 </span>
               </div>

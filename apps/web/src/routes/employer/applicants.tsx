@@ -229,13 +229,8 @@ function EmployerApplicantsRoute() {
   };
 
   return (
-<<<<<<< HEAD
-    <div className="flex flex-col min-h-screen bg-slate-50 pb-24 max-w-lg mx-auto w-full relative shadow-sm">
-      <div className="w-full">
-=======
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-24 transition-colors duration-300">
       <div className="mx-auto w-full max-w-lg">
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
 
         {/* ── Gradient Header ── */}
         <div className="bg-gradient-to-br from-[#1e3a5f] to-[#0f172a] px-5 pt-12 pb-8 relative overflow-hidden">
@@ -352,15 +347,9 @@ function EmployerApplicantsRoute() {
           ) : (
             <>
               {/* Funnel hint */}
-<<<<<<< HEAD
               {activeTab === 'pending' && stats.pending > 0 && !isSelectMode && (
-                <div className="flex items-center gap-2 rounded-xl bg-blue-50 border border-blue-100 px-3 py-2 text-xs text-blue-700 font-medium mb-3">
-                  <Sparkles className="h-4 w-4 shrink-0 text-blue-500" />
-=======
-              {activeTab === 'pending' && stats.pending > 0 && (
                 <div className="flex items-center gap-2 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 px-3 py-2 text-xs text-blue-700 dark:text-blue-400 font-medium">
                   <Sparkles className="h-4 w-4 shrink-0 text-blue-500 dark:text-blue-400" />
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
                   {stats.pending} ứng viên đang chờ bạn duyệt. Bấm <strong>Duyệt</strong> để nhận ngay!
                 </div>
               )}

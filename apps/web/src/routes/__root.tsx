@@ -6,12 +6,9 @@ import { CandidateBottomNav } from '../components/ui/CandidateBottomNav';
 import { EmployerBottomNav } from '../components/ui/EmployerBottomNav';
 import { GlobalHeader } from '../components/ui/GlobalHeader';
 import { Toaster } from 'sonner';
-<<<<<<< HEAD
 import { useOnlineStatus } from '../features/auth/hooks/useOnlineStatus';
 import { useFCM } from '../hooks/useFCM';
-=======
 import { ThemeProvider, useTheme } from '../components/ThemeProvider';
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
 
 export const Route = createRootRoute({
     component: RootApp,

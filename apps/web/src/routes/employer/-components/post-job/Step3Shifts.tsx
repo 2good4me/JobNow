@@ -1,5 +1,7 @@
 import { Clock, Minus, Plus, X, AlertCircle, DollarSign, CheckCircle2 } from 'lucide-react';
-import { type JobFormState, type Shift, formatSalary } from '../../post-job';
+import { type JobFormState } from '../../-types/job-post-types';
+import { type Shift } from '../../-schemas/jobFormSchema';
+import { formatSalary } from '../../-utils/postJobUtils';
 import type { PayType } from '../../-schemas/jobFormSchema';
 import { calculateBudget } from '../../-utils/budgetCalculations';
 

@@ -30,8 +30,12 @@
         "tailwind-merge": "^3.5.0"
     },
     "devDependencies": {
+        "@playwright/test": "^1.58.2",
         "@tailwindcss/vite": "^4.2.1",
         "@tanstack/router-vite-plugin": "^1.19.0",
+        "@testing-library/jest-dom": "latest",
+        "@testing-library/react": "latest",
+        "@testing-library/user-event": "latest",
         "@types/react": "^18.2.56",
         "@types/react-dom": "^18.2.19",
         "@typescript-eslint/eslint-plugin": "^7.0.2",
@@ -40,15 +44,12 @@
         "eslint": "^8.56.0",
         "eslint-plugin-react-hooks": "^4.6.0",
         "eslint-plugin-react-refresh": "^0.4.5",
+        "jsdom": "latest",
         "tailwindcss": "^4.2.1",
         "typescript": "^5.2.2",
         "vite": "^5.1.4",
         "vite-tsconfig-paths": "^4.3.1",
-        "vitest": "latest",
-        "@testing-library/react": "latest",
-        "@testing-library/jest-dom": "latest",
-        "@testing-library/user-event": "latest",
-        "jsdom": "latest",
+        "vitest": "^2.1.8",
         "zod": "^3.22.4"
     }
 }

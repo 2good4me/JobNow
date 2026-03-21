@@ -40,7 +40,7 @@ function getFirebaseErrorVi(code: string): string {
   return map[code] ?? 'Đăng nhập thất bại. Vui lòng thử lại.';
 }
 
-function LoginPage() {
+export function LoginPage() {
   const [tab, setTab] = useState<'email' | 'phone'>('email');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

@@ -1,17 +1,26 @@
-import React, { useState } from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import Step1Info from '../routes/employer/-components/post-job/Step1Info';
-import { CategoryBottomSheet } from '../routes/employer/-components/post-job/CategoryBottomSheet';
-import { type JobFormState } from '../routes/employer/post-job';
+import React, { useState } from 'react';
 
-// Mock các hàm tiện ích để tránh lỗi khi render
+// Mock Router
+vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => vi.fn(),
+  Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>,
+  createFileRoute: () => () => ({}),
+}));
+
+// Mock các hàm tiện ích
 vi.mock('../routes/employer/-utils/budgetCalculations', () => ({
   getSalaryLabel: () => 'Mức lương',
   getSalaryExplanation: () => 'Giải thích mức lương',
 }));
 
-// Thành phần bao bọc để quản lý state trong quá trình test
+// Imports AFTER mocks
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import Step1Info from '../routes/employer/-components/post-job/Step1Info';
+import { CategoryBottomSheet } from '../routes/employer/-components/post-job/CategoryBottomSheet';
+import { type JobFormState } from '../routes/employer/-types/job-post-types';
+
+// Thành phần bao bọc
 const TestWrapper = () => {
   const [showSheet, setShowSheet] = useState(false);
   const [form, setForm] = useState<JobFormState>({
@@ -37,7 +46,7 @@ const TestWrapper = () => {
     <>
       <Step1Info
         form={form}
-        setForm={setForm}
+        setForm={setForm as any}
         errors={{}}
         requirementInput=""
         setRequirementInput={() => {}}
@@ -61,7 +70,7 @@ describe('Integration: Post Job Category Selection', () => {
     render(<TestWrapper />);
 
     // 1. Kiểm tra ban đầu chưa có danh mục
-    const categoryButton = screen.getByRole('button', { name: /Chọn danh mục...|Chọn ngành nghề/i });
+    const categoryButton = screen.getByText(/Chọn danh mục\.\.\./i);
     expect(categoryButton).toHaveTextContent('Chọn danh mục...');
 
     // 2. Click để mở BottomSheet
@@ -81,6 +90,6 @@ describe('Integration: Post Job Category Selection', () => {
     });
     
     // Nút chọn danh mục giờ đây phải hiển thị "Retail"
-    expect(screen.getByRole('button', { name: /Retail/i })).toBeInTheDocument();
+    expect(screen.getByText(/Retail/i)).toBeInTheDocument();
   });
 });

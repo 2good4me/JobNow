@@ -76,15 +76,6 @@ function EmployerDashboard() {
   }
 
   return (
-<<<<<<< HEAD
-    <div className="min-h-screen bg-[#F5F7FF] pb-28">
-
-      {/* ── Hero Header ── */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-[#1e3a5f] via-[#1e40af] to-[#3b82f6] px-5 pt-14 pb-10">
-        {/* Decoration */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
-        <div className="absolute bottom-0 left-0 w-40 h-40 bg-blue-400/10 rounded-full translate-y-1/2 -translate-x-1/4" />
-=======
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-28 transition-colors duration-300">
 
       {/* ── 1. Header — Clean, flat, white ─────────── */}
@@ -94,45 +85,33 @@ function EmployerDashboard() {
           {companyName}
         </h1>
       </header>
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
-
-        <div className="relative z-10">
-          {/* Top bar */}
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <p className="text-blue-200 text-[13px] font-medium">{greeting},</p>
-              <h1 className="text-white text-xl font-bold tracking-tight mt-0.5 line-clamp-1">{companyName}</h1>
-            </div>
-          </div>
-
-          {/* Hero Stats - inside header */}
-          {hasJobs && (
-            <div className="grid grid-cols-3 gap-3 mt-2">
-              <div className="bg-white/10 backdrop-blur-sm border border-white/15 rounded-2xl p-3.5 flex flex-col gap-2">
-                <FileText className="w-4 h-4 text-blue-200" />
-                <p className="text-blue-200 text-[10px] font-bold uppercase tracking-wider">Tin đăng</p>
-                <p className="text-white text-2xl font-black leading-none">{metrics.activeJobs}</p>
-              </div>
-              <Link
-                to="/employer/applicants"
-                search={{ jobId: undefined }}
-                className="bg-white/10 backdrop-blur-sm border border-white/15 rounded-2xl p-3.5 flex flex-col gap-2 active:scale-95 transition-transform"
-              >
-                <Users className="w-4 h-4 text-amber-300" />
-                <p className="text-blue-200 text-[10px] font-bold uppercase tracking-wider">Ứng viên</p>
-                <p className="text-white text-2xl font-black leading-none">{metrics.pendingApps}</p>
-              </Link>
-              <div className="bg-white/10 backdrop-blur-sm border border-white/15 rounded-2xl p-3.5 flex flex-col gap-2">
-                <Clock className="w-4 h-4 text-emerald-300" />
-                <p className="text-blue-200 text-[10px] font-bold uppercase tracking-wider">Ca hôm nay</p>
-                <p className="text-white text-2xl font-black leading-none">{metrics.shiftsToday}</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
 
       <div className="px-5 pt-5 space-y-5">
+        {/* Hero Stats */}
+        {hasJobs && (
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-white dark:bg-[#1f2937] rounded-2xl p-3.5 flex flex-col gap-2 shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
+              <FileText className="w-4 h-4 text-blue-500 dark:text-blue-400" />
+              <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold uppercase tracking-wider">Tin đăng</p>
+              <p className="text-slate-900 dark:text-slate-100 text-2xl font-black leading-none">{metrics.activeJobs}</p>
+            </div>
+            <Link
+              to="/employer/applicants"
+              search={{ jobId: undefined }}
+              className="bg-white dark:bg-[#1f2937] rounded-2xl p-3.5 flex flex-col gap-2 shadow-sm border border-slate-100 dark:border-slate-800 active:scale-95 transition-all"
+            >
+              <Users className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+              <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold uppercase tracking-wider">Ứng viên</p>
+              <p className="text-slate-900 dark:text-slate-100 text-2xl font-black leading-none">{metrics.pendingApps}</p>
+            </Link>
+            <div className="bg-white dark:bg-[#1f2937] rounded-2xl p-3.5 flex flex-col gap-2 shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
+              <Clock className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+              <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold uppercase tracking-wider">Ca làm</p>
+              <p className="text-slate-900 dark:text-slate-100 text-2xl font-black leading-none">{metrics.shiftsToday}</p>
+            </div>
+          </div>
+        )}
+
         {/* ── Pending Applicants Alert ── */}
         {metrics.pendingApps > 0 && (
           <Link

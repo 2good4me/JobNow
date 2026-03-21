@@ -107,11 +107,7 @@ function JobDetailPage() {
 
   if (isLoading) {
     return (
-<<<<<<< HEAD
-      <div className="flex flex-col min-h-screen bg-slate-50 pb-24 max-w-lg mx-auto w-full relative shadow-sm">
-=======
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-24 transition-colors duration-300">
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
         <div className="max-w-[420px] mx-auto px-4 py-4">
           <div className="flex items-center gap-2 mb-4 animate-pulse">
             <div className="w-8 h-8 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
@@ -136,11 +132,7 @@ function JobDetailPage() {
 
   if (isError || !job) {
     return (
-<<<<<<< HEAD
-      <div className="flex flex-col min-h-screen bg-slate-50 pb-24 max-w-lg mx-auto w-full relative shadow-sm">
-=======
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-24 transition-colors duration-300">
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
         <div className="max-w-[420px] mx-auto px-4 py-4">
           <button
             onClick={() => navigate({ to: '/employer' })}
@@ -193,11 +185,7 @@ function JobDetailPage() {
   };
 
   return (
-<<<<<<< HEAD
-    <div className="flex flex-col min-h-screen bg-slate-50 pb-24 max-w-lg mx-auto w-full relative shadow-sm">
-=======
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-24 transition-colors duration-300">
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
       <div className="max-w-[420px] mx-auto px-4 py-4">
         {/* Header with back button */}
         <div className="flex items-center justify-between mb-4">
@@ -264,15 +252,9 @@ function JobDetailPage() {
             </div>
 
             {/* Workers */}
-<<<<<<< HEAD
-            <div className="flex items-center gap-1.5 text-slate-600">
-              <Users className="w-3.5 h-3.5 text-blue-500" />
-              <span className="font-medium">{job.vacancies || 0} người — {(job as any).genderPreference === 'MALE' ? 'Nam' : (job as any).genderPreference === 'FEMALE' ? 'Nữ' : 'Cả hai'}</span>
-=======
             <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
               <Users className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" />
-              <span className="font-medium">{job.vacancies || 0} người — Cả hai</span>
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
+              <span className="font-medium">{job.vacancies || 0} người — {(job as any).genderPreference === 'MALE' ? 'Nam' : (job as any).genderPreference === 'FEMALE' ? 'Nữ' : 'Cả hai'}</span>
             </div>
 
             {/* Work date */}

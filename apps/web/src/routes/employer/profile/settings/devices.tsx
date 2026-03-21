@@ -94,18 +94,6 @@ function ConfirmDialog({
 }) {
   if (!open) return null;
   return (
-<<<<<<< HEAD
-    <div className="flex flex-col min-h-screen bg-slate-50 pb-24 max-w-lg mx-auto w-full relative shadow-sm">
-      <div className="bg-[#1e3a5f] text-white p-4 sticky top-0 z-10 flex items-center">
-        <button onClick={() => navigate({ to: '/employer/profile/settings' })} className="p-2 -ml-2 rounded-full hover:bg-white/10 transition">
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <h1 className="text-lg font-bold ml-2">Quan ly thiet bi</h1>
-      </div>
-      <div className="max-w-md mx-auto p-4">
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-          Tinh nang dang duoc cap nhat.
-=======
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-5 bg-black/40 backdrop-blur-sm"
       onClick={onCancel}
@@ -134,7 +122,6 @@ function ConfirmDialog({
           >
             {confirmLabel}
           </button>
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
         </div>
       </div>
     </div>

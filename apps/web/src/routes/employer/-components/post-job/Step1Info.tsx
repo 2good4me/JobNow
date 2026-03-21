@@ -1,5 +1,6 @@
 import { DollarSign, Tag, UsersRound, X, ChevronDown, Info } from 'lucide-react';
-import { payTypes, type JobFormState, type PayType } from '../../post-job';
+import { payTypes, type PayType } from '../../-schemas/jobFormSchema';
+import { type JobFormState } from '../../-types/job-post-types';
 import { getSalaryLabel, getSalaryExplanation } from '../../-utils/budgetCalculations';
 
 interface Step1InfoProps {
@@ -152,8 +153,6 @@ export default function Step1Info({
       <section className="rounded-2xl border border-white/70 dark:border-slate-800 bg-white/70 dark:bg-[#1E293B] p-4 shadow-md backdrop-blur-md transition-colors duration-300">
         <h2 className="mb-4 text-base font-bold text-slate-900 dark:text-slate-100">Lương và số lượng</h2>
         <div className="grid grid-cols-2 gap-3">
-<<<<<<< HEAD
-=======
           <label>
             <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-400">
               Số lượng tuyển <span className="text-rose-400 dark:text-rose-500">*</span>
@@ -174,28 +173,9 @@ export default function Step1Info({
                     : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#0f172a] focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200 dark:focus:ring-emerald-900/30'
                 }`}
               />
-              <div className="absolute right-2 top-1/2 flex h-8 w-6 -translate-y-1/2 flex-col overflow-hidden rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#1E293B]">
-                <button
-                  type="button"
-                  onClick={() => adjustVacancies(1)}
-                  className="flex h-1/2 items-center justify-center border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
-                  aria-label="Tăng số lượng"
-                >
-                  <span className="h-0 w-0 border-x-[3px] border-x-transparent border-b-[5px] border-b-slate-400 dark:border-b-slate-500" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => adjustVacancies(-1)}
-                  className="flex h-1/2 items-center justify-center text-slate-500 dark:text-slate-400 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
-                  aria-label="Giảm số lượng"
-                >
-                  <span className="h-0 w-0 border-x-[3px] border-x-transparent border-t-[5px] border-t-slate-400 dark:border-t-slate-500" />
-                </button>
-              </div>
             </div>
             {errors.vacancies && <p className="mt-1 text-xs font-semibold text-rose-600 dark:text-rose-400">🔴 {errors.vacancies}</p>}
           </label>
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
 
           {/* Dynamic Salary Label based on payment type */}
           <label>

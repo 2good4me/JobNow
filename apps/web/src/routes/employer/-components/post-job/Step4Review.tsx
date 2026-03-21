@@ -1,5 +1,6 @@
 import { CalendarClock, Check, DollarSign, ImagePlus, MapPin, Sparkles, Trash2, UsersRound, CheckCircle2 } from 'lucide-react';
-import { formatSalary, type JobFormState } from '../../post-job';
+import { type JobFormState } from '../../-types/job-post-types';
+import { formatSalary } from '../../-utils/postJobUtils';
 import type { PayType } from '../../-schemas/jobFormSchema';
 import { calculateBudget } from '../../-utils/budgetCalculations';
 

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { WalletCard } from './WalletCard';
-import React from 'react';
+
 
 describe('WalletCard Component', () => {
     it('nên hiển thị số dư được định dạng đúng', () => {

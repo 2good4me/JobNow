@@ -1,13 +1,12 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { auth } from '@/config/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { Route } from '../routes/login';
+import { LoginPage } from '../routes/login';
 
 // Mock các dependencies ngoại vi
 vi.mock('firebase/auth', () => ({
-  signInWithEmailAndPassword: vi.fn(),
+  signInWithEmailAndPassword: vi.fn(() => Promise.resolve({ user: { uid: 'test-user' } })),
   GoogleAuthProvider: vi.fn(),
   RecaptchaVerifier: vi.fn(),
 }));
@@ -18,8 +17,18 @@ vi.mock('@/config/firebase', () => ({
 
 const mockNavigate = vi.fn();
 vi.mock('@tanstack/react-router', () => ({
-  createFileRoute: () => () => ({ component: () => null }),
+  createFileRoute: () => {
+    const route = (options: any) => ({
+      options,
+      useSearch: () => ({}),
+      useParams: () => ({}),
+    });
+    route.useSearch = () => ({});
+    route.useParams = () => ({});
+    return route;
+  },
   useNavigate: () => mockNavigate,
+  useSearch: () => ({}),
   Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>,
 }));
 
@@ -29,8 +38,7 @@ vi.mock('@/features/auth/context/AuthContext', () => ({
   }),
 }));
 
-// Lấy component thực tế từ Route để test
-const LoginPage = (Route as any).options.component;
+// LoginPage đã được import trực tiếp
 
 describe('Integration: Auth Login Flow', () => {
   beforeEach(() => {

@@ -6,10 +6,6 @@ import { useMemo, useState, useEffect } from 'react';
 import { getFollowerCount, getFollowingCount } from '@/features/auth/services/followService';
 import type { ComponentType } from 'react';
 import {
-<<<<<<< HEAD
-  BadgeCheck,
-=======
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
   Briefcase,
   Building2,
   ChevronRight,
@@ -24,11 +20,7 @@ import {
   Phone,
   Settings,
   ShieldCheck,
-<<<<<<< HEAD
-  Wallet,
-=======
   X,
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
 } from 'lucide-react';
 import { ReputationStatsCard } from '@/features/auth/components/ReputationStatsCard';
 import { AchievementBadges, PREDEFINED_ACHIEVEMENTS } from '@/features/auth/components/AchievementBadges';
@@ -167,11 +159,7 @@ function EmployerProfilePage() {
     }));
 
   return (
-<<<<<<< HEAD
-    <div className="flex flex-col min-h-[100dvh] bg-slate-50 pb-24 max-w-lg mx-auto w-full relative shadow-sm">
-=======
     <div className="pb-24 bg-slate-50 dark:bg-[#0f172a] min-h-[100dvh] transition-colors duration-300">
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
       {/* ── Navy Header ── */}
       <div className="bg-gradient-to-br from-[#1e3a5f] to-[#0f172a] pt-12 pb-16 px-5 rounded-b-[2.5rem] shadow-xl relative overflow-hidden">
         <div className="absolute -top-20 -right-20 w-64 h-64 bg-blue-400/10 rounded-full blur-3xl" />
@@ -180,8 +168,6 @@ function EmployerProfilePage() {
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-lg font-bold text-white/90 tracking-tight">Tài khoản</h1>
-<<<<<<< HEAD
-=======
             <button 
               type="button"
               onClick={() => setIsSidebarOpen(true)}
@@ -189,10 +175,10 @@ function EmployerProfilePage() {
             >
               <Menu className="w-5 h-5 text-white" />
             </button>
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
           </div>
+        </div>
 
-          <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4">
             {/* Cột trái: Avatar */}
             <div className="flex flex-col items-center shrink-0">
               <div className="relative mb-2">
@@ -252,7 +238,6 @@ function EmployerProfilePage() {
             </Link>
           </div>
         </div>
-      </div>
 
       {/* ── Content ── */}
       <div className="px-5 -mt-7 relative z-20 space-y-4">
@@ -407,50 +392,11 @@ function EmployerProfilePage() {
           </div>
         )}
 
-<<<<<<< HEAD
-        {/* Admin Actions */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-          <h3 className="text-[13px] font-bold text-slate-400 uppercase tracking-wider mb-3">Quản trị</h3>
-          <div className="space-y-1.5">
-            <Link
-              to="/employer/wallet"
-              className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 text-slate-700 transition-colors"
-            >
-              <span className="flex items-center gap-2.5 text-sm font-semibold">
-                <Wallet className="w-4 h-4 text-emerald-500" /> Ví JobNow của tôi
-              </span>
-              <ChevronRight className="w-4 h-4 text-slate-400" />
-            </Link>
-            <Link
-              to="/employer/profile/edit"
-              className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 text-slate-700 transition-colors"
-            >
-              <span className="flex items-center gap-2.5 text-sm font-semibold">
-                <Pencil className="w-4 h-4 text-blue-500" /> Chỉnh sửa hồ sơ
-              </span>
-              <ChevronRight className="w-4 h-4 text-slate-400" />
-            </Link>
-            <Link
-              to="/employer/profile/settings"
-              className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 text-slate-700 transition-colors"
-            >
-              <span className="flex items-center gap-2.5 text-sm font-semibold">
-                <Settings className="w-4 h-4 text-slate-500" /> Cài đặt & Bảo mật
-              </span>
-              <ChevronRight className="w-4 h-4 text-slate-400" />
-            </Link>
-          </div>
-        </div>
-=======
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
-
-
         <p className="text-center text-xs text-slate-400 mt-6 mb-4 font-medium">
           JobNow v1.0.0
         </p>
       </div>
 
-<<<<<<< HEAD
       <FollowListDialog
         isOpen={followDialog.isOpen}
         onClose={() => setFollowDialog(prev => ({ ...prev, isOpen: false }))}
@@ -458,12 +404,10 @@ function EmployerProfilePage() {
         type={followDialog.type}
         title={followDialog.type === 'followers' ? 'Người đang theo dõi bạn' : 'Những người bạn đang theo dõi'}
       />
-=======
       {/* ── Sidebar Overlay ── */}
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-[100] backdrop-blur-sm transition-opacity" 
-          onClick={() => setIsSidebarOpen(false)}
         />
       )}
       
@@ -531,7 +475,6 @@ function EmployerProfilePage() {
           </button>
         </div>
       </div>
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
     </div>
   );
 }

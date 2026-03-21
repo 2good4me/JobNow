@@ -1,11 +1,5 @@
-<<<<<<< HEAD
-import { Users, type LucideIcon } from 'lucide-react';
-import { getReputationTier, getProgressToNextTier } from '../helpers/reputationHelper';
-import { ReputationBadge } from './ReputationBadge';
-=======
-import { Users, ShieldCheck, Star } from 'lucide-react';
+import { Users, ShieldCheck, Star, type LucideIcon } from 'lucide-react';
 import { getReputationTier } from '../helpers/reputationHelper';
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
 
 interface ReputationStatsCardProps {
   reputationScore: number;
@@ -89,27 +83,16 @@ export function ReputationStatsCard({
           </div>
         </div>
 
-<<<<<<< HEAD
         {/* Dynamic Third Stat */}
-        <div className="text-center px-2">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-            {statLabel}
-          </p>
-          <div className="flex items-center justify-center gap-1">
-            <StatIcon className="w-4 h-4 text-blue-600" />
-            <span className="text-2xl font-extrabold text-blue-600">{displayStatValue}</span>
-=======
-        {/* Ứng Viên */}
         <div className="bg-white dark:bg-[#1e293b] rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center text-center transition-colors">
           <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-            Ứng Viên
+            {statLabel}
           </p>
           <div className="flex items-center gap-1.5 align-middle">
-            <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <StatIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             <span className="text-xl font-extrabold text-blue-600 dark:text-blue-400">
-              {totalApplicants}
+              {displayStatValue}
             </span>
->>>>>>> e623a9a17f54cd0d2fbbcf394a4341aece30ea7b
           </div>
         </div>
       </div>
