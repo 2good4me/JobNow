@@ -1,0 +1,256 @@
+﻿
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mD:/JobNow_New/apps/web[39m
+      [2mCoverage enabled with [22m[33mv8[39m
+
+ [32mΓ£ô[39m src/features/boundary-logic.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 34[2mms[22m[39m
+ [32mΓ£ô[39m src/simple.test.ts [2m([22m[2m1 test[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32mΓ£ô[39m src/components/WalletCard.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[90m 65[2mms[22m[39m
+ [32mΓ£ô[39m src/features/wallet-deposit.integration.test.tsx [2m([22m[2m1 test[22m[2m)[22m[90m 157[2mms[22m[39m
+ [32mΓ£ô[39m src/features/post-job.integration.test.tsx [2m([22m[2m1 test[22m[2m)[22m[90m 112[2mms[22m[39m
+ [32mΓ£ô[39m src/features/auth-login.integration.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 350[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m Integration: Auth Login Flow[2m > [22mn├¬n cho ph├⌐p ng╞░ß╗¥i d├╣ng ─æ─âng nhß║¡p bß║▒ng Email v├á chuyß╗ân h╞░ß╗¢ng ─æ├║ng role [33m348[2mms[22m[39m
+ [32mΓ£ô[39m src/utils/date.test.ts [2m([22m[2m6 tests[22m[2m)[22m[90m 6[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m7 passed[39m[22m[90m (7)[39m
+[2m      Tests [22m [1m[32m17 passed[39m[22m[90m (17)[39m
+[2m   Start at [22m 23:06:10
+[2m   Duration [22m 6.16s[2m (transform 442ms, setup 1.57s, collect 3.30s, tests 728ms, environment 10.84s, prepare 1.71s)[22m
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |    3.72 |    28.77 |   12.38 |    3.72 |                   
+ web               |       0 |        0 |       0 |       0 |                   
+  check_jobs.ts    |       0 |        0 |       0 |       0 | 1-16              
+  ...ght.config.ts |       0 |        0 |       0 |       0 | 1-24              
+ web/public        |       0 |        0 |       0 |       0 |                   
+  ...ssaging-sw.js |       0 |        0 |       0 |       0 | 1-26              
+ web/scripts       |       0 |        0 |       0 |       0 |                   
+  ...-firestore.ts |       0 |        0 |       0 |       0 | 1-220             
+ web/src           |       0 |        0 |       0 |       0 |                   
+  main.tsx         |       0 |        0 |       0 |       0 | 1-39              
+  routeTree.gen.ts |       0 |        0 |       0 |       0 | 1-1529            
+ ...src/components |   26.82 |       50 |      50 |   26.82 |                   
+  ...eProvider.tsx |       0 |        0 |       0 |       0 | 1-44              
+  WalletCard.tsx   |     100 |      100 |     100 |     100 |                   
+ .../components/ui |       0 |        0 |       0 |       0 |                   
+  ...icantCard.tsx |       0 |        0 |       0 |       0 | 1-494             
+  ...BottomNav.tsx |       0 |        0 |       0 |       0 | 1-63              
+  ...BottomNav.tsx |       0 |        0 |       0 |       0 | 1-93              
+  ...istDialog.tsx |       0 |        0 |       0 |       0 | 1-147             
+  GlobalHeader.tsx |       0 |        0 |       0 |       0 | 1-233             
+ web/src/config    |       0 |        0 |       0 |       0 |                   
+  firebase.ts      |       0 |        0 |       0 |       0 | 1-30              
+ ...min/components |       0 |        0 |       0 |       0 |                   
+  AdminHeader.tsx  |       0 |        0 |       0 |       0 | 1-52              
+  AdminLayout.tsx  |       0 |        0 |       0 |       0 | 1-57              
+  AdminSidebar.tsx |       0 |        0 |       0 |       0 | 1-67              
+ ...admin/services |       0 |        0 |       0 |       0 |                   
+  ...JobService.ts |       0 |        0 |       0 |       0 | 1-131             
+  ...atsService.ts |       0 |        0 |       0 |       0 | 1-133             
+  ...serService.ts |       0 |        0 |       0 |       0 | 1-174             
+ ...uth/components |       0 |        0 |       0 |       0 |                   
+  ...entBadges.tsx |       0 |        0 |       0 |       0 | 1-174             
+  ...tionBadge.tsx |       0 |        0 |       0 |       0 | 1-66              
+  ...StatsCard.tsx |       0 |        0 |       0 |       0 | 1-101             
+ ...s/auth/context |       0 |        0 |       0 |       0 |                   
+  AuthContext.tsx  |       0 |        0 |       0 |       0 | 1-94              
+ ...s/auth/helpers |       0 |      100 |     100 |       0 |                   
+  ...tionHelper.ts |       0 |      100 |     100 |       0 | 6-292             
+ ...res/auth/hooks |       0 |        0 |       0 |       0 |                   
+  ...yerProfile.ts |       0 |        0 |       0 |       0 | 1-62              
+  ...rification.ts |       0 |        0 |       0 |       0 | 1-97              
+  ...lineStatus.ts |       0 |        0 |       0 |       0 | 1-25              
+  ...serProfile.ts |       0 |        0 |       0 |       0 | 1-15              
+ .../auth/services |       0 |        0 |       0 |       0 |                   
+  authService.ts   |       0 |        0 |       0 |       0 | 1-84              
+  ...ileService.ts |       0 |        0 |       0 |       0 | 1-54              
+  ...ionService.ts |       0 |        0 |       0 |       0 | 1-242             
+  followService.ts |       0 |        0 |       0 |       0 | 1-109             
+ ...res/auth/types |       0 |        0 |       0 |       0 |                   
+  user.ts          |       0 |        0 |       0 |       0 |                   
+ ...fication/hooks |       0 |        0 |       0 |       0 |                   
+  ...rification.ts |       0 |        0 |       0 |       0 | 1-40              
+ ...ation/services |       0 |        0 |       0 |       0 |                   
+  ...ionService.ts |       0 |        0 |       0 |       0 | 1-38              
+ ...hat/components |       0 |        0 |       0 |       0 |                   
+  ChatList.tsx     |       0 |        0 |       0 |       0 | 1-237             
+  ChatPage.tsx     |       0 |        0 |       0 |       0 | 1-195             
+  ChatRoom.tsx     |       0 |        0 |       0 |       0 | 1-244             
+  ...ageBubble.tsx |       0 |        0 |       0 |       0 | 1-68              
+ ...res/chat/hooks |       0 |        0 |       0 |       0 |                   
+  ...nreadCount.ts |       0 |        0 |       0 |       0 | 1-6               
+  ...versations.ts |       0 |        0 |       0 |       0 | 1-95              
+  ...nversation.ts |       0 |        0 |       0 |       0 | 1-8               
+  useMessages.ts   |       0 |        0 |       0 |       0 | 1-34              
+  ...endMessage.ts |       0 |        0 |       0 |       0 | 1-18              
+  ...serProfile.ts |       0 |        0 |       0 |       0 | 1-34              
+ .../chat/services |       0 |        0 |       0 |       0 |                   
+  chatService.ts   |       0 |        0 |       0 |       0 | 1-649             
+ .../checkin/hooks |       0 |        0 |       0 |       0 |                   
+  useCheckin.ts    |       0 |        0 |       0 |       0 | 1-74              
+ ...eckin/services |       0 |        0 |       0 |       0 |                   
+  ...kinService.ts |       0 |        0 |       0 |       0 | 1-178             
+ ...ashboard/hooks |       0 |        0 |       0 |       0 |                   
+  ...ardMetrics.ts |       0 |        0 |       0 |       0 | 1-146             
+ ...employer/hooks |       0 |        0 |       0 |       0 |                   
+  ...rification.ts |       0 |        0 |       0 |       0 | 1-34              
+ ...loyer/services |       0 |        0 |       0 |       0 |                   
+  ...ionService.ts |       0 |        0 |       0 |       0 | 1-40              
+ ...obs/components |       0 |        0 |       0 |       0 |                   
+  JobCard.tsx      |       0 |        0 |       0 |       0 | 1-99              
+  JobList.tsx      |       0 |        0 |       0 |       0 | 1-50              
+  ...rchFilter.tsx |       0 |        0 |       0 |       0 | 1-179             
+  MapPicker.tsx    |       0 |        0 |       0 |       0 | 1-231             
+  ReviewModal.tsx  |       0 |        0 |       0 |       0 | 1-164             
+ ...res/jobs/hooks |       0 |        0 |       0 |       0 |                   
+  useAllJobs.ts    |       0 |        0 |       0 |       0 | 1-11              
+  useApplyJob.ts   |       0 |        0 |       0 |       0 | 1-28              
+  ...rovedCount.ts |       0 |        0 |       0 |       0 | 1-31              
+  ...ateProfile.ts |       0 |        0 |       0 |       0 | 1-15              
+  ...rofileForm.ts |       0 |        0 |       0 |       0 | 1-67              
+  useCheckIn.ts    |       0 |        0 |       0 |       0 | 1-27              
+  ...ployerJobs.ts |       0 |        0 |       0 |       0 | 1-100             
+  ...eolocation.ts |       0 |        0 |       0 |       0 | 1-78              
+  useJob.ts        |       0 |        0 |       0 |       0 | 1-11              
+  useJobSearch.ts  |       0 |        0 |       0 |       0 | 1-29              
+  ...Applicants.ts |       0 |        0 |       0 |       0 | 1-171             
+  ...nsRealtime.ts |       0 |        0 |       0 |       0 | 1-39              
+  useNearbyJobs.ts |       0 |        0 |       0 |       0 | 1-23              
+  ...bmitRating.ts |       0 |        0 |       0 |       0 | 1-15              
+  ...shlistJobs.ts |       0 |        0 |       0 |       0 | 1-100             
+ .../jobs/services |       0 |     9.09 |    9.09 |       0 |                   
+  adapters.ts      |       0 |      100 |     100 |       0 | 3-121             
+  ...lowService.ts |       0 |        0 |       0 |       0 | 1-354             
+  ...ionService.ts |       0 |        0 |       0 |       0 | 1-405             
+  ...tusService.ts |       0 |        0 |       0 |       0 | 1-40              
+  ...nceService.ts |       0 |        0 |       0 |       0 | 1-296             
+  ...ileService.ts |       0 |        0 |       0 |       0 | 1-123             
+  ...ateService.ts |       0 |        0 |       0 |       0 | 1-43              
+  ...rchService.ts |       0 |        0 |       0 |       0 | 1-123             
+  jobService.ts    |       0 |        0 |       0 |       0 | 1-304             
+  ratingService.ts |       0 |        0 |       0 |       0 | 1-161             
+  ...istService.ts |       0 |        0 |       0 |       0 | 1-105             
+ ...ons/components |       0 |        0 |       0 |       0 |                   
+  ...ionCenter.tsx |       0 |        0 |       0 |       0 | 1-286             
+ ...ications/hooks |       0 |        0 |       0 |       0 |                   
+  ...ifications.ts |       0 |        0 |       0 |       0 | 1-100             
+ ...tions/services |       0 |        0 |       0 |       0 |                   
+  ...ionService.ts |       0 |        0 |       0 |       0 | 1-176             
+ ...s/wallet/hooks |       0 |        0 |       0 |       0 |                   
+  useWallet.ts     |       0 |        0 |       0 |       0 | 1-108             
+ ...allet/services |       0 |        0 |       0 |       0 |                   
+  walletService.ts |       0 |        0 |       0 |       0 | 1-280             
+ web/src/hooks     |       0 |        0 |       0 |       0 |                   
+  useFCM.ts        |       0 |        0 |       0 |       0 | 1-42              
+ web/src/lib       |       0 |       25 |      25 |       0 |                   
+  api.ts           |       0 |      100 |     100 |       0 | 5-107             
+  firestore.ts     |       0 |        0 |       0 |       0 | 1-106             
+  ...enter-data.ts |       0 |        0 |       0 |       0 | 1-277             
+  utils.ts         |       0 |        0 |       0 |       0 | 1-9               
+ web/src/routes    |    8.49 |     30.3 |   20.83 |    8.49 |                   
+  __root.tsx       |       0 |        0 |       0 |       0 | 1-198             
+  admin.tsx        |       0 |        0 |       0 |       0 | 1-6               
+  ...-password.tsx |       0 |        0 |       0 |       0 | 1-179             
+  index.tsx        |       0 |        0 |       0 |       0 | 1-84              
+  login.tsx        |   51.42 |       40 |   31.25 |   51.42 | ...96-313,318-342 
+  onboarding.tsx   |       0 |        0 |       0 |       0 | 1-359             
+  register.tsx     |       0 |        0 |       0 |       0 | 1-512             
+  ...nter-data.tsx |       0 |        0 |       0 |       0 | 1-9               
+  ...rt-center.tsx |       0 |        0 |       0 |       0 | 1-465             
+ ...c/routes/admin |       0 |        0 |       0 |       0 |                   
+  analytics.tsx    |       0 |        0 |       0 |       0 | 1-27              
+  categories.tsx   |       0 |        0 |       0 |       0 | 1-27              
+  index.tsx        |       0 |        0 |       0 |       0 | 1-200             
+  jobs.tsx         |       0 |        0 |       0 |       0 | 1-195             
+  reports.tsx      |       0 |        0 |       0 |       0 | 1-28              
+  settings.tsx     |       0 |        0 |       0 |       0 | 1-27              
+  ...s.$userId.tsx |       0 |        0 |       0 |       0 | 1-168             
+  users.tsx        |       0 |        0 |       0 |       0 | 1-355             
+ ...utes/candidate |       0 |        0 |       0 |       0 |                   
+  ...icationId.tsx |       0 |        0 |       0 |       0 | 1-214             
+  applications.tsx |       0 |        0 |       0 |       0 | 1-281             
+  chat.tsx         |       0 |        0 |       0 |       0 | 1-27              
+  index.tsx        |       0 |        0 |       0 |       0 | 1-322             
+  ...fications.tsx |       0 |        0 |       0 |       0 | 1-10              
+  profile.tsx      |       0 |        0 |       0 |       0 | 1-9               
+  shifts.tsx       |       0 |        0 |       0 |       0 | 1-572             
+  wallet.tsx       |       0 |        0 |       0 |       0 | 1-203             
+  wishlist.tsx     |       0 |        0 |       0 |       0 | 1-82              
+ ...ponents/wallet |       0 |        0 |       0 |       0 |                   
+  ...ttomSheet.tsx |       0 |        0 |       0 |       0 | 1-414             
+ ...idate/employer |       0 |        0 |       0 |       0 |                   
+  $employerId.tsx  |       0 |        0 |       0 |       0 | 1-317             
+ ...candidate/jobs |       0 |        0 |       0 |       0 |                   
+  $jobId.tsx       |       0 |        0 |       0 |       0 | 1-444             
+ ...didate/profile |       0 |        0 |       0 |       0 |                   
+  edit.tsx         |       0 |        0 |       0 |       0 | 1-414             
+  index.tsx        |       0 |        0 |       0 |       0 | 1-473             
+  reputation.tsx   |       0 |        0 |       0 |       0 | 1-242             
+  settings.tsx     |       0 |        0 |       0 |       0 | 1-293             
+  verify.tsx       |       0 |        0 |       0 |       0 | 1-285             
+ ...e/verification |       0 |        0 |       0 |       0 |                   
+  index.tsx        |       0 |        0 |       0 |       0 | 1-312             
+ ...outes/employer |       0 |        0 |       0 |       0 |                   
+  applicants.tsx   |       0 |        0 |       0 |       0 | 1-425             
+  ...ndidateId.tsx |       0 |        0 |       0 |       0 | 1-324             
+  chat.tsx         |       0 |        0 |       0 |       0 | 1-20              
+  index.tsx        |       0 |        0 |       0 |       0 | 1-270             
+  job-detail.tsx   |       0 |        0 |       0 |       0 | 1-470             
+  job-list.tsx     |       0 |        0 |       0 |       0 | 1-389             
+  ...fications.tsx |       0 |        0 |       0 |       0 | 1-10              
+  post-job.tsx     |       0 |        0 |       0 |       0 | 1-593             
+  profile.tsx      |       0 |        0 |       0 |       0 | 1-9               
+  qr-display.tsx   |       0 |        0 |       0 |       0 | 1-117             
+  ...anagement.tsx |       0 |        0 |       0 |       0 | 1-302             
+  verification.tsx |       0 |        0 |       0 |       0 | 1-348             
+  vnpay-return.tsx |       0 |        0 |       0 |       0 | 1-72              
+  ...accountId.tsx |       0 |        0 |       0 |       0 | 1-187             
+  wallet.index.tsx |       0 |        0 |       0 |       0 | 1-151             
+  wallet.tsx       |       0 |        0 |       0 |       0 | 1-5               
+ ...er/-components |       0 |        0 |       0 |       0 |                   
+  ...ostedJobs.tsx |       0 |        0 |       0 |       0 | 1-131             
+ ...nents/post-job |   32.67 |       50 |   21.42 |   32.67 |                   
+  ...ttomSheet.tsx |   93.15 |    81.81 |   66.66 |   93.15 | 25-28,83          
+  Step1Info.tsx    |   82.65 |    38.88 |    12.5 |   82.65 | ...47,167,172,194 
+  Step2Details.tsx |       0 |        0 |       0 |       0 | 1-154             
+  Step3Shifts.tsx  |       0 |        0 |       0 |       0 | 1-204             
+  Step4Review.tsx  |       0 |        0 |       0 |       0 | 1-191             
+ ...ponents/wallet |   37.28 |    79.06 |   43.75 |   37.28 |                   
+  ...ttomSheet.tsx |   80.13 |    80.95 |   46.66 |   80.13 | ...36-138,249-251 
+  ...ttomSheet.tsx |       0 |        0 |       0 |       0 | 1-414             
+ ...loyer/-schemas |   76.74 |      100 |       0 |   76.74 |                   
+  jobFormSchema.ts |   76.74 |      100 |       0 |   76.74 | ...50-153,166-174 
+ ...mployer/-types |       0 |        0 |       0 |       0 |                   
+  ...post-types.ts |       0 |        0 |       0 |       0 |                   
+ ...mployer/-utils |   55.03 |    61.53 |   44.44 |   55.03 |                   
+  ...lculations.ts |   59.16 |    66.66 |      50 |   59.16 | ...80-188,194-202 
+  postJobUtils.ts  |       0 |        0 |       0 |       0 | 1-10              
+ ...ployer/profile |       0 |        0 |       0 |       0 |                   
+  edit.tsx         |       0 |        0 |       0 |       0 | 1-201             
+  index.tsx        |       0 |        0 |       0 |       0 | 1-480             
+  reputation.tsx   |       0 |        0 |       0 |       0 | 1-250             
+ ...ofile/settings |       0 |        0 |       0 |       0 |                   
+  deactivate.tsx   |       0 |        0 |       0 |       0 | 1-26              
+  delete.tsx       |       0 |        0 |       0 |       0 | 1-9               
+  devices.tsx      |       0 |        0 |       0 |       0 | 1-447             
+  index.tsx        |       0 |        0 |       0 |       0 | 1-259             
+  password.tsx     |       0 |        0 |       0 |       0 | 1-9               
+  phone.tsx        |       0 |        0 |       0 |       0 | 1-26              
+  privacy.tsx      |       0 |        0 |       0 |       0 | 1-26              
+  terms.tsx        |       0 |        0 |       0 |       0 | 1-26              
+ ...rofile/support |       0 |        0 |       0 |       0 |                   
+  feedback.tsx     |       0 |        0 |       0 |       0 | 1-9               
+  index.tsx        |       0 |        0 |       0 |       0 | 1-9               
+  privacy.tsx      |       0 |        0 |       0 |       0 | 1-9               
+  report-bug.tsx   |       0 |        0 |       0 |       0 | 1-9               
+  terms.tsx        |       0 |        0 |       0 |       0 | 1-9               
+ ...r/verification |       0 |        0 |       0 |       0 |                   
+  index.tsx        |       0 |        0 |       0 |       0 | 1-331             
+ ...rc/routes/jobs |       0 |        0 |       0 |       0 |                   
+  index.tsx        |       0 |        0 |       0 |       0 | 1-428             
+ web/src/utils     |   26.08 |    88.88 |     100 |   26.08 |                   
+  date.ts          |     100 |     87.5 |     100 |     100 | 15                
+  formatTime.ts    |       0 |      100 |     100 |       0 | 4-47              
+-------------------|---------|----------|---------|---------|-------------------

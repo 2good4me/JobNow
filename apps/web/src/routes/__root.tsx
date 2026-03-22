@@ -58,6 +58,17 @@ function RootLayout() {
         }
     }, [shouldRedirectGuestToOnboarding, navigate]);
 
+    // Redirect unauthenticated users from protected routes to login
+    useEffect(() => {
+        const isProtectedRoute = location.pathname.startsWith('/candidate') || 
+                                location.pathname.startsWith('/employer') ||
+                                location.pathname.startsWith('/admin');
+        
+        if (!loading && !user && isProtectedRoute) {
+            navigate({ to: '/login', replace: true });
+        }
+    }, [loading, user, location.pathname, navigate]);
+
     // If logged in and still on auth pages, push to correct in-app destination.
     useEffect(() => {
         if (!user || !isAuthPage) return;

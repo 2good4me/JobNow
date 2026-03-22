@@ -10,7 +10,7 @@ export default defineConfig({
   reporter: 'html',
   timeout: 120000,
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: 'http://127.0.0.1:3000',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     viewport: { width: 390, height: 844 },

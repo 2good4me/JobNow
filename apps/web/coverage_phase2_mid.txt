@@ -1,0 +1,46 @@
+﻿
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mD:/JobNow_New/apps/web[39m
+      [2mCoverage enabled with [22m[33mv8[39m
+
+ [32mΓ£ô[39m src/features/auth/services/__tests__/employerProfileService.test.ts [2m([22m[2m3 tests[22m[2m)[22m[90m 8[2mms[22m[39m
+ [32mΓ£ô[39m src/features/jobs/services/__tests__/adapters.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 7[2mms[22m[39m
+ [32mΓ£ô[39m src/features/checkin/services/__tests__/checkinService.test.ts [2m([22m[2m10 tests[22m[2m)[22m[90m 11[2mms[22m[39m
+ [31mΓ¥»[39m src/features/chat/services/__tests__/chatService.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [32mΓ£ô[39m src/features/auth/services/__tests__/authService.test.ts [2m([22m[2m8 tests[22m[2m)[22m[90m 18[2mms[22m[39m
+[90mstdout[2m | src/features/wallet/services/__tests__/walletService.test.ts[2m > [22m[2mWalletService[2m > [22m[2mrequestPayment[2m > [22m[2mshould throw not implemented error
+[22m[39m[Wallet] Payment request: {
+  employerId: [32m'emp1'[39m,
+  candidateId: [32m'cand1'[39m,
+  amount: [33m100000[39m,
+  jobId: [32m'job1'[39m,
+  applicationId: [32m'app1'[39m
+}
+
+[90mstdout[2m | src/features/jobs/services/__tests__/applicationService.test.ts[2m > [22m[2mapplicationService[2m > [22m[2mcompleteApplicationWithPayment[2m > [22m[2mshould handle APP payment method with HOURLY salary
+[22m[39m[applicationService] Hourly calc for app1: 2.00h * 100000 = 200000
+[applicationService] Processed APP payment of 200000 to c1 from emp1
+
+ [32mΓ£ô[39m src/features/jobs/services/__tests__/applicationService.test.ts [2m([22m[2m9 tests[22m[2m)[22m[90m 54[2mms[22m[39m
+ [32mΓ£ô[39m src/features/auth/helpers/__tests__/reputationHelper.test.ts [2m([22m[2m13 tests[22m[2m)[22m[90m 10[2mms[22m[39m
+ [32mΓ£ô[39m src/features/admin/services/__tests__/adminStatsService.test.ts [2m([22m[2m2 tests[22m[2m)[22m[90m 8[2mms[22m[39m
+ [32mΓ£ô[39m src/features/auth/services/__tests__/followService.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 11[2mms[22m[39m
+ [32mΓ£ô[39m src/features/wallet/services/__tests__/walletService.test.ts [2m([22m[2m13 tests[22m[2m)[22m[90m 58[2mms[22m[39m
+ [32mΓ£ô[39m src/features/jobs/services/__tests__/jobSearchService.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 10[2mms[22m[39m
+ [32mΓ£ô[39m src/features/wallet-deposit.integration.test.tsx [2m([22m[2m1 test[22m[2m)[22m[90m 191[2mms[22m[39m
+ [32mΓ£ô[39m src/features/post-job.integration.test.tsx [2m([22m[2m1 test[22m[2m)[22m[90m 135[2mms[22m[39m
+ [32mΓ£ô[39m src/features/checkin/hooks/__tests__/useCheckin.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 414[2mms[22m[39m
+ [32mΓ£ô[39m src/features/auth-login.integration.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 457[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m Integration: Auth Login Flow[2m > [22mn├¬n cho ph├⌐p ng╞░ß╗¥i d├╣ng ─æ─âng nhß║¡p bß║▒ng Email v├á chuyß╗ân h╞░ß╗¢ng ─æ├║ng role [33m455[2mms[22m[39m
+ [31mΓ¥»[39m src/features/jobs/hooks/__tests__/useApplyJob.test.tsx [2m([22m[2m0 test[22m[2m)[22m
+ [32mΓ£ô[39m src/utils/__tests__/formatTime.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 20[2mms[22m[39m
+ [32mΓ£ô[39m src/features/boundary-logic.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 27[2mms[22m[39m
+ [32mΓ£ô[39m src/simple.test.ts [2m([22m[2m1 test[22m[2m)[22m[90m 2[2mms[22m[39m
+ [32mΓ£ô[39m src/components/WalletCard.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[90m 71[2mms[22m[39m
+ [32mΓ£ô[39m src/features/chat/hooks/__tests__/useMessages.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[90m 98[2mms[22m[39m
+ [32mΓ£ô[39m src/utils/date.test.ts [2m([22m[2m6 tests[22m[2m)[22m[90m 3[2mms[22m[39m
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m20 passed[39m[22m[90m (22)[39m
+[2m      Tests [22m [1m[32m106 passed[39m[22m[90m (106)[39m
+[2m   Start at [22m 00:07:31
+[2m   Duration [22m 7.04s[2m (transform 1.53s, setup 6.19s, collect 6.12s, tests 1.61s, environment 45.95s, prepare 4.39s)[22m
+

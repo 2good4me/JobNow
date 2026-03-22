@@ -1,0 +1,39 @@
+﻿
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mD:/JobNow_New/apps/web[39m
+      [2mCoverage enabled with [22m[33mv8[39m
+
+ [32mΓ£ô[39m src/features/auth/services/__tests__/authService.test.ts [2m([22m[2m8 tests[22m[2m)[22m[90m 26[2mms[22m[39m
+ [32mΓ£ô[39m src/simple.test.ts [2m([22m[2m1 test[22m[2m)[22m[90m 4[2mms[22m[39m
+[90mstdout[2m | src/features/wallet/services/__tests__/walletService.test.ts[2m > [22m[2mWalletService[2m > [22m[2mrequestPayment[2m > [22m[2mshould throw not implemented error
+[22m[39m[Wallet] Payment request: {
+  employerId: [32m'emp1'[39m,
+  candidateId: [32m'cand1'[39m,
+  amount: [33m100000[39m,
+  jobId: [32m'job1'[39m,
+  applicationId: [32m'app1'[39m
+}
+
+ [31mΓ¥»[39m src/features/wallet/services/__tests__/walletService.test.ts [2m([22m[2m9 tests[22m[2m | [22m[31m3 failed[39m[2m)[22m[90m 69[2mms[22m[39m
+[31m   [31m├ù[31m WalletService[2m > [22mprocessDeposit[2m > [22mshould throw if amount is 0 or negative[90m 20[2mms[22m[31m[39m
+[31m     ΓåÆ Cannot read properties of undefined (reading 'indexOf')[39m
+[31m   [31m├ù[31m WalletService[2m > [22mprocessWithdrawal[2m > [22mshould throw if amount is 0 or negative[90m 2[2mms[22m[31m[39m
+[31m     ΓåÆ Cannot read properties of undefined (reading 'indexOf')[39m
+[31m   [31m├ù[31m WalletService[2m > [22mrequestPayment[2m > [22mshould throw not implemented error[90m 2[2mms[22m[31m[39m
+[31m     ΓåÆ Cannot read properties of undefined (reading 'indexOf')[39m
+ [32mΓ£ô[39m src/features/chat/services/__tests__/chatService.test.ts [2m([22m[2m10 tests[22m[2m)[22m[90m 21[2mms[22m[39m
+ [32mΓ£ô[39m src/features/checkin/services/__tests__/checkinService.test.ts [2m([22m[2m10 tests[22m[2m)[22m[90m 21[2mms[22m[39m
+ [32mΓ£ô[39m src/features/boundary-logic.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 45[2mms[22m[39m
+ [32mΓ£ô[39m src/components/WalletCard.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[90m 104[2mms[22m[39m
+ [32mΓ£ô[39m src/features/chat/hooks/__tests__/useMessages.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[90m 110[2mms[22m[39m
+ [32mΓ£ô[39m src/features/checkin/hooks/__tests__/useCheckin.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 450[2mms[22m[39m
+ [32mΓ£ô[39m src/features/post-job.integration.test.tsx [2m([22m[2m1 test[22m[2m)[22m[90m 141[2mms[22m[39m
+ [32mΓ£ô[39m src/features/wallet-deposit.integration.test.tsx [2m([22m[2m1 test[22m[2m)[22m[90m 209[2mms[22m[39m
+ [32mΓ£ô[39m src/features/auth-login.integration.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 419[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m Integration: Auth Login Flow[2m > [22mn├¬n cho ph├⌐p ng╞░ß╗¥i d├╣ng ─æ─âng nhß║¡p bß║▒ng Email v├á chuyß╗ân h╞░ß╗¢ng ─æ├║ng role [33m416[2mms[22m[39m
+ [32mΓ£ô[39m src/utils/date.test.ts [2m([22m[2m6 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m12 passed[39m[22m[90m (13)[39m
+[2m      Tests [22m [1m[31m3 failed[39m[22m[2m | [22m[1m[32m58 passed[39m[22m[90m (61)[39m
+[2m   Start at [22m 23:40:30
+[2m   Duration [22m 6.04s[2m (transform 1.41s, setup 6.38s, collect 6.80s, tests 1.62s, environment 36.14s, prepare 3.06s)[22m
+

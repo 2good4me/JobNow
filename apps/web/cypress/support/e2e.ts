@@ -1,17 +1,9 @@
-// ***********************************************************
-// This example support/e2e.ts is processed and
-// loaded automatically before your test files.
-//
-// This is a great place to put global configuration and
-// behavior that modifies Cypress.
-//
-// You can change the location of this file or turn off
-// automatically serving support files with the
-// 'supportFile' configuration option.
-//
-// You can read more here:
-// https://on.cypress.io/configuration
-// ***********************************************************
+// Import commands
+import './commands';
 
-// Import commands.js using ES2015 syntax:
-import './commands'
+// Tự động bỏ qua màn hình Onboarding trước mỗi test
+// Đây là cách chuyên nghiệp nhất - set flag vào localStorage
+// trước khi trang web được load, nên App sẽ không bao giờ hiện màn hình onboarding.
+Cypress.on('window:before:load', (win) => {
+  win.localStorage.setItem('jobnow_onboarding_seen', 'true');
+});

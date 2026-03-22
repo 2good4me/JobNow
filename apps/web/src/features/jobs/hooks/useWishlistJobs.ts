@@ -51,6 +51,8 @@ export function useWishlistJobs(userId: string | undefined) {
                 .map(doc => ({ id: doc.id, ...doc.data() } as Job));
         },
         enabled: !!userId,
+        staleTime: 5 * 60 * 1000,
+        gcTime: 10 * 60 * 1000,
     });
 }
 
@@ -65,6 +67,8 @@ export function useIsJobWishlisted(userId: string | undefined, jobId: string | u
             return snapshot.exists();
         },
         enabled: !!userId && !!jobId,
+        staleTime: 5 * 60 * 1000,
+        gcTime: 10 * 60 * 1000,
     });
 }
 

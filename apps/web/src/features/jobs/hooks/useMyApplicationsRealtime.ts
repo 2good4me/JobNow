@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Application, ApplicationStatus } from '@jobnow/types';
-import { listMyApplications, subscribeMyApplications } from '../services/applicationFlowService';
+import { subscribeMyApplications } from '../services/applicationFlowService';
 
 interface UseMyApplicationsRealtimeInput {
     candidateId: string | undefined;
@@ -10,30 +10,26 @@ interface UseMyApplicationsRealtimeInput {
 }
 
 export function useMyApplicationsRealtime({ candidateId, statuses, limit = 20 }: UseMyApplicationsRealtimeInput) {
-    const queryClient = useQueryClient();
-
-    const queryResult = useQuery<Application[]>({
-        queryKey: ['applications', 'candidate', candidateId, statuses, limit],
-        queryFn: async () => {
-            if (!candidateId) return [];
-            const page = await listMyApplications({ candidateId, statuses, limit });
-            return page.items;
-        },
-        enabled: !!candidateId,
-    });
+    const [data, setData] = useState<Application[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (!candidateId) return undefined;
+        if (!candidateId) {
+            setIsLoading(false);
+            return undefined;
+        }
 
+        setIsLoading(true);
         const unsubscribe = subscribeMyApplications(
             { candidateId, statuses, limit },
             (applications) => {
-                queryClient.setQueryData(['applications', 'candidate', candidateId, statuses, limit], applications);
+                setData(applications);
+                setIsLoading(false);
             }
         );
 
         return () => unsubscribe();
-    }, [candidateId, statuses, limit, queryClient]);
+    }, [candidateId, statuses, limit]);
 
-    return queryResult;
+    return { data, isLoading };
 }

@@ -1,4 +1,4 @@
-import { collection, getDocs, query, doc, getDoc, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, doc, getDoc, orderBy, limit as queryLimit } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { fetchNearbyJobsPage, type NearbyJobResponse } from '@/lib/api';
 import type { Job, JobDoc, JobSearchCursor, JobSearchFilters, JobSearchPage } from '@jobnow/types';
@@ -57,7 +57,7 @@ export async function searchJobs(input: SearchJobsInput): Promise<JobSearchPage>
 
 export async function fetchAllJobs(): Promise<Job[]> {
     const jobsRef = collection(db, 'jobs');
-    const q = query(jobsRef, orderBy('created_at', 'desc'));
+    const q = query(jobsRef, orderBy('created_at', 'desc'), queryLimit(50));
     const snapshot = await getDocs(q);
     return snapshot.docs
         .map(docSnap => {

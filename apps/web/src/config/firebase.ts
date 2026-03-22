@@ -28,3 +28,14 @@ export const functions = getFunctions(app, "asia-southeast1");
 export const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
 
 export default app;
+
+// Hỗ trợ lấy Token nhanh để Test Postman (Chỉ dùng trong quá trình phát triển)
+if (typeof window !== 'undefined') {
+    (window as any).getJobNowToken = async () => {
+        if (!auth.currentUser) return "LỖI: Bạn chưa đăng nhập!";
+        const token = await auth.currentUser.getIdToken();
+        console.log("TOKEN CỦA BẠN:");
+        console.log(token);
+        return token;
+    };
+}

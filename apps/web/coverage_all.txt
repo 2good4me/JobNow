@@ -1,0 +1,43 @@
+﻿
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mD:/JobNow_New/apps/web[39m
+      [2mCoverage enabled with [22m[33mv8[39m
+
+ [32mΓ£ô[39m src/features/checkin/services/__tests__/checkinService.test.ts [2m([22m[2m10 tests[22m[2m)[22m[90m 15[2mms[22m[39m
+[90mstdout[2m | src/features/wallet/services/__tests__/walletService.test.ts[2m > [22m[2mWalletService[2m > [22m[2mrequestPayment[2m > [22m[2mshould throw not implemented error
+[22m[39m[Wallet] Payment request: {
+  employerId: [32m'emp1'[39m,
+  candidateId: [32m'cand1'[39m,
+  amount: [33m100000[39m,
+  jobId: [32m'job1'[39m,
+  applicationId: [32m'app1'[39m
+}
+
+ [32mΓ£ô[39m src/features/auth/helpers/__tests__/reputationHelper.test.ts [2m([22m[2m13 tests[22m[2m)[22m[90m 11[2mms[22m[39m
+ [32mΓ£ô[39m src/features/wallet/services/__tests__/walletService.test.ts [2m([22m[2m9 tests[22m[2m)[22m[90m 19[2mms[22m[39m
+ [31mΓ¥»[39m src/features/jobs/services/__tests__/applicationService.test.ts [2m([22m[2m7 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[90m 31[2mms[22m[39m
+[31m   [31m├ù[31m applicationService[2m > [22mconfirmPaymentReceived[2m > [22mshould throw if application not found[90m 7[2mms[22m[31m[39m
+[31m     ΓåÆ expected 'Kh├┤ng thß╗â x├íc nhß║¡n thanh to├ín.' to contain 'kh├┤ng tß╗ôn tß║íi'[39m
+ [32mΓ£ô[39m src/features/chat/services/__tests__/chatService.test.ts [2m([22m[2m10 tests[22m[2m)[22m[90m 14[2mms[22m[39m
+ [32mΓ£ô[39m src/features/jobs/services/__tests__/adapters.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 11[2mms[22m[39m
+ [32mΓ£ô[39m src/features/jobs/services/__tests__/jobSearchService.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 9[2mms[22m[39m
+ [32mΓ£ô[39m src/features/auth/services/__tests__/followService.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 7[2mms[22m[39m
+ [32mΓ£ô[39m src/features/auth/services/__tests__/employerProfileService.test.ts [2m([22m[2m3 tests[22m[2m)[22m[90m 11[2mms[22m[39m
+ [32mΓ£ô[39m src/features/auth/services/__tests__/authService.test.ts [2m([22m[2m8 tests[22m[2m)[22m[90m 21[2mms[22m[39m
+ [32mΓ£ô[39m src/features/admin/services/__tests__/adminStatsService.test.ts [2m([22m[2m2 tests[22m[2m)[22m[90m 7[2mms[22m[39m
+ [32mΓ£ô[39m src/features/post-job.integration.test.tsx [2m([22m[2m1 test[22m[2m)[22m[90m 182[2mms[22m[39m
+ [32mΓ£ô[39m src/features/wallet-deposit.integration.test.tsx [2m([22m[2m1 test[22m[2m)[22m[90m 239[2mms[22m[39m
+ [32mΓ£ô[39m src/features/checkin/hooks/__tests__/useCheckin.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 419[2mms[22m[39m
+ [32mΓ£ô[39m src/features/auth-login.integration.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 495[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m Integration: Auth Login Flow[2m > [22mn├¬n cho ph├⌐p ng╞░ß╗¥i d├╣ng ─æ─âng nhß║¡p bß║▒ng Email v├á chuyß╗ân h╞░ß╗¢ng ─æ├║ng role [33m493[2mms[22m[39m
+ [32mΓ£ô[39m src/features/boundary-logic.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 21[2mms[22m[39m
+ [32mΓ£ô[39m src/utils/__tests__/formatTime.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 31[2mms[22m[39m
+ [32mΓ£ô[39m src/simple.test.ts [2m([22m[2m1 test[22m[2m)[22m[90m 2[2mms[22m[39m
+ [32mΓ£ô[39m src/components/WalletCard.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[90m 55[2mms[22m[39m
+ [32mΓ£ô[39m src/features/chat/hooks/__tests__/useMessages.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[90m 96[2mms[22m[39m
+ [32mΓ£ô[39m src/utils/date.test.ts [2m([22m[2m6 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m20 passed[39m[22m[90m (21)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m109 passed[39m[22m[90m (110)[39m
+[2m   Start at [22m 00:00:27
+[2m   Duration [22m 7.40s[2m (transform 1.85s, setup 5.60s, collect 6.41s, tests 1.70s, environment 45.53s, prepare 4.72s)[22m
+

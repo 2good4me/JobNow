@@ -11,9 +11,9 @@ test('Complete Post Job Flow', async ({ page, context }) => {
   await page.setViewportSize({ width: 390, height: 844 });
 
   // 2. Clear state and Navigate
-  await page.goto('http://localhost:3000/');
+  await page.goto('http://127.0.0.1:3000/');
   await page.evaluate(() => localStorage.clear());
-  await page.goto('http://localhost:3000/employer/post-job');
+  await page.goto('http://127.0.0.1:3000/employer/post-job');
   
   // 3. Skip Onboarding if present
   try {
@@ -26,11 +26,18 @@ test('Complete Post Job Flow', async ({ page, context }) => {
 
   // Handle redirect to register
   if (page.url().includes('/register')) {
-    console.log('At register page, navigating to login then back...');
+    console.log('At register page, handling role selection if needed...');
     try {
+        if (await page.isVisible('text=Tuyển dụng')) {
+            await page.click('text=Tuyển dụng');
+            await page.waitForTimeout(1000);
+        }
         await page.click('text=Đăng nhập');
-        await page.goto('http://localhost:3000/employer/post-job');
-    } catch (e) {}
+        await page.waitForTimeout(1000);
+        await page.goto('http://127.0.0.1:3000/employer/post-job');
+    } catch (e) {
+        console.log('Error during register redirect handling:', e.message);
+    }
   }
 
   // Chờ trang Đăng tin load hoàn toàn

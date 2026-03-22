@@ -1,0 +1,58 @@
+﻿
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mD:/JobNow_New/apps/web[39m
+
+ [31mΓ¥»[39m src/features/chat/services/__tests__/chatService.test.ts [2m([22m[2m10 tests[22m[2m | [22m[31m6 failed[39m[2m)[22m[90m 14[2mms[22m[39m
+[31m   [31m├ù[31m Chat Service - Frontend[2m > [22mmarkConversationRead[2m > [22mshould clear candidate_unread_count if current user is candidate[90m 7[2mms[22m[31m[39m
+[31m     ΓåÆ expected "spy" to be called with arguments: [ undefined, ΓÇª(1) ][90m
+
+Received: 
+
+[1m  1st spy call:
+
+[22m[2m  Array [[22m
+[32m-   undefined,[90m
+[31m+   Object {[90m
+[31m+     "type": "document",[90m
+[31m+   },[90m
+[2m    Object {[22m
+[2m      "candidate_unread_count": 0,[22m
+[2m    },[22m
+[2m  ][22m
+[31m[90m
+
+Number of calls: [1m1[22m
+[31m[39m
+[31m   [31m├ù[31m Chat Service - Frontend[2m > [22mmarkConversationRead[2m > [22mshould clear employer_unread_count if current user is employer[90m 1[2mms[22m[31m[39m
+[31m     ΓåÆ expected "spy" to be called with arguments: [ undefined, ΓÇª(1) ][90m
+
+Received: 
+
+[1m  1st spy call:
+
+[22m[2m  Array [[22m
+[32m-   undefined,[90m
+[31m+   Object {[90m
+[31m+     "type": "document",[90m
+[31m+   },[90m
+[2m    Object {[22m
+[2m      "employer_unread_count": 0,[22m
+[2m    },[22m
+[2m  ][22m
+[31m[90m
+
+Number of calls: [1m1[22m
+[31m[39m
+[31m   [31m├ù[31m Chat Service - Frontend[2m > [22msendMessage[2m > [22mshould throw error if text is empty[90m 2[2mms[22m[31m[39m
+[31m     ΓåÆ Cannot read properties of undefined (reading 'indexOf')[39m
+[31m   [31m├ù[31m Chat Service - Frontend[2m > [22msendMessage[2m > [22mshould throw error if conversation does not exist at all[90m 0[2mms[22m[31m[39m
+[31m     ΓåÆ Cannot read properties of undefined (reading 'indexOf')[39m
+[31m   [31m├ù[31m Chat Service - Frontend[2m > [22msendMessage[2m > [22mshould throw error if conversation is BLOCKED[90m 0[2mms[22m[31m[39m
+[31m     ΓåÆ Cannot read properties of undefined (reading 'indexOf')[39m
+[31m   [31m├ù[31m Chat Service - Frontend[2m > [22msendMessage[2m > [22mshould throw error if user is not part of conversation[90m 0[2mms[22m[31m[39m
+[31m     ΓåÆ Cannot read properties of undefined (reading 'indexOf')[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m6 failed[39m[22m[2m | [22m[1m[32m4 passed[39m[22m[90m (10)[39m
+[2m   Start at [22m 23:30:43
+[2m   Duration [22m 1.52s[2m (transform 70ms, setup 127ms, collect 57ms, tests 14ms, environment 889ms, prepare 151ms)[22m
+

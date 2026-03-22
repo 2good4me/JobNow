@@ -8,6 +8,7 @@ import {
     orderBy,
     query,
     where,
+    or,
     runTransaction,
     serverTimestamp,
     type QueryDocumentSnapshot,
@@ -266,27 +267,19 @@ export async function listMyApplications(filters: MyApplicationsFilters): Promis
     const pageSize = filters.limit ?? 20;
     const baseRef = collection(db, 'applications');
 
-    const buildQuery = (
-        fieldName: 'candidate_id' | 'candidateId',
-        orderField: 'updated_at' | 'updatedAt'
-    ) => query(baseRef, where(fieldName, '==', filters.candidateId), orderBy(orderField, 'desc'), queryLimit(pageSize));
+    // Tối ưu hóa: Sử dụng 'or' để truy vấn cả 2 loại field trong 1 lần đọc.
+    const q = query(
+        baseRef,
+        or(
+            where('candidate_id', '==', filters.candidateId),
+            where('candidateId', '==', filters.candidateId)
+        ),
+        orderBy('updated_at', 'desc'),
+        queryLimit(pageSize)
+    );
 
-    const [snakeSnapshot, camelSnapshot] = await Promise.all([
-        getDocs(buildQuery('candidate_id', 'updated_at')),
-        getDocs(buildQuery('candidateId', 'updatedAt')),
-    ]);
-
-    let items = [
-        ...snakeSnapshot.docs.map(mapApplicationSnapshot),
-        ...camelSnapshot.docs.map(mapApplicationSnapshot),
-    ];
-    const deduped = new Map(items.map((item) => [item.id, item]));
-    items = Array.from(deduped.values())
-        .sort((a, b) => {
-            const aTime = a.updatedAt?.toDate?.()?.getTime?.() ?? 0;
-            const bTime = b.updatedAt?.toDate?.()?.getTime?.() ?? 0;
-            return bTime - aTime;
-        });
+    const snapshot = await getDocs(q);
+    let items = snapshot.docs.map(mapApplicationSnapshot);
 
     if (decoded?.id) {
         const cursorIndex = items.findIndex((item) => item.id === decoded.id);
@@ -311,44 +304,56 @@ export function subscribeMyApplications(
     filters: MyApplicationsFilters,
     onUpdate: (applications: Application[]) => void
 ): Unsubscribe {
-    const snakeQuery = query(
+    // Tách làm 2 query để tránh yêu cầu Index tổng hợp (Firestore index requirement for 'or' + 'orderBy').
+    const q1 = query(
         collection(db, 'applications'),
         where('candidate_id', '==', filters.candidateId),
-        orderBy('updated_at', 'desc'),
+        orderBy('updatedAt', 'desc'),
         queryLimit(filters.limit ?? 20)
     );
-    const camelQuery = query(
+
+    const q2 = query(
         collection(db, 'applications'),
         where('candidateId', '==', filters.candidateId),
         orderBy('updatedAt', 'desc'),
         queryLimit(filters.limit ?? 20)
     );
 
-    let snakeItems: Application[] = [];
-    let camelItems: Application[] = [];
+    let apps1: Application[] = [];
+    let apps2: Application[] = [];
 
-    const flush = () => {
-        let items = [...snakeItems, ...camelItems];
-        const deduped = new Map(items.map((item) => [item.id, item]));
-        items = Array.from(deduped.values());
-        if (filters.statuses?.length) {
-            items = items.filter((item) => filters.statuses?.includes(item.status));
-        }
-        onUpdate(items);
+    const handleUpdate = () => {
+        // Gộp kết quả và loại bỏ trùng lặp (nếu có doc chứa cả 2 field)
+        const combined = [...apps1, ...apps2]
+            .sort((a, b) => {
+                const timeA = b.updatedAt?.toMillis?.() || 0;
+                const timeB = a.updatedAt?.toMillis?.() || 0;
+                return timeA - timeB;
+            })
+            .filter((app, index, self) => 
+                index === self.findIndex((t) => t.id === app.id)
+            )
+            .slice(0, filters.limit ?? 20);
+
+        const filtered = filters.statuses?.length
+            ? combined.filter((item) => filters.statuses?.includes(item.status))
+            : combined;
+
+        onUpdate(filtered);
     };
 
-    const unsubSnake = onSnapshot(snakeQuery, (snapshot) => {
-        snakeItems = snapshot.docs.map(mapApplicationSnapshot);
-        flush();
+    const unsub1 = onSnapshot(q1, (snapshot) => {
+        apps1 = snapshot.docs.map(mapApplicationSnapshot);
+        handleUpdate();
     });
 
-    const unsubCamel = onSnapshot(camelQuery, (snapshot) => {
-        camelItems = snapshot.docs.map(mapApplicationSnapshot);
-        flush();
+    const unsub2 = onSnapshot(q2, (snapshot) => {
+        apps2 = snapshot.docs.map(mapApplicationSnapshot);
+        handleUpdate();
     });
 
     return () => {
-        unsubSnake();
-        unsubCamel();
+        unsub1();
+        unsub2();
     };
 }

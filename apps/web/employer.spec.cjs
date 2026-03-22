@@ -4,7 +4,16 @@ test('Employer flows', async ({ page }) => {
     test.setTimeout(30000);
     await page.setViewportSize({ width: 390, height: 844 });
     console.log("Navigating to register...");
-    await page.goto('http://localhost:3000/register');
+    await page.goto('http://127.0.0.1:3000/register');
+    
+    // Skip Onboarding if present
+    try {
+        await page.waitForSelector('button:has-text("Bỏ qua")', { timeout: 3000 });
+        await page.click('button:has-text("Bỏ qua")');
+        console.log('Skipped onboarding');
+    } catch (e) {
+        console.log('Onboarding not found or already skipped');
+    }
 
     await page.fill('input[type="email"]', `emp${Date.now()}@jobnow.com`);
     await page.fill('input[type="password"]', 'password123');
@@ -15,13 +24,11 @@ test('Employer flows', async ({ page }) => {
     }
 
     // Click Employer role
-    const roleCards = await page.$$('h3');
-    for (const card of roleCards) {
-        const text = await card.textContent();
-        if (text && text.includes('Nhà tuyển dụng')) {
-            await card.click();
-            break;
-        }
+    console.log("Selecting Employer role...");
+    try {
+        await page.click('text=Tuyển dụng', { timeout: 5000 });
+    } catch (e) {
+        console.log("Role selection button not found, maybe already at form.");
     }
 
     // Submit
@@ -70,7 +77,7 @@ test('Employer flows', async ({ page }) => {
     await page.screenshot({ path: 'e2e-results/employer_applicants.png' });
 
     // Navigate to profile
-    await page.goto('http://localhost:3000/employer/profile');
+    await page.goto('http://127.0.0.1:3000/employer/profile');
     await page.waitForTimeout(1000);
     await page.screenshot({ path: 'e2e-results/employer_profile.png' });
 
