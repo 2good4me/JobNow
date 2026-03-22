@@ -100,48 +100,46 @@ test('Complete Post Job Flow', async ({ page, context }) => {
   await page.waitForTimeout(2000);
 
   console.log('--- BƯỚC 3: CA LÀM VIỆC ---');
-  test.slow(); // Nhân 3 timeout cho các bước chậm
-  await expect(page.locator('text=Ca làm việc')).toBeVisible({ timeout: 20000 });
+  test.slow(); 
+  await expect(page.getByText('Chọn ca làm việc')).toBeVisible({ timeout: 20000 });
   
   // 1. Thêm ca làm việc
   console.log('Adding a shift...');
-  const addShiftBtn = page.locator('button:has-text("Thêm ca làm việc")').first();
+  const addShiftBtn = page.getByText('Thêm ca làm việc');
   await addShiftBtn.scrollIntoViewIfNeeded();
   await addShiftBtn.click({ force: true });
   await page.waitForTimeout(2000);
   
-  // Kiểm tra và điền tên ca nếu cần (để activate button Tiếp tục)
+  // Kiểm tra và điền tên ca
   const shiftInput = page.locator('input[placeholder*="Ca 1"]');
-  try {
-    if (await shiftInput.isVisible({ timeout: 5000 })) {
-        console.log('Filling shift name...');
-        await shiftInput.fill('Ca làm việc sáng');
-        await page.waitForTimeout(1000);
-    }
-  } catch (e) {
-    console.log('Shift input not found, retrying click...');
-    await page.evaluate(() => {
-        const b = Array.from(document.querySelectorAll('button')).find(el => el.innerText.includes('Thêm ca làm việc'));
-        if (b) b.click();
-    });
-    await page.waitForTimeout(2000);
+  if (await shiftInput.isVisible({ timeout: 10000 })) {
+      console.log('Filling shift name...');
+      await shiftInput.fill('Ca sáng dự phòng');
+      await page.waitForTimeout(1000);
+  } else {
+      console.log('Retry add shift via role...');
+      await page.getByRole('button', { name: /Thêm ca làm việc/i }).click({ force: true });
+      await page.waitForTimeout(2000);
   }
 
   // 2. Nhấn Tiếp tục (Bước 3)
   console.log('Clicking Next (Step 3)...');
-  const nextBtn3 = page.locator('button:has-text("Tiếp tục")').last();
-  await nextBtn3.click({ force: true });
+  await page.getByRole('button', { name: /Tiếp tục/i }).last().click({ force: true });
   await page.waitForTimeout(2000);
 
   console.log('--- BƯỚC 4: XEM LẠI & ĐĂNG TIN ---');
-  await expect(page.locator('text=Xem lại tin đăng')).toBeVisible({ timeout: 20000 });
+  await expect(page.getByText('Kiểm tra lại lần cuối')).toBeVisible({ timeout: 20000 });
   
   // Screenshot kết quả cuối cùng
   await page.screenshot({ path: 'post-job-review-final.png' });
-  console.log('Test completed successfully!');
+  console.log('Test reached final step successfully!');
   
-  // Chụp ảnh màn hình bước cuối
-  await page.screenshot({ path: 'e2e-results/post-job-review.png' });
+  // Nhấn Đăng tin ngay
+  console.log('Clicking Publish...');
+  await page.getByRole('button', { name: /Đăng tin ngay/i }).click({ force: true });
+  await page.waitForTimeout(3000);
+  
+  console.log('--- KẾT THÚC LUỒNG E2E ---');
 
   // Nhấn Đăng tin ngay
   // await page.click('button:has-text("Đăng tin ngay")');

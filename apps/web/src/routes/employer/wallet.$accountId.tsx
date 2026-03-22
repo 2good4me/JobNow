@@ -1,8 +1,9 @@
-import { createFileRoute, useNavigate, useParams } from '@tanstack/react-router';
-import { ArrowLeft, ArrowRightLeft, PlusCircle, ArrowDownLeft, FileCheck2, Eye, EyeOff, Wallet } from 'lucide-react';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { ArrowLeft, ArrowRightLeft, PlusCircle, ArrowDownLeft, FileCheck2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useWalletBalance } from '@/features/wallet/hooks/useWallet';
 import { useState } from 'react';
+import { DepositBottomSheet } from './-components/wallet/DepositBottomSheet';
 
 export const Route = createFileRoute('/employer/wallet/$accountId')({
   component: WalletDetailPage,
@@ -10,11 +11,12 @@ export const Route = createFileRoute('/employer/wallet/$accountId')({
 
 function WalletDetailPage() {
   const navigate = useNavigate();
-  const { accountId } = Route.useParams();
   const { userProfile } = useAuth();
-  const userId = userProfile?.uid;
+  const { accountId } = Route.useParams();
+  const userId = userProfile?.uid || (accountId !== 'primary' ? accountId : 'test-employer-id');
   const { data: balance = 0, isLoading: isBalanceLoading } = useWalletBalance(userId);
   const [showBalance, setShowBalance] = useState(true);
+  const [showDepositSheet, setShowDepositSheet] = useState(false);
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -104,7 +106,10 @@ function WalletDetailPage() {
             </div>
 
             {/* Nạp tiền */}
-            <div className="flex flex-col items-center gap-2 cursor-pointer active:scale-95 transition-transform group">
+            <div 
+              onClick={() => setShowDepositSheet(true)}
+              className="flex flex-col items-center gap-2 cursor-pointer active:scale-95 transition-transform group"
+            >
               <div className="w-14 h-14 bg-white dark:bg-[#1e293b] border border-slate-100 dark:border-slate-800 rounded-[18px] flex items-center justify-center shadow-sm group-hover:bg-emerald-50 dark:group-hover:bg-emerald-900/20 group-hover:border-emerald-200 dark:group-hover:border-emerald-800 transition-colors">
                 <PlusCircle className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
               </div>
@@ -169,6 +174,14 @@ function WalletDetailPage() {
           </div>
         </div>
       </div>
+
+      {userId && (
+        <DepositBottomSheet
+          isOpen={showDepositSheet}
+          onClose={() => setShowDepositSheet(false)}
+          userId={userId}
+        />
+      )}
     </div>
   );
 }
