@@ -67,11 +67,11 @@ test('Employer flows', async ({ page }) => {
         }
     }
     await page.waitForTimeout(1000);
-    await page.screenshot({ path: '/home/pind/.gemini/antigravity/brain/46b4b700-3f3b-4e1b-be29-ef00938d24de/employer_applicants.png' });
+    await page.screenshot({ path: 'e2e-results/employer_applicants.png' });
 
     // Navigate to profile
     await page.goto('http://localhost:3000/employer/profile');
     await page.waitForTimeout(1000);
-    await page.screenshot({ path: '/home/pind/.gemini/antigravity/brain/46b4b700-3f3b-4e1b-be29-ef00938d24de/employer_profile.png' });
+    await page.screenshot({ path: 'e2e-results/employer_profile.png' });
 
 });

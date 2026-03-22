@@ -4,6 +4,9 @@ import { calculateBudget } from '../-utils/budgetCalculations';
 export type PayType = 'Theo giờ' | 'Theo ca' | 'Theo ngày';
 export type GenderPreference = 'Nam' | 'Nữ' | 'Cả hai';
 
+export const payTypes: PayType[] = ['Theo giờ', 'Theo ca', 'Theo ngày'];
+export const genderOptions: GenderPreference[] = ['Nam', 'Nữ', 'Cả hai'];
+
 export interface Shift {
   id: string;
   name: string;

@@ -1,6 +1,5 @@
-import { Users, type LucideIcon } from 'lucide-react';
-import { getReputationTier, getProgressToNextTier } from '../helpers/reputationHelper';
-import { ReputationBadge } from './ReputationBadge';
+import { Users, ShieldCheck, Star, type LucideIcon } from 'lucide-react';
+import { getReputationTier } from '../helpers/reputationHelper';
 
 interface ReputationStatsCardProps {
   reputationScore: number;
@@ -23,93 +22,80 @@ export function ReputationStatsCard({
   onViewDetails,
 }: ReputationStatsCardProps) {
   const tierInfo = getReputationTier(reputationScore);
-  const progress = getProgressToNextTier(reputationScore);
 
   const displayStatValue = statValue !== undefined ? statValue : (totalApplicants || 0);
 
   return (
-    <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-      {/* Header với Tier Badge */}
-      <div className={`${tierInfo.bgColor} px-4 py-3 border-b ${tierInfo.borderColor}`}>
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-              Hạng Uy Tín
-            </p>
-            <ReputationBadge score={reputationScore} size="lg" showLabel={true} />
-          </div>
+    <div className="space-y-4">
+      {/* Khối Hạng Uy Tín */}
+      <div className="bg-white dark:bg-[#1e293b] rounded-[24px] p-5 shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-[13px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            Hạng Uy Tín
+          </h2>
           {onViewDetails && (
             <button
               onClick={onViewDetails}
-              className="text-xs font-semibold text-blue-600 hover:text-blue-700 px-3 py-1 rounded-full bg-blue-50 hover:bg-blue-100 transition-colors"
+              className="text-[13px] font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors"
             >
               Chi tiết
             </button>
           )}
         </div>
+        
+        <div className="bg-[#f8faff] dark:bg-blue-900/20 border border-blue-100/50 dark:border-blue-800/30 rounded-2xl p-4 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-white dark:bg-[#1e293b] flex items-center justify-center shadow-sm shrink-0">
+            <ShieldCheck className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div>
+            <p className="text-lg font-bold text-blue-600 dark:text-blue-400 leading-tight mb-0.5">
+              {tierInfo.labelVi || 'Tiêu Chuẩn'}
+            </p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {reputationScore} điểm
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="p-4 grid grid-cols-3 divide-x divide-slate-100">
-        {/* Reputation Score */}
-        <div className="text-center px-2">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+      {/* 3 Blocks */}
+      <div className="grid grid-cols-3 gap-3">
+        {/* Điểm Uy Tín */}
+        <div className="bg-white dark:bg-[#1e293b] rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center text-center transition-colors">
+          <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
             Điểm Uy Tín
           </p>
-          <p className="text-2xl font-extrabold text-slate-800">{reputationScore}</p>
-          <p className="text-[10px] text-slate-400 mt-1">
-            {progress.pointsNeeded > 0
-              ? `${progress.pointsNeeded} đến ${progress.nextTier?.labelVi}`
-              : 'Tối đa'}
+          <p className="text-xl font-extrabold text-slate-800 dark:text-slate-100">
+            {reputationScore}
           </p>
         </div>
 
-        {/* Rating */}
-        <div className="text-center px-2">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+        {/* Đánh Giá */}
+        <div className="bg-white dark:bg-[#1e293b] rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center text-center transition-colors">
+          <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
             Đánh Giá
           </p>
-          <div className="flex items-center justify-center gap-1">
-            <span className="text-2xl font-extrabold text-amber-500">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xl font-extrabold text-amber-500">
               {averageRating.toFixed(1)}
             </span>
-            <span className="text-xs text-amber-500">⭐</span>
+            <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
           </div>
-          <p className="text-[10px] text-slate-400 mt-1">/5.0</p>
         </div>
 
         {/* Dynamic Third Stat */}
-        <div className="text-center px-2">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+        <div className="bg-white dark:bg-[#1e293b] rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center text-center transition-colors">
+          <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
             {statLabel}
           </p>
-          <div className="flex items-center justify-center gap-1">
-            <StatIcon className="w-4 h-4 text-blue-600" />
-            <span className="text-2xl font-extrabold text-blue-600">{displayStatValue}</span>
+          <div className="flex items-center gap-1.5 align-middle">
+            <StatIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <span className="text-xl font-extrabold text-blue-600 dark:text-blue-400">
+              {displayStatValue}
+            </span>
           </div>
         </div>
       </div>
-
-      {/* Progress Bar đến Tier tiếp theo */}
-      {progress.nextTier && (
-        <div className="px-4 py-3 bg-slate-50 border-t border-slate-100">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-600">
-              Tiến độ đến {progress.nextTier.labelVi}
-            </span>
-            <span className="text-xs font-bold text-slate-400">{progress.progressPercent}%</span>
-          </div>
-          <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
-            <div
-              className={`h-full transition-all duration-300 ${progress.nextTier.textColor.replace(
-                'text-',
-                'bg-'
-              )}`}
-              style={{ width: `${progress.progressPercent}%` }}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -8,10 +8,19 @@ import { GlobalHeader } from '../components/ui/GlobalHeader';
 import { Toaster } from 'sonner';
 import { useOnlineStatus } from '../features/auth/hooks/useOnlineStatus';
 import { useFCM } from '../hooks/useFCM';
+import { ThemeProvider, useTheme } from '../components/ThemeProvider';
 
 export const Route = createRootRoute({
-    component: RootLayout,
+    component: RootApp,
 });
+
+function RootApp() {
+    return (
+        <ThemeProvider>
+            <RootLayout />
+        </ThemeProvider>
+    );
+}
 
 /* ── Auth pages that should never show nav ─────── */
 const AUTH_ROUTES = ['/login', '/register', '/forgot-password', '/onboarding'];
@@ -123,17 +132,18 @@ function RootLayout() {
 
     // Whether to show mobile-first app layout
     const isAppLayout = isCandidateRoute || isEmployerRoute;
+    const { theme } = useTheme();
 
     // Prevent flicker while resolving persisted auth/profile state.
     if (loading || shouldRedirectGuestToOnboarding) {
         return (
-            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+            <div className={`min-h-[100dvh] flex items-center justify-center transition-colors duration-300 ${!isAuthPage && theme === 'dark' ? 'dark' : ''} bg-slate-50 dark:bg-slate-900`}>
                 <div className="w-full max-w-sm px-6">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 p-5 shadow-sm">
                         <div className="animate-pulse space-y-3">
-                            <div className="h-4 w-32 rounded bg-slate-200" />
-                            <div className="h-3 w-full rounded bg-slate-200" />
-                            <div className="h-3 w-5/6 rounded bg-slate-200" />
+                            <div className="h-4 w-32 rounded bg-slate-200 dark:bg-slate-700" />
+                            <div className="h-3 w-full rounded bg-slate-200 dark:bg-slate-700" />
+                            <div className="h-3 w-5/6 rounded bg-slate-200 dark:bg-slate-700" />
                         </div>
                     </div>
                 </div>
@@ -144,7 +154,7 @@ function RootLayout() {
     // Auth pages render bare (no nav chrome)
     if (isAuthPage) {
         return (
-            <div className="min-h-screen bg-slate-50 font-sans">
+            <div className={`min-h-[100dvh] font-sans transition-colors duration-300 bg-slate-50`}>
                 <Outlet />
             </div>
         );
@@ -161,7 +171,8 @@ function RootLayout() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
+        <div className={`${theme === 'dark' ? 'dark' : ''}`}>
+            <div className="min-h-[100dvh] bg-slate-50 dark:bg-slate-900 font-sans flex flex-col transition-colors duration-300">
             {/* ── Global Header ─────────────────── */}
             <GlobalHeader isAppLayout={isAppLayout} />
 
@@ -193,6 +204,7 @@ function RootLayout() {
             )}
 
             <Toaster position="top-center" richColors />
+        </div>
         </div>
     );
 }

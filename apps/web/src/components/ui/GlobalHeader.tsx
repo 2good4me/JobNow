@@ -104,7 +104,7 @@ export function GlobalHeader({ isAppLayout }: GlobalHeaderProps) {
     };
 
     return (
-        <header className="sticky top-0 z-50 w-full backdrop-blur-xl bg-white/70 border-b border-white/20 shadow-sm supports-[backdrop-filter]:bg-white/60">
+        <header className="sticky top-0 z-50 w-full backdrop-blur-xl bg-white/70 dark:bg-slate-900/70 border-b border-white/20 dark:border-slate-700/50 shadow-sm supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-slate-900/60 transition-colors duration-300">
             <div className={`container mx-auto px-4 ${isAppLayout ? 'max-w-lg' : 'max-w-7xl'} flex h-16 items-center justify-between`}>
 
                 {/* 1. Brand Anchor (Trái) */}
@@ -112,8 +112,8 @@ export function GlobalHeader({ isAppLayout }: GlobalHeaderProps) {
                     <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 p-2 rounded-xl text-white group-hover:scale-105 transition-transform shadow-sm">
                         <BriefcaseBusiness className="w-5 h-5" />
                     </div>
-                    <span className="font-heading font-black text-xl tracking-tight text-slate-800">
-                        Job<span className="text-indigo-600">Now</span>
+                    <span className="font-heading font-black text-xl tracking-tight text-slate-800 dark:text-slate-100">
+                        Job<span className="text-indigo-600 dark:text-indigo-400">Now</span>
                     </span>
                 </Link>
 
@@ -121,7 +121,7 @@ export function GlobalHeader({ isAppLayout }: GlobalHeaderProps) {
                 <div className="flex items-center gap-3">
                     {!user ? (
                         <div className="flex items-center gap-2">
-                            <Link to="/login" className="text-sm font-semibold text-slate-600 hover:text-slate-900 px-3 py-2 rounded-xl hover:bg-slate-100 transition-colors h-10 flex items-center">
+                            <Link to="/login" className="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors h-10 flex items-center">
                                 Đăng nhập
                             </Link>
                             <Link to="/register" className="text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 px-4 py-2 rounded-xl shadow-sm transition-transform active:scale-95 h-10 flex items-center">
@@ -135,8 +135,8 @@ export function GlobalHeader({ isAppLayout }: GlobalHeaderProps) {
                                 to={notificationPath}
                                 className={`relative p-2.5 rounded-full transition-colors active:scale-95 shrink-0 border
                                     ${location.pathname.startsWith(notificationPath)
-                                        ? 'bg-primary-50 border-primary-100 text-primary-600'
-                                        : 'bg-slate-100/50 hover:bg-slate-100 border-slate-200/50 text-slate-600'
+                                        ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-100 dark:border-primary-800 text-primary-600 dark:text-primary-400'
+                                        : 'bg-slate-100/50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 border-slate-200/50 dark:border-slate-700 text-slate-600 dark:text-slate-300'
                                     }`}
                                 aria-label="Thông báo"
                             >
@@ -150,8 +150,8 @@ export function GlobalHeader({ isAppLayout }: GlobalHeaderProps) {
                             <div className="relative" ref={menuContainerRef}>
                                 <button
                                     onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                                    className={`flex items-center gap-2 p-1 pr-3 bg-white border rounded-full shadow-sm transition-colors active:scale-95 text-left min-h-11
-                                        ${isProfileRoute ? 'border-primary-300 ring-2 ring-primary-100' : 'border-slate-200 hover:border-slate-300'}`}
+                                    className={`flex items-center gap-2 p-1 pr-3 bg-white dark:bg-slate-800 border rounded-full shadow-sm transition-colors active:scale-95 text-left min-h-11
+                                        ${isProfileRoute ? 'border-primary-300 dark:border-primary-500 ring-2 ring-primary-100 dark:ring-primary-900/50' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}
                                     aria-haspopup="menu"
                                     aria-expanded={isProfileMenuOpen}
                                     aria-label="Mở menu tài khoản"
@@ -173,10 +173,10 @@ export function GlobalHeader({ isAppLayout }: GlobalHeaderProps) {
                                 />
 
                                 <div
-                                    className={`absolute right-0 top-[calc(100%+10px)] z-50 w-80 max-w-[calc(100vw-1rem)] rounded-3xl border border-white/70 bg-white/95 p-2 shadow-2xl shadow-slate-900/15 backdrop-blur-xl transition-all duration-200 ease-out origin-top-right
+                                    className={`absolute right-0 top-[calc(100%+10px)] z-50 w-80 max-w-[calc(100vw-1rem)] rounded-3xl border border-white/70 dark:border-slate-700/70 bg-white/95 dark:bg-slate-800/95 p-2 shadow-2xl shadow-slate-900/15 dark:shadow-slate-900/50 backdrop-blur-xl transition-all duration-200 ease-out origin-top-right
                                         ${isProfileMenuOpen ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto' : 'opacity-0 -translate-y-1 scale-95 pointer-events-none'}`}
                                 >
-                                    <div className="rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200/70 p-4">
+                                    <div className="rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-700/50 dark:to-slate-800/50 border border-slate-200/70 dark:border-slate-700/70 p-4">
                                         <div className="flex items-center gap-3">
                                             {userProfile?.avatar_url ? (
                                                 <img
@@ -190,8 +190,8 @@ export function GlobalHeader({ isAppLayout }: GlobalHeaderProps) {
                                                 </div>
                                             )}
                                             <div className="min-w-0">
-                                                <p className="text-sm font-bold text-slate-800 truncate">{userDisplayName}</p>
-                                                <p className="text-xs text-slate-500 mt-0.5">{roleLabel}</p>
+                                                <p className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">{userDisplayName}</p>
+                                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{roleLabel}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -199,17 +199,17 @@ export function GlobalHeader({ isAppLayout }: GlobalHeaderProps) {
                                     <div className="mt-2 space-y-1">
                                         <Link
                                             to={profilePath}
-                                            className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors min-h-11"
+                                            className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors min-h-11"
                                         >
-                                            <UserRound className="w-4 h-4 text-slate-500" />
+                                            <UserRound className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                                             Trang cá nhân của tôi
                                         </Link>
 
                                         <Link
                                             to={settingsPath}
-                                            className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors min-h-11"
+                                            className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors min-h-11"
                                         >
-                                            <Settings className="w-4 h-4 text-slate-500" />
+                                            <Settings className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                                             Cài đặt tài khoản
                                         </Link>
 

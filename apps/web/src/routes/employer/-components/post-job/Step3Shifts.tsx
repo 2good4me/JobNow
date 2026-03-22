@@ -1,5 +1,7 @@
 import { Clock, Minus, Plus, X, AlertCircle, DollarSign, CheckCircle2 } from 'lucide-react';
-import { type JobFormState, type Shift, formatSalary } from '../../post-job';
+import { type JobFormState } from '../../-types/job-post-types';
+import { type Shift } from '../../-schemas/jobFormSchema';
+import { formatSalary } from '../../-utils/postJobUtils';
 import type { PayType } from '../../-schemas/jobFormSchema';
 import { calculateBudget } from '../../-utils/budgetCalculations';
 
@@ -36,17 +38,17 @@ export default function Step3Shifts({
 
   return (
     <div className="w-full shrink-0 px-0.5 space-y-4">
-      <section className="rounded-2xl border border-white/70 bg-white/70 p-4 shadow-md backdrop-blur-md">
+      <section className="rounded-2xl border border-white/70 dark:border-slate-800 bg-white/70 dark:bg-[#1E293B] p-4 shadow-md backdrop-blur-md transition-colors duration-300">
         <div className="mb-4">
-          <h2 className="text-base font-bold text-slate-900">Chọn ca làm việc <span className="text-rose-400">*</span></h2>
-          <p className="mt-1 text-xs text-slate-500">Thêm các ca làm việc cho công việc này.</p>
+          <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Chọn ca làm việc <span className="text-rose-400 dark:text-rose-500">*</span></h2>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Thêm các ca làm việc cho công việc này.</p>
         </div>
 
         {errors.shifts && (
-          <div className="mb-4 flex gap-3 rounded-xl border border-rose-300 bg-rose-50 p-3">
-            <AlertCircle className="h-5 w-5 flex-shrink-0 text-rose-600 mt-0.5" />
+          <div className="mb-4 flex gap-3 rounded-xl border border-rose-300 dark:border-rose-800/50 bg-rose-50 dark:bg-rose-900/20 p-3">
+            <AlertCircle className="h-5 w-5 flex-shrink-0 text-rose-600 dark:text-rose-500 mt-0.5" />
             <div>
-              <p className="text-xs font-semibold text-rose-700">{errors.shifts}</p>
+              <p className="text-xs font-semibold text-rose-700 dark:text-rose-400">{errors.shifts}</p>
             </div>
           </div>
         )}
@@ -59,8 +61,8 @@ export default function Step3Shifts({
                 key={shift.id}
                 className={`rounded-xl border p-3 relative group transition-colors ${
                   timeError
-                    ? 'border-rose-400 bg-rose-50/80'
-                    : 'border-slate-200 bg-slate-50/80'
+                    ? 'border-rose-400 dark:border-rose-500/50 bg-rose-50/80 dark:bg-rose-900/10'
+                    : 'border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/50'
                 }`}
               >
                 <button
@@ -77,42 +79,42 @@ export default function Step3Shifts({
                     value={shift.name}
                     onChange={e => updateShift(shift.id, { name: e.target.value })}
                     placeholder={`Ca ${idx + 1} (VD: Ca sáng)`}
-                    className={`w-full rounded-lg border px-3 py-2 text-sm text-slate-800 focus:outline-none transition-colors ${
+                    className={`w-full rounded-lg border px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none transition-colors ${
                       shift.name.trim() === ''
-                        ? 'border-rose-300 bg-white focus:border-rose-500'
-                        : 'border-slate-200 bg-white focus:border-emerald-500'
+                        ? 'border-rose-300 dark:border-rose-500/50 bg-white dark:bg-[#0f172a] focus:border-rose-500'
+                        : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-[#0f172a] focus:border-emerald-500'
                     }`}
                   />
                   {shift.name.trim() === '' && (
-                    <p className="mt-1 text-xs font-semibold text-rose-600">🔴 Tên ca không được để trống</p>
+                    <p className="mt-1 text-xs font-semibold text-rose-600 dark:text-rose-400">🔴 Tên ca không được để trống</p>
                   )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 mb-2">
                   <label className="block">
-                    <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Bắt đầu</span>
+                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Bắt đầu</span>
                     <div className="relative mt-0.5">
-                      <Clock className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                      <Clock className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                       <input
                         type="time"
                         value={shift.startTime}
                         onChange={e => updateShift(shift.id, { startTime: e.target.value })}
-                        className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-8 pr-2 text-sm text-slate-800 focus:border-emerald-500 focus:outline-none"
+                        className="w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-[#0f172a] py-2 pl-8 pr-2 text-sm text-slate-800 dark:text-slate-200 focus:border-emerald-500 focus:outline-none transition-colors"
                       />
                     </div>
                   </label>
                   <label className="block">
-                    <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Kết thúc</span>
+                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Kết thúc</span>
                     <div className="relative mt-0.5">
-                      <Clock className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                      <Clock className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                       <input
                         type="time"
                         value={shift.endTime}
                         onChange={e => updateShift(shift.id, { endTime: e.target.value })}
-                        className={`w-full rounded-lg border py-2 pl-8 pr-2 text-sm text-slate-800 focus:outline-none transition-colors ${
+                        className={`w-full rounded-lg border py-2 pl-8 pr-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none transition-colors ${
                           timeError
-                            ? 'border-rose-400 bg-rose-100 focus:border-rose-500'
-                            : 'border-slate-200 bg-white focus:border-emerald-500'
+                            ? 'border-rose-400 dark:border-rose-500/50 bg-rose-100 dark:bg-rose-900/20 focus:border-rose-500'
+                            : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-[#0f172a] focus:border-emerald-500'
                         }`}
                       />
                     </div>
@@ -120,25 +122,25 @@ export default function Step3Shifts({
                 </div>
 
                 {timeError && (
-                  <p className="mb-2 text-xs font-semibold text-rose-600">⏰ {timeError}</p>
+                  <p className="mb-2 text-xs font-semibold text-rose-600 dark:text-rose-400">⏰ {timeError}</p>
                 )}
 
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-600">Số lượng cần</span>
+                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Số lượng cần</span>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => updateShift(shift.id, { quantity: Math.max(1, shift.quantity - 1) })}
-                      className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-100 cursor-pointer transition-colors"
+                      className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-[#0f172a] flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
                       aria-label="Giảm số lượng"
                     >
                       <Minus className="w-3.5 h-3.5" />
                     </button>
-                    <span className="w-8 text-center text-sm font-bold text-slate-800">{shift.quantity}</span>
+                    <span className="w-8 text-center text-sm font-bold text-slate-800 dark:text-slate-200">{shift.quantity}</span>
                     <button
                       type="button"
                       onClick={() => updateShift(shift.id, { quantity: shift.quantity + 1 })}
-                      className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:bg-slate-100 cursor-pointer transition-colors"
+                      className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-[#0f172a] flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
                       aria-label="Tăng số lượng"
                     >
                       <Plus className="w-3.5 h-3.5" />
@@ -153,7 +155,7 @@ export default function Step3Shifts({
         <button
           type="button"
           onClick={addShift}
-          className="mt-3 w-full cursor-pointer rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50/50 py-3 text-sm font-semibold text-emerald-600 hover:bg-emerald-50 transition-colors flex items-center justify-center gap-2"
+          className="mt-3 w-full cursor-pointer rounded-xl border-2 border-dashed border-emerald-300 dark:border-emerald-700/50 bg-emerald-50/50 dark:bg-emerald-900/10 py-3 text-sm font-semibold text-emerald-600 dark:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors flex items-center justify-center gap-2"
         >
           <Plus className="w-4 h-4" />
           Thêm ca làm việc
@@ -161,25 +163,25 @@ export default function Step3Shifts({
       </section>
 
       {/* Total Budget Display with Breakdown */}
-      <section className="rounded-2xl border-2 border-emerald-300 bg-emerald-50 p-4 shadow-md">
+      <section className="rounded-2xl border-2 border-emerald-300 dark:border-emerald-700/50 bg-emerald-50 dark:bg-emerald-900/10 p-4 shadow-md transition-colors duration-300">
         <div className="flex items-center gap-2 mb-3">
-          <DollarSign className="w-5 h-5 text-emerald-600" />
-          <h3 className="text-sm font-bold text-emerald-900">Tổng ngân sách dự kiến</h3>
+          <DollarSign className="w-5 h-5 text-emerald-600 dark:text-emerald-500" />
+          <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-100">Tổng ngân sách dự kiến</h3>
         </div>
 
-        <p className="text-2xl font-bold text-emerald-700 mb-4">
+        <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-400 mb-4">
           {formatSalary(String(budgetResult.totalBudget))} VNĐ
         </p>
 
         {/* Breakdown Details */}
         <div className="space-y-2 mb-3">
-          <p className="text-xs font-semibold text-emerald-900 uppercase">Chi tiết tính toán</p>
+          <p className="text-xs font-semibold text-emerald-900 dark:text-emerald-500 uppercase">Chi tiết tính toán</p>
           {budgetResult.breakdown.map((item, idx) => (
             <div key={idx} className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-500 flex-shrink-0 mt-0.5" />
               <div className="flex-1 flex items-center justify-between text-xs">
-                <span className="text-emerald-800">{item.label}</span>
-                <span className="font-semibold text-emerald-700">
+                <span className="text-emerald-800 dark:text-emerald-200">{item.label}</span>
+                <span className="font-semibold text-emerald-700 dark:text-emerald-400">
                   {formatSalary(String(item.amount))} VNĐ
                 </span>
               </div>
@@ -188,10 +190,10 @@ export default function Step3Shifts({
         </div>
 
         {/* Explanation & Total Hours (if applicable) */}
-        <div className="pt-3 border-t border-emerald-200">
-          <p className="text-xs text-emerald-700 mb-2">{budgetResult.explanation}</p>
+        <div className="pt-3 border-t border-emerald-200 dark:border-emerald-800/50">
+          <p className="text-xs text-emerald-700 dark:text-emerald-300 mb-2">{budgetResult.explanation}</p>
           {budgetResult.workingHours && (
-            <p className="text-xs text-emerald-600">
+            <p className="text-xs text-emerald-600 dark:text-emerald-400">
               ⏱️ <strong>Tổng số giờ:</strong> {budgetResult.workingHours.toFixed(1)} giờ
             </p>
           )}
