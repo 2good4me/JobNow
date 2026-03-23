@@ -1,8 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { CheckCircle2, XCircle, ArrowLeft } from 'lucide-react';
-import { useAuth } from '@/features/auth/context/AuthContext';
-import { useEffect, useRef } from 'react';
-import { processDeposit } from '@/features/wallet/services/walletService';
 
 export const Route = createFileRoute('/employer/vnpay-return')({
   component: VNPayReturnRoute,
@@ -10,7 +7,6 @@ export const Route = createFileRoute('/employer/vnpay-return')({
 
 function VNPayReturnRoute() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const searchParams = new URLSearchParams(window.location.search);
   
   const responseCode = searchParams.get('vnp_ResponseCode');
@@ -19,21 +15,6 @@ function VNPayReturnRoute() {
   const amount = amountStr ? parseInt(amountStr) / 100 : 0;
   
   const isSuccess = responseCode === '00';
-  const processedRef = useRef(false);
-
-  useEffect(() => {
-     if (isSuccess && user?.uid && txnRef && !processedRef.current) {
-        const storageKey = `vnpay_processed_${txnRef}`;
-        if (!localStorage.getItem(storageKey)) {
-           processedRef.current = true;
-           localStorage.setItem(storageKey, 'true');
-           
-           processDeposit(user.uid, amount, 'VNPAY-QR')
-             .then(() => console.log('Wallet updated via Frontend fallback (Local IPN Bypass)'))
-             .catch(e => console.error('Wallet update failed', e));
-        }
-     }
-  }, [isSuccess, user?.uid, amount, txnRef]);
   
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -56,7 +37,7 @@ function VNPayReturnRoute() {
         
         <p className="text-slate-500 mb-8 text-sm leading-relaxed">
           {isSuccess 
-            ? `Số tiền ${amount.toLocaleString('vi-VN')}đ đã được cập nhật vào ví của bạn thành công. (Test Sandbox)` 
+            ? `Giao dịch ${txnRef ?? ''} đã được gửi về backend để xác nhận. Sau khi IPN xử lý xong, ${amount.toLocaleString('vi-VN')}đ sẽ xuất hiện trong ví của bạn.` 
             : 'Đã có lỗi xảy ra hoặc bạn đã hủy giao dịch. Vui lòng thử lại sau.'}
         </p>
         

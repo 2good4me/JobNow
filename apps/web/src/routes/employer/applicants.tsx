@@ -398,6 +398,7 @@ function EmployerApplicantsRoute() {
                       applicationId={applicant.id}
                       candidateId={applicant.candidateId}
                       status={applicant.status}
+                      paymentStatus={applicant.paymentStatus}
                       jobTitle={selectedJob?.title || applicant.jobTitle}
                       shiftTime={applicant.shiftTime}
                       candidateName={applicant.candidateName}

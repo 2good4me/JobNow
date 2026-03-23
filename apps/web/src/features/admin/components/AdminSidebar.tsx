@@ -7,6 +7,7 @@ import {
 const navItems = [
     { to: '/admin', icon: LayoutDashboard, label: 'Tổng quan', exact: true },
     { to: '/admin/users', icon: Users, label: 'Người dùng' },
+    { to: '/admin/verifications', icon: Shield, label: 'eKYC' },
     { to: '/admin/jobs', icon: Briefcase, label: 'Việc làm' },
     { to: '/admin/reports', icon: AlertTriangle, label: 'Báo cáo' },
     { to: '/admin/categories', icon: FolderTree, label: 'Danh mục' },

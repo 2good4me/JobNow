@@ -6,11 +6,13 @@ import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { ReviewModal } from '@/features/jobs/components/ReviewModal';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { toast } from 'sonner';
 
 type ApplicantCardProps = {
   applicationId: string;
   candidateId: string;
   status: Application['status'];
+  paymentStatus?: Application['paymentStatus'];
   jobTitle?: string;
   shiftTime?: string;
   appliedAt?: Date;
@@ -83,6 +85,7 @@ export function ApplicantCard({
   applicationId,
   candidateId,
   status,
+  paymentStatus = 'UNPAID',
   jobTitle,
   shiftTime,
   appliedAt,
@@ -152,7 +155,7 @@ export function ApplicantCard({
         },
         onError: (err) => {
           setShowConfetti(false);
-          alert(`Không thể duyệt: ${err.message}`);
+          toast.error(`Không thể duyệt: ${err.message}`);
         }
       }
     );
@@ -164,7 +167,7 @@ export function ApplicantCard({
     updateStatus(
       { id: applicationId, status: 'REJECTED' },
       {
-        onError: (err) => alert(`Không thể từ chối: ${err.message}`)
+        onError: (err) => toast.error(`Không thể từ chối: ${err.message}`)
       }
     );
   }, [applicationId, updateStatus]);
@@ -190,13 +193,13 @@ export function ApplicantCard({
 
   const canApprove = ['NEW', 'PENDING'].includes(status);
   const canReject = ['NEW', 'PENDING'].includes(status);
-  const canPay = status === 'WORK_FINISHED';
-  const canReview = status === 'COMPLETED';
+  const canPay = (status === 'COMPLETED' || status === 'WORK_FINISHED') && paymentStatus === 'UNPAID';
+  const canReview = status === 'COMPLETED' && paymentStatus === 'PAID';
   const canForceEnd = status === 'CHECKED_IN';
 
   const handlePay = (method: 'APP' | 'CASH') => {
     if (!user?.uid) {
-      alert('Không tìm thấy thông tin nhà tuyển dụng. Vui lòng thử lại.');
+      toast.error('Không tìm thấy thông tin nhà tuyển dụng. Vui lòng thử lại.');
       return;
     }
 
@@ -208,7 +211,7 @@ export function ApplicantCard({
           setShowConfetti(true);
           setTimeout(() => setShowConfetti(false), 2000);
         },
-        onError: (err) => alert(`Thanh toán thất bại: ${err.message}`)
+        onError: (err) => toast.error(`Thanh toán thất bại: ${err.message}`)
       }
     );
   };

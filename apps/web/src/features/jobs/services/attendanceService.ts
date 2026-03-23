@@ -1,15 +1,5 @@
-import {
-    collection,
-    doc,
-    getDoc,
-    getDocs,
-    query,
-    where,
-    writeBatch,
-    serverTimestamp,
-    updateDoc,
-} from 'firebase/firestore';
-import { db } from '@/config/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '@/config/firebase';
 import type { CheckInInput, CheckInResult, CheckOutInput } from '@jobnow/types';
 
 export interface GpsValidationInput {
@@ -73,103 +63,9 @@ export function validateGpsClientSide(input: GpsValidationInput): GpsValidationR
  */
 export async function checkIn(input: CheckInInput): Promise<CheckInResult> {
     try {
-        const appRef = doc(db, 'applications', input.applicationId);
-        const appSnap = await getDoc(appRef);
-        if (!appSnap.exists()) throw new Error('Đơn ứng tuyển không tồn tại.');
-
-        const appData = appSnap.data();
-        const jobId = appData.job_id || appData.jobId;
-        if (!jobId) throw new Error('Không tìm thấy thông tin công việc.');
-
-        const jobSnap = await getDoc(doc(db, 'jobs', jobId));
-        if (!jobSnap.exists()) throw new Error('Công việc không tồn tại.');
-        const jobData = jobSnap.data();
-
-        // 0. Block multiple simultaneous check-ins
-        const activeCheckInsQuery = query(
-            collection(db, 'applications'),
-            where('candidate_id', '==', input.candidateId),
-            where('status', '==', 'CHECKED_IN')
-        );
-        const activeSnap = await getDocs(activeCheckInsQuery);
-        if (!activeSnap.empty) {
-            throw new Error('Bạn đang trong một ca làm việc khác. Vui lòng check-out trước khi bắt đầu ca mới.');
-        }
-
-        // 1. Validate Time (Real-world constraint)
-        // Only allow check-in 30 mins before or after the shift start
-        let isLate = false;
-        let lateMinutes = 0;
-
-        if (jobData.startTime) {
-            const shiftStart = jobData.startTime.toDate?.() || new Date(jobData.startTime);
-            const now = new Date();
-            const diffMinutes = (now.getTime() - shiftStart.getTime()) / (1000 * 60);
-
-            // If check-in is more than 30 mins EARLY, block it
-            if (diffMinutes < -30) {
-                throw new Error('Bạn đến quá sớm. Vui lòng check-in trong vòng 30 phút trước ca làm.');
-            }
-            
-            // If check-in is more than 1 minute late, flag it as late
-            if (diffMinutes > 1) { 
-                 isLate = true;
-                 lateMinutes = Math.floor(diffMinutes);
-                 console.warn('[Attendance] Late check-in detected:', lateMinutes, 'minutes late');
-            }
-        }
-
-        // 2. Validate GPS
-        const validation = validateGpsClientSide({
-            userLat: input.latitude,
-            userLng: input.longitude,
-            targetLat: jobData.location.latitude,
-            targetLng: jobData.location.longitude,
-            accuracy: input.accuracy,
-        });
-
-        if (!validation.valid) {
-            if (validation.reason === 'out_of_radius') {
-                throw new Error(`Bạn đang ở cách địa điểm làm việc ${Math.round(validation.distanceMeters)}m. Bạn cần ở trong bán kính 5000m để check-in.`);
-            }
-            throw new Error('Vị trí GPS không chính xác hoặc không hợp lệ.');
-        }
-
-        const batch = writeBatch(db);
-        
-        // Update application status
-        batch.update(appRef, {
-            status: 'CHECKED_IN',
-            is_late: isLate,
-            late_minutes: lateMinutes,
-            updated_at: serverTimestamp(),
-            check_in_time: serverTimestamp(), // Record on main doc for easy listing
-        });
-
-        // Add check-in record
-        const checkinRef = doc(collection(appRef, 'checkins'));
-        batch.set(checkinRef, {
-            type: 'GPS',
-            check_in_time: serverTimestamp(),
-            status: 'CHECKED_IN',
-            is_late: isLate,
-            late_minutes: lateMinutes,
-            gps_location: {
-                latitude: input.latitude,
-                longitude: input.longitude,
-            },
-            created_at: serverTimestamp(),
-            distance_meters: validation.distanceMeters,
-        });
-
-        await batch.commit();
-
-        return {
-            checkinId: checkinRef.id,
-            status: 'CHECKED_IN',
-            method: 'GPS',
-            distanceMeters: validation.distanceMeters,
-        };
+        const callable = httpsCallable<CheckInInput, CheckInResult>(functions, 'checkIn');
+        const { data } = await callable(input);
+        return data;
     } catch (error: any) {
         console.error('Error in checkIn:', error);
         throw error;
@@ -183,72 +79,12 @@ export async function checkIn(input: CheckInInput): Promise<CheckInResult> {
  */
 export async function checkOut(input: CheckOutInput & { latitude?: number; longitude?: number; accuracy?: number; isForce?: boolean }): Promise<{ success: boolean }> {
     try {
-        const appRef = doc(db, 'applications', input.applicationId);
-        const appSnap = await getDoc(appRef);
-        if (!appSnap.exists()) throw new Error('Đơn ứng tuyển không tồn tại.');
-
-        const appData = appSnap.data();
-        const jobId = appData.job_id || appData.jobId;
-        
-        let jobData: any = null;
-
-        // Validate GPS on Check-out if coordinates are provided
-        if (input.latitude !== undefined && input.longitude !== undefined) {
-            const jobSnap = await getDoc(doc(db, 'jobs', jobId));
-            if (jobSnap.exists()) {
-                jobData = jobSnap.data();
-                const validation = validateGpsClientSide({
-                    userLat: input.latitude,
-                    userLng: input.longitude,
-                    targetLat: jobData.location.latitude,
-                    targetLng: jobData.location.longitude,
-                    accuracy: input.accuracy || 50,
-                });
-
-                if (!validation.valid) {
-                    throw new Error('Bạn cần phải ở tại địa điểm làm việc để thực hiện check-out.');
-                }
-            }
-        }
-
-        // Validate Time (Shift end requirement)
-        if (!input.isForce) {
-             if (!jobData) {
-                const jobSnap = await getDoc(doc(db, 'jobs', jobId));
-                if (jobSnap.exists()) jobData = jobSnap.data();
-             }
-
-             if (jobData) {
-                 const shiftId = appData.shift_id || appData.shiftId;
-                 const shift = jobData.shifts?.find((s: any) => s.id === shiftId);
-                 if (shift) {
-                     const [endH, endM] = shift.endTime.split(':').map(Number);
-                     const now = new Date();
-                     const shiftEnd = new Date(now);
-                     // Note: This assumes shift is on the current day. 
-                     // For overnight shifts, more complex logic is needed.
-                     shiftEnd.setHours(endH, endM, 0, 0);
-                     
-                     if (now < shiftEnd) {
-                         throw new Error(`Bạn chưa thể kết thúc ca làm. Thời gian kết thúc ca là ${shift.endTime}.`);
-                     }
-                 }
-             }
-        }
-
-        // Find the active check-in record to update it
-        // Note: For simplicity, we update the status on appRef and we'd ideally find the last check-in record in a real app.
-        // Here we'll just update the application status.
-        
-        await writeBatch(db)
-            .update(appRef, {
-                status: 'WORK_FINISHED',
-                check_out_time: serverTimestamp(),
-                updated_at: serverTimestamp(),
-            })
-            .commit();
-
-        return { success: true };
+        const callable = httpsCallable<CheckOutInput, { success: boolean }>(functions, 'checkOut');
+        const { data } = await callable({
+            applicationId: input.applicationId,
+            candidateId: input.candidateId,
+        });
+        return data;
     } catch (error: any) {
         console.error('Error in checkOut:', error);
         throw new Error(error.message || 'Không thể check-out. Vui lòng thử lại.');
@@ -259,20 +95,12 @@ export async function checkOut(input: CheckOutInput & { latitude?: number; longi
  * Force check-out an application (Employer action)
  */
 export async function forceCheckOut(applicationId: string, employerId: string): Promise<{ success: boolean }> {
-    const appRef = doc(db, 'applications', applicationId);
-    const appSnap = await getDoc(appRef);
-    if (!appSnap.exists()) throw new Error('Đơn ứng tuyển không tồn tại.');
-    
-    const appData = appSnap.data();
-    if (appData.employer_id !== employerId && appData.employerId !== employerId) {
-        throw new Error('Bạn không có quyền thực hiện hành động này.');
-    }
-
-    return checkOut({ 
-        applicationId, 
-        candidateId: appData.candidate_id || appData.candidateId,
-        isForce: true 
-    });
+    const callable = httpsCallable<
+        { applicationId: string; employerId: string },
+        { success: boolean }
+    >(functions, 'forceCheckOut');
+    const { data } = await callable({ applicationId, employerId });
+    return data;
 }
 
 /**
@@ -280,17 +108,9 @@ export async function forceCheckOut(applicationId: string, employerId: string): 
  * Moves check_in_time back by specified hours.
  */
 export async function simulateWorkTime(applicationId: string, hoursAgo: number): Promise<void> {
-    const appRef = doc(db, 'applications', applicationId);
-    const appSnap = await getDoc(appRef);
-    if (!appSnap.exists()) throw new Error('Đơn ứng tuyển không tồn tại.');
-
-    const now = new Date();
-    const simulatedDate = new Date(now.getTime() - hoursAgo * 60 * 60 * 1000);
-
-    await updateDoc(appRef, {
-        check_in_time: simulatedDate,
-        updated_at: serverTimestamp(),
-    });
-
-    console.log(`[Simulation] Moved check_in_time for ${applicationId} to ${hoursAgo} hours ago.`);
+    const callable = httpsCallable<
+        { applicationId: string; hoursAgo: number },
+        { success: boolean }
+    >(functions, 'simulateWorkTime');
+    await callable({ applicationId, hoursAgo });
 }

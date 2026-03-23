@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { messaging, db } from '@/config/firebase';
 import { getToken, onMessage } from 'firebase/messaging';
-import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { toast } from 'sonner';
 
@@ -9,17 +9,26 @@ export const useFCM = () => {
   const { userProfile } = useAuth();
   
   useEffect(() => {
-    if (!messaging || !userProfile?.uid) return;
+    if (!messaging || !userProfile?.uid || userProfile.notification_push === false) return;
     
     const requestPermission = async () => {
       try {
+        if (typeof window === 'undefined' || !('Notification' in window)) return;
+
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
-          // Register token
-          const token = await getToken(messaging!);
+          const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+          const token = await getToken(messaging!, {
+            serviceWorkerRegistration: registration,
+            vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY || undefined,
+          });
           if (token) {
              const userRef = doc(db, 'users', userProfile.uid);
-             await updateDoc(userRef, { fcmTokens: arrayUnion(token) });
+             await updateDoc(userRef, {
+              fcmTokens: arrayUnion(token),
+              fcm_tokens: arrayUnion(token),
+              updated_at: serverTimestamp(),
+             });
              console.log('[FCM] Token registered successfully');
           }
         }
@@ -38,5 +47,5 @@ export const useFCM = () => {
     });
     
     return () => unsubscribe();
-  }, [userProfile?.uid]);
+  }, [userProfile?.notification_push, userProfile?.uid]);
 };

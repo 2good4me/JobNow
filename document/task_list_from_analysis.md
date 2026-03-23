@@ -7,6 +7,7 @@
 ## 🔥 SPRINT 1 – VÁ BẢO MẬT NGAY LẬP TỨC (1-2 ngày)
 
 ### TASK 1: Siết Firestore Rules cho `applications`
+- [x] Done
 - **Mức độ:** 🔴 Critical
 - **File:** `firestore.rules` dòng 83-89
 - **Vấn đề hiện tại:**
@@ -42,6 +43,7 @@
 ---
 
 ### TASK 2: Siết Firestore Rules cho `jobs` update
+- [x] Done
 - **Mức độ:** 🔴 Critical
 - **File:** `firestore.rules` dòng 76
 - **Vấn đề hiện tại:**
@@ -61,6 +63,7 @@
 ---
 
 ### TASK 3: Xóa simulation rule cho `transactions`
+- [x] Done
 - **Mức độ:** 🟠 High
 - **File:** `firestore.rules` dòng 138
 - **Vấn đề hiện tại:**
@@ -101,6 +104,7 @@
 ## ⚡ SPRINT 2 – HOÀN THIỆN LUỒNG CỐT LÕI (1-2 tuần)
 
 ### TASK 5: Xây dựng Admin eKYC Review
+- [x] Done
 - **Mức độ:** 🔴 Critical
 - **Vấn đề:** Candidate gửi hồ sơ xác thực → trạng thái PENDING → **không ai duyệt**. Admin panel hoàn toàn không có UI xem/duyệt hồ sơ eKYC.
 - **Cần tạo mới:**
@@ -122,6 +126,7 @@
 ---
 
 ### TASK 6: Thêm kiểm tra Conflict Time trong `applyJob`
+- [x] Done
 - **Mức độ:** 🔴 Critical
 - **File:** `apps/functions/src/index.ts` – hàm `applyJob` (dòng 162-261)
 - **Vấn đề:** Candidate có thể ứng tuyển nhiều ca trùng giờ nhau → employer bị kèo rớt.
@@ -166,6 +171,7 @@
 ---
 
 ### TASK 7: Xây dựng Payment Flow (Employer → Candidate)
+- [x] Done
 - **Mức độ:** 🔴 Critical
 - **Vấn đề:** Trường `payment_status: 'UNPAID'` trong application được set khi tạo nhưng **không bao giờ chuyển thành PAID**. Không có cơ chế thanh toán lương.
 - **Cần tạo:**
@@ -298,6 +304,7 @@
 ---
 
 ### TASK 14: FCM Push Notification thực
+- [x] Done
 - **Mức độ:** 🟡 Medium
 - **Vấn đề:** Toggle setting trong UI chỉ lưu state, không đăng ký FCM token.
 - **Cần làm:**
@@ -310,6 +317,7 @@
 ---
 
 ### TASK 15: Nhắc việc – Scheduled Cloud Function
+- [x] Done
 - **Mức độ:** 🟡 Medium
 - **Vấn đề:** Candidate không được nhắc khi sắp đến giờ làm.
 - **Cần tạo:**
@@ -321,6 +329,7 @@
 ---
 
 ### TASK 16: Admin khóa/mở khóa user
+- [x] Done
 - **Mức độ:** 🟡 Medium
 - **File:** `routes/admin/users.tsx`, `routes/admin/users.$userId.tsx`
 - **Vấn đề:** Liệt kê users được nhưng **không có nút khóa/mở khóa** tài khoản vi phạm.
@@ -333,6 +342,7 @@
 ---
 
 ### TASK 17: Follow → Push Notification khi employer đăng tin mới
+- [x] Done
 - **Mức độ:** 🟢 Low
 - **Vấn đề:** Use case 5.2 yêu cầu: Candidate follow employer → nhận push khi employer đăng tin mới. Hiện chỉ có follow/unfollow UI, không có trigger.
 - **Cần tạo:**

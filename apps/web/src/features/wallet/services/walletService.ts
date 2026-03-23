@@ -1,5 +1,6 @@
-import { collection, query, where, getDocs, doc, getDoc, runTransaction, serverTimestamp, onSnapshot, type Unsubscribe } from 'firebase/firestore';
-import { db } from '@/config/firebase';
+import { collection, query, where, getDocs, doc, getDoc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '@/config/firebase';
 
 export interface TransactionRecord {
     id: string;
@@ -121,13 +122,11 @@ export async function requestPayment(
     jobId: string,
     applicationId: string
 ): Promise<void> {
-    // In a real implementation, this would call:
-    // const processPayment = httpsCallable(functions, 'processPayment');
-    // await processPayment({ candidateId, amount, jobId, applicationId });
-
-    // Placeholder: Log the intent
-    console.log('[Wallet] Payment request:', { employerId, candidateId, amount, jobId, applicationId });
-    throw new Error('Cloud Function chưa được triển khai. Vui lòng liên hệ admin.');
+    const callable = httpsCallable<
+        { applicationId: string; employerId: string },
+        { amount: number; candidateId: string; employerId: string; jobTitle: string }
+    >(functions, 'processPayment');
+    await callable({ applicationId, employerId });
 }
 
 /**
@@ -137,31 +136,12 @@ export async function requestPayment(
 export async function processDeposit(userId: string, amount: number, method: string): Promise<void> {
     if (amount <= 0) throw new Error('Số tiền phải lớn hơn 0');
 
-    const userRef = doc(db, 'users', userId);
-    const newTxRef = doc(collection(db, 'transactions'));
+    const callable = httpsCallable<
+        { userId: string; amount: number; method: string },
+        { success: boolean }
+    >(functions, 'processDeposit');
 
-    await runTransaction(db, async (transaction) => {
-        const userDoc = await transaction.get(userRef);
-        if (!userDoc.exists()) {
-            throw new Error('User does not exist');
-        }
-
-        const currentBalance = userDoc.data().balance || 0;
-        const newBalance = currentBalance + amount;
-
-        // Update balance
-        transaction.update(userRef, { balance: newBalance });
-
-        // Add transaction log
-        transaction.set(newTxRef, {
-            userId,
-            type: 'DEPOSIT',
-            amount,
-            description: `Nạp tiền qua ${method}`,
-            status: 'COMPLETED',
-            created_at: serverTimestamp(),
-        });
-    });
+    await callable({ userId, amount, method });
 }
 
 /**
@@ -171,97 +151,12 @@ export async function processDeposit(userId: string, amount: number, method: str
 export async function processWithdrawal(userId: string, amount: number, bankAccount: string): Promise<void> {
     if (amount <= 0) throw new Error('Số tiền phải lớn hơn 0');
 
-    const userRef = doc(db, 'users', userId);
-    const newTxRef = doc(collection(db, 'transactions'));
+    const callable = httpsCallable<
+        { userId: string; amount: number; bankAccount: string },
+        { success: boolean }
+    >(functions, 'processWithdrawal');
 
-    await runTransaction(db, async (transaction) => {
-        const userDoc = await transaction.get(userRef);
-        if (!userDoc.exists()) {
-            throw new Error('User does not exist');
-        }
-
-        const currentBalance = userDoc.data().balance || 0;
-        if (currentBalance < amount) {
-            throw new Error('Số dư không đủ để thực hiện giao dịch');
-        }
-
-        const newBalance = currentBalance - amount;
-
-        // Update balance
-        transaction.update(userRef, { balance: newBalance });
-
-        // Add transaction log
-        transaction.set(newTxRef, {
-            userId,
-            type: 'WITHDRAW',
-            amount,
-            description: `Rút tiền về ${bankAccount}`,
-            status: 'COMPLETED', // usually PENDING in real world
-            created_at: serverTimestamp(),
-        });
-    });
-}
-
-/**
- * Handle in-app payment from employer to candidate.
- * Deducts amount from employer's balance and adds to candidate's balance.
- */
-export async function processAppPayment(
-    employerId: string,
-    candidateId: string,
-    amount: number,
-    jobTitle: string,
-    applicationId: string
-): Promise<void> {
-    if (amount <= 0) return;
-
-    const employerRef = doc(db, 'users', employerId);
-    const candidateRef = doc(db, 'users', candidateId);
-    const employerTxRef = doc(collection(db, 'transactions'));
-    const candidateTxRef = doc(collection(db, 'transactions'));
-
-    await runTransaction(db, async (transaction) => {
-        const [employerDoc, candidateDoc] = await Promise.all([
-            transaction.get(employerRef),
-            transaction.get(candidateRef)
-        ]);
-
-        if (!employerDoc.exists()) throw new Error('Nhà tuyển dụng không tồn tại.');
-        if (!candidateDoc.exists()) throw new Error('Ứng viên không tồn tại.');
-
-        const employerBalance = employerDoc.data().balance || 0;
-        if (employerBalance < amount) {
-            throw new Error('Số dư tài khoản của bạn không đủ để thực hiện thanh toán. Vui lòng nạp thêm tiền.');
-        }
-
-        const candidateBalance = candidateDoc.data().balance || 0;
-
-        // Update balances
-        transaction.update(employerRef, { balance: employerBalance - amount });
-        transaction.update(candidateRef, { balance: candidateBalance + amount });
-
-        // Add transaction log for employer (SENT)
-        transaction.set(employerTxRef, {
-            userId: employerId,
-            type: 'PAYMENT',
-            amount: -amount, // Negative to show deduction
-            description: `Thanh toán lương cho: ${jobTitle}`,
-            relatedApplicationId: applicationId,
-            status: 'COMPLETED',
-            created_at: serverTimestamp(),
-        });
-
-        // Add transaction log for candidate (RECEIVED)
-        transaction.set(candidateTxRef, {
-            userId: candidateId,
-            type: 'PAYMENT',
-            amount: amount,
-            description: `Nhận lương từ công việc: ${jobTitle}`,
-            relatedApplicationId: applicationId,
-            status: 'COMPLETED',
-            created_at: serverTimestamp(),
-        });
-    });
+    await callable({ userId, amount, bankAccount });
 }
 
 function mapTransaction(docSnap: any): TransactionRecord {
