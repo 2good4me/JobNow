@@ -5,6 +5,14 @@ import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import {
+  DEFAULT_REPUTATION_SCORE,
+  applyReputationAction,
+  clampReputationScore,
+  getCancellationActionCode,
+  getReputationTier,
+  type ReputationActionCode,
+} from './reputation';
 
 initializeApp();
 
@@ -70,6 +78,10 @@ interface ProcessPaymentInput {
   employerId: string;
 }
 
+interface DeleteJobInput {
+  jobId: string;
+}
+
 interface MarkCashPaymentInput {
   applicationId: string;
   employerId: string;
@@ -115,6 +127,11 @@ interface AdminSetUserStatusInput {
   userId: string;
   action: 'LOCK' | 'UNLOCK' | 'BAN';
   reason?: string;
+}
+
+interface SubmitReputationAppealInput {
+  historyId: string;
+  reason: string;
 }
 
 function assertAuth(context: { auth?: { uid?: string } }) {
@@ -245,6 +262,20 @@ function getShiftWindow(jobData: FirebaseFirestore.DocumentData, shiftId: string
     endTime,
     title: String(jobData.title ?? 'Công việc'),
   };
+}
+
+function getHoursUntilShift(jobData: FirebaseFirestore.DocumentData, shiftId: string, now = new Date()): number | null {
+  const shiftWindow = getShiftWindow(jobData, shiftId);
+  if (!shiftWindow) return null;
+  return (shiftWindow.start.getTime() - now.getTime()) / (1000 * 60 * 60);
+}
+
+function getUserRoleFromData(userData: FirebaseFirestore.DocumentData | undefined): 'CANDIDATE' | 'EMPLOYER' | null {
+  const role = String(userData?.role ?? '').toUpperCase();
+  if (role === 'CANDIDATE' || role === 'EMPLOYER') {
+    return role;
+  }
+  return null;
 }
 
 function calculatePayoutAmount(jobData: FirebaseFirestore.DocumentData, applicationData: FirebaseFirestore.DocumentData): number {
@@ -477,7 +508,7 @@ export const applyJob = onCall<ApplyJobInput>({ region: 'asia-southeast1' }, asy
     const candidateName = String(candidateData.full_name ?? candidateData.fullName ?? candidateData.display_name ?? candidateData.displayName ?? '');
     const candidateAvatar = String(candidateData.avatar_url ?? candidateData.avatarUrl ?? candidateData.photo_url ?? candidateData.photoURL ?? '');
     const candidateSkills = (candidateData.skills as string[]) ?? [];
-    const candidateRating = Number(candidateData.reputation_score ?? candidateData.reputationScore ?? 0);
+    const candidateRating = Number(candidateData.average_rating ?? candidateData.averageRating ?? 0);
     const candidateVerified = (candidateData.verification_status ?? candidateData.verificationStatus) === 'VERIFIED';
 
     tx.set(applicationRef, {
@@ -562,7 +593,8 @@ export const withdrawApplication = onCall<WithdrawApplicationInput>({ region: 'a
     if (!jobId || !shiftId) return;
 
     const jobRef = db.collection('jobs').doc(jobId);
-    const jobSnap = await tx.get(jobRef);
+    const candidateRef = db.collection('users').doc(uid);
+    const [jobSnap, candidateSnap] = await Promise.all([tx.get(jobRef), tx.get(candidateRef)]);
     if (!jobSnap.exists) return;
 
     const jobData = jobSnap.data() || {};
@@ -579,38 +611,46 @@ export const withdrawApplication = onCall<WithdrawApplicationInput>({ region: 'a
       updated_at: FieldValue.serverTimestamp(),
     }, { merge: true });
 
-    let penalty = 0;
+    const candidateRole = getUserRoleFromData(candidateSnap.data());
+    let actionCode: ReputationActionCode | null = null;
     let isUrgent = false;
 
-    const shifts = Array.isArray(jobData.shifts) ? jobData.shifts : [];
-    const targetShift = shifts.find((s: any) => String(s.id) === shiftId);
-    if (jobData.start_date && targetShift?.start_time) {
-      const shiftDateTimeStr = `${jobData.start_date}T${targetShift.start_time}:00`;
-      const shiftTimeMs = new Date(shiftDateTimeStr).getTime();
-      if (!isNaN(shiftTimeMs)) {
-        const hoursUntilShift = (shiftTimeMs - Date.now()) / (1000 * 60 * 60);
-        
-        if (hoursUntilShift > 0 && hoursUntilShift < 12) {
-          penalty = 30;
-          isUrgent = true;
-        } else if (hoursUntilShift >= 12 && hoursUntilShift <= 24) {
-          penalty = 10;
-        } else if (hoursUntilShift > 24) {
-          penalty = 2;
-        } else {
-           penalty = 30;
-        }
-      }
+    const hoursUntilShift = getHoursUntilShift(jobData, shiftId);
+    if (hoursUntilShift !== null) {
+      isUrgent = hoursUntilShift > 0 && hoursUntilShift < 12;
+      actionCode = getCancellationActionCode(hoursUntilShift);
     }
 
-    if (penalty > 0) {
-      const candidateRef = db.collection('users').doc(uid);
-      tx.set(candidateRef, {
-        reputation_score: FieldValue.increment(-penalty),
-        updated_at: FieldValue.serverTimestamp()
-      }, { merge: true });
-      
-      await createNotification(tx, uid, 'SYSTEM_ALERT', 'Trừ điểm uy tín', `Bạn bị trừ ${penalty} điểm uy tín do hủy đơn ứng tuyển!`);
+    if (actionCode && candidateRole === 'CANDIDATE') {
+      const result = await applyReputationAction({
+        tx,
+        db,
+        userId: uid,
+        userRole: candidateRole,
+        userData: candidateSnap.data() || {},
+        actionCode,
+        dedupeKey: input.applicationId,
+        jobId,
+        applicationId: input.applicationId,
+        shiftId,
+        actorId: uid,
+        metadata: {
+          source: 'withdrawApplication',
+          hours_until_shift: hoursUntilShift,
+        },
+      });
+
+      if (result.delta < 0) {
+        await createNotification(
+          tx,
+          uid,
+          'SYSTEM_ALERT',
+          'Điểm uy tín bị trừ',
+          `Bạn bị trừ ${Math.abs(result.delta)} điểm uy tín do hủy đơn ứng tuyển.`,
+          { applicationId: input.applicationId, jobId, shiftId },
+          'SYSTEM'
+        );
+      }
     }
 
     if (isUrgent) {
@@ -667,6 +707,34 @@ export const updateApplicationStatus = onCall<UpdateApplicationStatusInput>({ re
       status: input.status,
       updated_at: FieldValue.serverTimestamp(),
     }, { merge: true });
+
+    if (input.status === 'APPROVED' && employerId) {
+      const employerRef = db.collection('users').doc(employerId);
+      const employerSnap = await tx.get(employerRef);
+      const employerRole = getUserRoleFromData(employerSnap.data());
+      const appliedAt = timestampToDate(appData.applied_at ?? appData.created_at ?? appData.createdAt);
+      const approvedQuickly = appliedAt ? (Date.now() - appliedAt.getTime()) <= (2 * 60 * 60 * 1000) : false;
+
+      if (employerRole === 'EMPLOYER' && approvedQuickly) {
+        await applyReputationAction({
+          tx,
+          db,
+          userId: employerId,
+          userRole: employerRole,
+          userData: employerSnap.data() || {},
+          actionCode: 'E_QUICK_APP',
+          dedupeKey: input.applicationId,
+          jobId: String(appData.job_id ?? appData.jobId ?? ''),
+          applicationId: input.applicationId,
+          shiftId: String(appData.shift_id ?? appData.shiftId ?? ''),
+          actorId: uid,
+          metadata: {
+            source: 'updateApplicationStatus',
+            approved_within_hours: 2,
+          },
+        });
+      }
+    }
 
     // ─── Notify Candidate ───
     if (input.status === 'APPROVED' || input.status === 'REJECTED') {
@@ -829,6 +897,10 @@ export const checkOut = onCall<CheckOutInput>({ region: 'asia-southeast1' }, asy
       throw new HttpsError('permission-denied', 'Bạn không có quyền check-out đơn này.');
     }
 
+    const candidateRef = db.collection('users').doc(uid);
+    const candidateSnap = await tx.get(candidateRef);
+    const candidateRole = getUserRoleFromData(candidateSnap.data());
+
     tx.set(checkinRef, {
       status: 'CHECKED_OUT',
       check_out_time: FieldValue.serverTimestamp(),
@@ -840,6 +912,23 @@ export const checkOut = onCall<CheckOutInput>({ region: 'asia-southeast1' }, asy
       check_out_time: FieldValue.serverTimestamp(),
       updated_at: FieldValue.serverTimestamp(),
     }, { merge: true });
+
+    if (candidateRole === 'CANDIDATE') {
+      await applyReputationAction({
+        tx,
+        db,
+        userId: uid,
+        userRole: candidateRole,
+        userData: candidateSnap.data() || {},
+        actionCode: 'C_COMPLETED',
+        dedupeKey: input.applicationId,
+        jobId: String(appData.job_id ?? ''),
+        applicationId: input.applicationId,
+        shiftId: String(appData.shift_id ?? ''),
+        actorId: uid,
+        metadata: { source: 'checkOut' },
+      });
+    }
   });
 
   return { success: true };
@@ -879,6 +968,11 @@ export const forceCheckOut = onCall<ForceCheckOutInput>({ region: 'asia-southeas
       throw new HttpsError('permission-denied', 'Bạn không có quyền kết thúc ca của ứng viên này.');
     }
 
+    const candidateId = String(appData.candidate_id ?? appData.candidateId ?? '');
+    const candidateRef = db.collection('users').doc(candidateId);
+    const candidateSnap = await tx.get(candidateRef);
+    const candidateRole = getUserRoleFromData(candidateSnap.data());
+
     tx.set(checkinRef, {
       status: 'CHECKED_OUT',
       check_out_time: FieldValue.serverTimestamp(),
@@ -890,6 +984,23 @@ export const forceCheckOut = onCall<ForceCheckOutInput>({ region: 'asia-southeas
       check_out_time: FieldValue.serverTimestamp(),
       updated_at: FieldValue.serverTimestamp(),
     }, { merge: true });
+
+    if (candidateRole === 'CANDIDATE' && candidateId) {
+      await applyReputationAction({
+        tx,
+        db,
+        userId: candidateId,
+        userRole: candidateRole,
+        userData: candidateSnap.data() || {},
+        actionCode: 'C_COMPLETED',
+        dedupeKey: input.applicationId,
+        jobId: String(appData.job_id ?? appData.jobId ?? ''),
+        applicationId: input.applicationId,
+        shiftId: String(appData.shift_id ?? appData.shiftId ?? ''),
+        actorId: uid,
+        metadata: { source: 'forceCheckOut' },
+      });
+    }
   });
 
   return { success: true };
@@ -1159,8 +1270,15 @@ export const submitRating = onCall<RatingInput>({ region: 'asia-southeast1' }, a
   const reviewId = `${input.applicationId}_${uid}`.replace(/[^a-zA-Z0-9_-]/g, '_');
   const reviewRef = db.collection('reviews').doc(reviewId);
 
-  await db.runTransaction(async (tx) => {
-    const [appSnap, reviewSnap] = await Promise.all([tx.get(applicationRef), tx.get(reviewRef)]);
+  const result = await db.runTransaction(async (tx) => {
+    const reviewerRef = db.collection('users').doc(input.reviewerId);
+    const revieweeRef = db.collection('users').doc(input.revieweeId);
+    const [appSnap, reviewSnap, reviewerSnap, revieweeSnap] = await Promise.all([
+      tx.get(applicationRef),
+      tx.get(reviewRef),
+      tx.get(reviewerRef),
+      tx.get(revieweeRef),
+    ]);
 
     if (!appSnap.exists) {
       throw new HttpsError('not-found', 'Không tìm thấy đơn ứng tuyển.');
@@ -1181,6 +1299,11 @@ export const submitRating = onCall<RatingInput>({ region: 'asia-southeast1' }, a
       throw new HttpsError('already-exists', 'Bạn đã đánh giá cho đơn này rồi.');
     }
 
+    const reviewerData = reviewerSnap.data() || {};
+    const revieweeData = revieweeSnap.data() || {};
+    const reviewerRole = getUserRoleFromData(reviewerData);
+    const revieweeRole = getUserRoleFromData(revieweeData);
+
     tx.set(reviewRef, {
       application_id: input.applicationId,
       reviewer_id: input.reviewerId,
@@ -1190,28 +1313,80 @@ export const submitRating = onCall<RatingInput>({ region: 'asia-southeast1' }, a
       created_at: FieldValue.serverTimestamp(),
       updated_at: FieldValue.serverTimestamp(),
     });
+
+    const currentTotal = Number(revieweeData.total_ratings ?? 0);
+    const currentAverage = Number(revieweeData.average_rating ?? 0);
+    const newTotal = currentTotal + 1;
+    const newAverage = Number(((currentAverage * currentTotal + input.rating) / newTotal).toFixed(2));
+
+    tx.set(revieweeRef, {
+      average_rating: newAverage,
+      total_ratings: newTotal,
+      updated_at: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    await createNotification(
+      tx,
+      input.revieweeId,
+      'NEW_REVIEW',
+      'Bạn có đánh giá mới',
+      `Bạn vừa nhận được đánh giá ${input.rating} sao từ đối tác.`,
+      {
+        applicationId: input.applicationId,
+        reviewerId: input.reviewerId,
+        rating: String(input.rating),
+      },
+      'SYSTEM'
+    );
+
+    if (reviewerRole === 'CANDIDATE') {
+      await applyReputationAction({
+        tx,
+        db,
+        userId: input.reviewerId,
+        userRole: reviewerRole,
+        userData: reviewerData,
+        actionCode: 'C_REVIEW_OTHER',
+        dedupeKey: input.applicationId,
+        jobId: String(appData.job_id ?? appData.jobId ?? ''),
+        applicationId: input.applicationId,
+        shiftId: String(appData.shift_id ?? appData.shiftId ?? ''),
+        actorId: input.reviewerId,
+        metadata: { source: 'submitRating' },
+      });
+    }
+
+    if (input.rating === 5 && revieweeRole) {
+      const actionCode = revieweeRole === 'CANDIDATE' ? 'C_RATING_5' : 'E_RATING_5';
+      const reputationResult = await applyReputationAction({
+        tx,
+        db,
+        userId: input.revieweeId,
+        userRole: revieweeRole,
+        userData: revieweeData,
+        actionCode,
+        dedupeKey: input.applicationId,
+        jobId: String(appData.job_id ?? appData.jobId ?? ''),
+        applicationId: input.applicationId,
+        shiftId: String(appData.shift_id ?? appData.shiftId ?? ''),
+        actorId: input.reviewerId,
+        metadata: { source: 'submitRating', rating: input.rating },
+      });
+
+      return {
+        reviewId,
+        updatedReputationScore: reputationResult.score,
+      };
+    }
+
+    return {
+      reviewId,
+      updatedReputationScore: clampReputationScore(Number(revieweeData.reputation_score ?? DEFAULT_REPUTATION_SCORE)),
+    };
   });
 
-  const reviewsSnap = await db
-    .collection('reviews')
-    .where('reviewee_id', '==', input.revieweeId)
-    .get();
-
-  let total = 0;
-  reviewsSnap.docs.forEach((docSnap) => {
-    total += Number(docSnap.data().rating ?? 0);
-  });
-
-  const average = reviewsSnap.size > 0 ? Number((total / reviewsSnap.size).toFixed(2)) : 0;
-  await db.collection('users').doc(input.revieweeId).set({
-    reputation_score: average,
-    updated_at: FieldValue.serverTimestamp(),
-  }, { merge: true });
-
-  return {
-    reviewId,
-    updatedReputationScore: average,
-  };
+  return result;
 });
 
 export const processPayment = onCall<ProcessPaymentInput>({ region: 'asia-southeast1' }, async (request) => {
@@ -1345,10 +1520,172 @@ export const processPayment = onCall<ProcessPaymentInput>({ region: 'asia-southe
       'PAYMENT'
     );
 
+    const employerRole = getUserRoleFromData(employerData);
+    if (employerRole === 'EMPLOYER') {
+      await applyReputationAction({
+        tx,
+        db,
+        userId: employerId,
+        userRole: employerRole,
+        userData: employerData,
+        actionCode: 'E_PAID_ONTIME',
+        dedupeKey: input.applicationId,
+        jobId,
+        applicationId: input.applicationId,
+        shiftId: String(appData.shift_id ?? appData.shiftId ?? ''),
+        actorId: employerId,
+        metadata: { source: 'processPayment' },
+      });
+    }
+
     return { amount, candidateId, employerId, jobTitle };
   });
 
   return result;
+});
+
+export const deleteJobPosting = onCall<DeleteJobInput>({ region: 'asia-southeast1' }, async (request) => {
+  const uid = assertAuth(request);
+  const input = request.data;
+
+  if (!input.jobId) {
+    throw new HttpsError('invalid-argument', 'Thiếu jobId.');
+  }
+
+  const jobRef = db.collection('jobs').doc(input.jobId);
+
+  await db.runTransaction(async (tx) => {
+    const jobSnap = await tx.get(jobRef);
+    if (!jobSnap.exists) {
+      throw new HttpsError('not-found', 'Tin tuyển dụng không tồn tại.');
+    }
+
+    const jobData = jobSnap.data() || {};
+    const employerId = String(jobData.employer_id ?? jobData.employerId ?? '');
+    if (employerId !== uid) {
+      throw new HttpsError('permission-denied', 'Bạn không có quyền xóa tin tuyển dụng này.');
+    }
+
+    const employerRef = db.collection('users').doc(employerId);
+    const employerSnap = await tx.get(employerRef);
+    const employerRole = getUserRoleFromData(employerSnap.data());
+    const applicationsSnap = await tx.get(
+      db.collection('applications')
+        .where('job_id', '==', input.jobId)
+        .where('status', 'in', ['NEW', 'PENDING', 'APPROVED', 'CHECKED_IN'])
+    );
+
+    let actionCode: ReputationActionCode | null = null;
+    if (!applicationsSnap.empty) {
+      const hasLateCancellation = applicationsSnap.docs.some((docSnap) => {
+        const appData = docSnap.data();
+        const hoursUntilShift = getHoursUntilShift(jobData, String(appData.shift_id ?? appData.shiftId ?? ''));
+        return hoursUntilShift !== null && hoursUntilShift < 2;
+      });
+      actionCode = hasLateCancellation ? 'E_CANCEL_L2' : 'E_CANCEL_POST';
+    }
+
+    applicationsSnap.docs.forEach((docSnap) => {
+      const appData = docSnap.data();
+      tx.set(docSnap.ref, {
+        status: 'CANCELLED',
+        updated_at: FieldValue.serverTimestamp(),
+      }, { merge: true });
+    });
+
+    for (const docSnap of applicationsSnap.docs) {
+      const appData = docSnap.data();
+      const candidateId = String(appData.candidate_id ?? appData.candidateId ?? '');
+      if (!candidateId) continue;
+
+      await createNotification(
+        tx,
+        candidateId,
+        'JOB_CANCELLED',
+        'Tin tuyển dụng đã bị hủy',
+        `Nhà tuyển dụng đã hủy tin "${String(jobData.title ?? 'Công việc')}".`,
+        { applicationId: docSnap.id, jobId: input.jobId },
+        'JOB'
+      );
+    }
+
+    if (actionCode && employerRole === 'EMPLOYER') {
+      await applyReputationAction({
+        tx,
+        db,
+        userId: employerId,
+        userRole: employerRole,
+        userData: employerSnap.data() || {},
+        actionCode,
+        dedupeKey: input.jobId,
+        jobId: input.jobId,
+        actorId: uid,
+        metadata: {
+          source: 'deleteJobPosting',
+          impacted_applications: applicationsSnap.size,
+        },
+      });
+    }
+
+    tx.delete(jobRef);
+  });
+
+  return { success: true };
+});
+
+export const submitReputationAppeal = onCall<SubmitReputationAppealInput>({ region: 'asia-southeast1' }, async (request) => {
+  const uid = assertAuth(request);
+  const input = request.data;
+  const reason = String(input.reason ?? '').trim();
+
+  if (!input.historyId || reason.length < 10) {
+    throw new HttpsError('invalid-argument', 'Khiếu nại cần chỉ rõ bản ghi và lý do tối thiểu 10 ký tự.');
+  }
+
+  const historyRef = db.collection('reputation_history').doc(input.historyId);
+  const appealRef = db.collection('reputation_appeals').doc(`${uid}_${input.historyId}`.replace(/[^a-zA-Z0-9_-]/g, '_'));
+
+  await db.runTransaction(async (tx) => {
+    const [historySnap, appealSnap] = await Promise.all([tx.get(historyRef), tx.get(appealRef)]);
+    if (!historySnap.exists) {
+      throw new HttpsError('not-found', 'Không tìm thấy biến động uy tín cần khiếu nại.');
+    }
+
+    if (appealSnap.exists) {
+      throw new HttpsError('already-exists', 'Bạn đã gửi khiếu nại cho biến động này.');
+    }
+
+    const historyData = historySnap.data() || {};
+    if (String(historyData.user_id ?? '') !== uid) {
+      throw new HttpsError('permission-denied', 'Bạn không có quyền khiếu nại biến động này.');
+    }
+
+    if (Number(historyData.score_change ?? 0) >= 0) {
+      throw new HttpsError('failed-precondition', 'Chỉ các biến động bị trừ điểm mới có thể khiếu nại.');
+    }
+
+    const deadline = timestampToDate(historyData.appeal_deadline_at);
+    if (!deadline || deadline.getTime() < Date.now()) {
+      throw new HttpsError('deadline-exceeded', 'Đã quá thời hạn 24 giờ để gửi khiếu nại.');
+    }
+
+    tx.set(appealRef, {
+      user_id: uid,
+      reputation_history_id: input.historyId,
+      status: 'PENDING',
+      reason,
+      created_at: FieldValue.serverTimestamp(),
+      updated_at: FieldValue.serverTimestamp(),
+    });
+
+    tx.set(historyRef, {
+      appeal_id: appealRef.id,
+      appeal_status: 'PENDING',
+      updated_at: FieldValue.serverTimestamp(),
+    }, { merge: true });
+  });
+
+  return { success: true };
 });
 
 export const markCashPayment = onCall<MarkCashPaymentInput>({ region: 'asia-southeast1' }, async (request) => {
@@ -1587,8 +1924,26 @@ export const reviewVerificationRequest = onCall<ReviewVerificationInput>({ regio
 
     tx.set(userRef, {
       verification_status: action === 'APPROVE' ? 'VERIFIED' : 'UNVERIFIED',
+      reputation_score: Number(userSnap.data()?.reputation_score ?? DEFAULT_REPUTATION_SCORE),
+      current_tier: String(userSnap.data()?.current_tier ?? getReputationTier(Number(userSnap.data()?.reputation_score ?? DEFAULT_REPUTATION_SCORE))),
       updated_at: FieldValue.serverTimestamp(),
     }, { merge: true });
+
+    const userRole = getUserRoleFromData(userSnap.data());
+    const wasVerified = String(userSnap.data()?.verification_status ?? 'UNVERIFIED') === 'VERIFIED';
+    if (action === 'APPROVE' && userRole && !wasVerified) {
+      await applyReputationAction({
+        tx,
+        db,
+        userId: input.userId,
+        userRole,
+        userData: userSnap.data() || {},
+        actionCode: 'EKYC_VERIFIED',
+        dedupeKey: input.requestId,
+        actorId: uid,
+        metadata: { source: 'reviewVerificationRequest' },
+      });
+    }
 
     await createNotification(
       tx,
@@ -1822,6 +2177,79 @@ export const sendShiftReminders = onSchedule({
         shift_reminder_sent_at: FieldValue.serverTimestamp(),
         updated_at: FieldValue.serverTimestamp(),
       }, { merge: true });
+    })
+  );
+});
+
+export const penalizeNoShowCandidates = onSchedule({
+  schedule: 'every 60 minutes',
+  region: 'asia-southeast1',
+  timeZone: 'Asia/Ho_Chi_Minh',
+}, async () => {
+  const approvedAppsSnap = await db.collection('applications').where('status', '==', 'APPROVED').get();
+
+  await Promise.all(
+    approvedAppsSnap.docs.map(async (appDoc) => {
+      const appData = appDoc.data();
+      if (appData.no_show_penalized_at) return;
+
+      const candidateId = String(appData.candidate_id ?? appData.candidateId ?? '').trim();
+      const shiftId = String(appData.shift_id ?? appData.shiftId ?? '').trim();
+      const jobId = String(appData.job_id ?? appData.jobId ?? '').trim();
+      if (!candidateId || !shiftId || !jobId) return;
+
+      const jobSnap = await db.collection('jobs').doc(jobId).get();
+      if (!jobSnap.exists) return;
+
+      const shiftWindow = getShiftWindow(jobSnap.data() || {}, shiftId);
+      if (!shiftWindow) return;
+      if ((Date.now() - shiftWindow.start.getTime()) < (30 * 60 * 1000)) return;
+
+      await db.runTransaction(async (tx) => {
+        const [freshAppSnap, candidateSnap] = await Promise.all([
+          tx.get(appDoc.ref),
+          tx.get(db.collection('users').doc(candidateId)),
+        ]);
+
+        if (!freshAppSnap.exists) return;
+        const freshAppData = freshAppSnap.data() || {};
+        if (String(freshAppData.status ?? '').toUpperCase() !== 'APPROVED' || freshAppData.no_show_penalized_at) {
+          return;
+        }
+
+        const candidateRole = getUserRoleFromData(candidateSnap.data());
+        if (candidateRole !== 'CANDIDATE') return;
+
+        await applyReputationAction({
+          tx,
+          db,
+          userId: candidateId,
+          userRole: candidateRole,
+          userData: candidateSnap.data() || {},
+          actionCode: 'C_NOSHOW',
+          dedupeKey: appDoc.id,
+          jobId,
+          applicationId: appDoc.id,
+          shiftId,
+          actorId: candidateId,
+          metadata: { source: 'penalizeNoShowCandidates' },
+        });
+
+        tx.set(appDoc.ref, {
+          no_show_penalized_at: FieldValue.serverTimestamp(),
+          updated_at: FieldValue.serverTimestamp(),
+        }, { merge: true });
+
+        await createNotification(
+          tx,
+          candidateId,
+          'NO_SHOW_PENALTY',
+          'Bạn bị đánh dấu bỏ ca',
+          `Bạn bị trừ điểm uy tín do không check-in đúng giờ cho công việc "${String(jobSnap.data()?.title ?? 'Công việc')}".`,
+          { applicationId: appDoc.id, jobId, shiftId },
+          'SHIFT'
+        );
+      });
     })
   );
 });

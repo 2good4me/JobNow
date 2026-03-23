@@ -8,10 +8,10 @@ import {
     where,
     serverTimestamp,
     updateDoc,
-    deleteDoc,
     increment,
 } from 'firebase/firestore';
-import { db } from '@/config/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '@/config/firebase';
 import type { Job } from '@jobnow/types';
 import { mapJobDocToJob, mapNearbyApiToJobDoc } from './adapters';
 
@@ -260,7 +260,8 @@ export async function updateJob(jobId: string, data: Partial<Job>): Promise<void
  */
 export async function deleteJob(jobId: string): Promise<void> {
     try {
-        await deleteDoc(doc(db, 'jobs', jobId));
+        const callable = httpsCallable<{ jobId: string }, { success: boolean }>(functions, 'deleteJobPosting');
+        await callable({ jobId });
     } catch (error) {
         console.error('Error in deleteJob:', error);
         throw new Error('Không thể xoá tin tuyển dụng.');
@@ -302,4 +303,3 @@ export async function fetchCategories(): Promise<string[]> {
         return [];
     }
 }
-

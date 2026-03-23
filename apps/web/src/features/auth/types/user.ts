@@ -1,5 +1,6 @@
 export type UserRole = 'CANDIDATE' | 'EMPLOYER' | 'ADMIN';
 export type VerificationStatus = 'UNVERIFIED' | 'PENDING' | 'VERIFIED';
+import type { ReputationTier } from '@jobnow/types';
 
 export interface UserProfile {
     uid: string;
@@ -13,6 +14,7 @@ export interface UserProfile {
     status: 'ACTIVE' | 'LOCKED' | 'BANNED';
     balance: number;
     reputation_score: number;
+    current_tier?: ReputationTier;
     average_rating?: number;          // Average rating từ evaluations
     total_ratings?: number;           // Số lượt đánh giá
     skills: string[];

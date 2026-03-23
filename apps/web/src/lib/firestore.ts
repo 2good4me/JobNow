@@ -7,6 +7,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import type { UserProfile, UserRole } from '@/features/auth/types/user';
+import { DEFAULT_REPUTATION_SCORE, getReputationTier } from '@jobnow/types';
 
 /**
  * Create a new user document in Firestore `users` collection.
@@ -33,7 +34,8 @@ export async function createUserDocument(
         address_text: null,
         status: 'ACTIVE',
         balance: 0,
-        reputation_score: 100,
+        reputation_score: DEFAULT_REPUTATION_SCORE,
+        current_tier: getReputationTier(DEFAULT_REPUTATION_SCORE),
         skills: [],
         identity_images: [],
         created_at: serverTimestamp(),
@@ -63,7 +65,8 @@ export async function getUserDocument(uid: string): Promise<UserProfile | null> 
         address_text: data.address_text || null,
         status: data.status,
         balance: data.balance ?? 0,
-        reputation_score: data.reputation_score ?? 100,
+        reputation_score: data.reputation_score ?? DEFAULT_REPUTATION_SCORE,
+        current_tier: data.current_tier ?? getReputationTier(data.reputation_score ?? DEFAULT_REPUTATION_SCORE),
         average_rating: data.average_rating ?? 0,     // New: Average rating
         total_ratings: data.total_ratings ?? 0,       // New: Total ratings
         skills: data.skills || [],

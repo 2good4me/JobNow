@@ -184,7 +184,7 @@ function EmployerDetailPage() {
                         <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Điểm tin cậy</p>
                         <div className="flex items-baseline gap-1 text-emerald-600">
                             <span className="text-3xl font-extrabold tracking-tight">{profile.reputation_score || 0}</span>
-                            <span className="text-sm font-semibold text-slate-400">/100</span>
+                            <span className="text-sm font-semibold text-slate-400">/500</span>
                         </div>
                     </div>
                     <div className="flex-1 bg-white rounded-[20px] p-4 flex flex-col items-center justify-center shadow-sm border border-slate-100">

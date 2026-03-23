@@ -28,7 +28,7 @@ service cloud.firestore {
       allow create: if isOwner(userId) || (
         isSignedIn() && request.resource.data.keys().hasAll(['average_rating', 'total_ratings'])
       );
-      allow update: if (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'balance', 'reputation_score', 'verification_status'])) || (
+      allow update: if (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'balance', 'reputation_score', 'current_tier', 'verification_status', 'reputation_positive_streak', 'reputation_total_deducted', 'reputation_total_restored'])) || (
         isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['average_rating', 'total_ratings', 'updated_at', 'updatedAt'])
       );
 
@@ -78,9 +78,7 @@ service cloud.firestore {
         resource.data.employerId == request.auth.uid ||
         isAdmin()
       );
-      allow delete: if isSignedIn()
-                    && (getUserRole() == 'EMPLOYER' || getUserRole() == 'employer')
-                    && resource.data.employer_id == request.auth.uid;
+      allow delete: if false;
     }
 
     // --- APPLICATIONS ---
@@ -167,6 +165,17 @@ service cloud.firestore {
                     && request.resource.data.rating >= 1 
                     && request.resource.data.rating <= 5;
       allow update, delete: if false;
+    }
+
+    // --- REPUTATION ---
+    match /reputation_history/{entryId} {
+      allow read: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow create, update, delete: if false;
+    }
+
+    match /reputation_appeals/{appealId} {
+      allow read: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow create, update, delete: if false;
     }
 
     // --- CATEGORIES ---
