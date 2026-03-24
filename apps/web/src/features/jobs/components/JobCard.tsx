@@ -3,6 +3,7 @@ import { Heart } from 'lucide-react';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useIsJobWishlisted, useToggleWishlist } from '@/features/jobs/hooks/useWishlistJobs';
 import { MouseEvent } from 'react';
+import { toast } from 'sonner';
 
 export interface JobCardProps {
     id: string;
@@ -13,6 +14,7 @@ export interface JobCardProps {
     shift: string;
     logoUrl: string;
     hasVerifiedBadge?: boolean;
+    detailVariant?: 'candidate' | 'public';
 }
 
 export function JobCard({
@@ -23,7 +25,8 @@ export function JobCard({
     distance,
     shift,
     logoUrl,
-    hasVerifiedBadge
+    hasVerifiedBadge,
+    detailVariant = 'candidate',
 }: JobCardProps) {
     const navigate = useNavigate();
     const { userProfile } = useAuth();
@@ -34,7 +37,8 @@ export function JobCard({
     const handleToggleWishlist = async (e: MouseEvent) => {
         e.stopPropagation();
         if (!userProfile?.uid) {
-            // Optional: Redirect to login or show toast
+            toast.error('Vui lòng đăng nhập để lưu việc làm');
+            navigate({ to: '/login' });
             return;
         }
 
@@ -52,7 +56,10 @@ export function JobCard({
     return (
         <div
             onClick={() => {
-                navigate({ to: '/candidate/jobs/$jobId', params: { jobId: id } });
+                navigate({
+                    to: detailVariant === 'public' ? '/jobs/$jobId' : '/candidate/jobs/$jobId',
+                    params: { jobId: id },
+                } as any);
             }}
             className="bg-white rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:bg-slate-50 transition-colors shadow-sm border border-slate-100"
         >

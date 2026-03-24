@@ -6,7 +6,7 @@ import {
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/features/auth/context/AuthContext';
-import { useCreateJob, useUpdateJob, useJobDetail, useGetCategories } from '@/features/jobs/hooks/useEmployerJobs';
+import { useCreateJob, useUpdateJob, useJobDetail, useGetCategories, useJobPostingQuota } from '@/features/jobs/hooks/useEmployerJobs';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/config/firebase';
 import type { Job, SalaryType, GenderPreference as GenderPref } from '@jobnow/types';
@@ -122,13 +122,7 @@ function EmployerPostJobRoute() {
 
   const { user, userProfile } = useAuth();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (userProfile && userProfile.role === 'EMPLOYER' && userProfile.verification_status !== 'VERIFIED') {
-      toast.error('Vui lòng xác thực CCCD để đăng tin tuyển dụng!');
-      navigate({ to: '/employer/verification' });
-    }
-  }, [userProfile, navigate]);
+  const { data: postingQuota } = useJobPostingQuota(Boolean(userProfile && userProfile.role === 'EMPLOYER'));
 
   const { mutateAsync: createJob, isPending: isCreating } = useCreateJob();
   const { mutateAsync: updateJob, isPending: isUpdating } = useUpdateJob();
@@ -358,6 +352,11 @@ function EmployerPostJobRoute() {
       return;
     }
 
+    if (postingQuota && postingQuota.monthlyRemaining <= 0) {
+      toast.error(`Bạn đã dùng hết quota ${postingQuota.monthlyLimit} tin trong tháng này.`);
+      return;
+    }
+
     try {
       // Final validation with Zod
       const validationResult = jobFormSchema.safeParse(form);
@@ -509,6 +508,26 @@ function EmployerPostJobRoute() {
             ))}
           </div>
         </header>
+
+        {postingQuota && (
+          <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+            <p className="font-bold">
+              Gói hiện tại: {postingQuota.tierLabel === 'Verified' ? 'Đã xác thực' : 'Starter'}
+            </p>
+            <p className="mt-1 text-blue-800">
+              Còn {postingQuota.monthlyRemaining}/{postingQuota.monthlyLimit} tin trong tháng và {postingQuota.activeShiftRemaining}/{postingQuota.activeShiftLimit} ca đang hoạt động.
+            </p>
+            {postingQuota.verificationStatus !== 'VERIFIED' && (
+              <button
+                type="button"
+                onClick={() => navigate({ to: '/employer/verification' })}
+                className="mt-2 text-sm font-bold text-blue-600"
+              >
+                Xác thực để mở quota cao hơn
+              </button>
+            )}
+          </div>
+        )}
 
         {/* ── Content Area ────────────────────────── */}
         <form className="mt-6" onSubmit={(e) => e.preventDefault()}>

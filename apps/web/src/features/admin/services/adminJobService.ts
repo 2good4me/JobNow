@@ -5,6 +5,7 @@ import {
     type QueryConstraint, type DocumentSnapshot,
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
+import { reviewJobModeration as reviewJobModerationCallable } from '@/features/jobs/services/jobService';
 
 /* ── Types ─────────────────────────────────────────── */
 
@@ -22,11 +23,15 @@ export interface AdminJob {
     updated_at: Date;
     applicant_count?: number;
     report_count?: number;
+    moderation_status?: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
+    moderation_reason?: string;
+    is_boosted?: boolean;
 }
 
 export interface AdminJobFilters {
     search?: string;
     status?: 'ALL' | 'OPEN' | 'ACTIVE' | 'FULL' | 'CLOSED' | 'HIDDEN';
+    moderationStatus?: 'ALL' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
     category?: string;
     hasReports?: boolean;
     sortBy?: 'created_at' | 'salary';
@@ -54,6 +59,10 @@ export async function fetchAdminJobs(
         constraints.push(where('status', '==', filters.status));
     }
 
+    if (filters.moderationStatus && filters.moderationStatus !== 'ALL') {
+        constraints.push(where('moderation_status', '==', filters.moderationStatus));
+    }
+
     const sortField = filters.sortBy ?? 'created_at';
     const sortDirection = filters.sortDir ?? 'desc';
     constraints.push(orderBy(sortField, sortDirection));
@@ -75,6 +84,9 @@ export async function fetchAdminJobs(
         if (filters.status && filters.status !== 'ALL') {
             countConstraints.push(where('status', '==', filters.status));
         }
+        if (filters.moderationStatus && filters.moderationStatus !== 'ALL') {
+            countConstraints.push(where('moderation_status', '==', filters.moderationStatus));
+        }
         const countQ = query(jobsRef, ...countConstraints);
         const countSnap = await getCountFromServer(countQ);
         total = countSnap.data().count;
@@ -91,6 +103,9 @@ export async function fetchAdminJobs(
             salary: data.salary ?? 0,
             salary_type: data.salary_type ?? data.salaryType ?? 'JOB',
             status: data.status ?? 'OPEN',
+            moderation_status: data.moderation_status ?? 'APPROVED',
+            moderation_reason: data.moderation_reason ?? '',
+            is_boosted: Boolean(data.is_boosted ?? false),
             address: data.address ?? '',
             created_at: data.created_at?.toDate?.() ?? new Date(),
             updated_at: data.updated_at?.toDate?.() ?? new Date(),
@@ -128,4 +143,8 @@ export async function hideJob(jobId: string, adminId: string, reason: string): P
             created_at: serverTimestamp(), createdAt: serverTimestamp(),
         });
     }
+}
+
+export async function reviewJobModeration(jobId: string, action: 'APPROVE' | 'REJECT', reason?: string): Promise<void> {
+    await reviewJobModerationCallable(jobId, action, reason);
 }

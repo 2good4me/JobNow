@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.penalizeNoShowCandidates = exports.sendShiftReminders = exports.onJobCreated = exports.onNotificationCreated = exports.onApplicationCreated = exports.adminSetUserStatus = exports.reviewVerificationRequest = exports.processWithdrawal = exports.processDeposit = exports.confirmCashPaymentReceived = exports.markCashPayment = exports.submitReputationAppeal = exports.deleteJobPosting = exports.processPayment = exports.submitRating = exports.markConversationRead = exports.sendChatMessage = exports.startConversation = exports.simulateWorkTime = exports.forceCheckOut = exports.checkOut = exports.checkIn = exports.updateApplicationStatus = exports.withdrawApplication = exports.applyJob = void 0;
+exports.penalizeNoShowCandidates = exports.expireBoostedJobs = exports.sendShiftReminders = exports.onJobCreated = exports.onNotificationCreated = exports.onApplicationCreated = exports.closeJobSafely = exports.purchaseBoostPackage = exports.reviewJobModeration = exports.createJobPosting = exports.getMyJobPostingQuota = exports.adminSetUserStatus = exports.reviewVerificationRequest = exports.processWithdrawal = exports.processDeposit = exports.confirmCashPaymentReceived = exports.markCashPayment = exports.submitReputationAppeal = exports.deleteJobPosting = exports.processPayment = exports.submitRating = exports.markConversationRead = exports.sendChatMessage = exports.startConversation = exports.simulateWorkTime = exports.forceCheckOut = exports.checkOut = exports.checkIn = exports.updateApplicationStatus = exports.withdrawApplication = exports.applyJob = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const app_1 = require("firebase-admin/app");
 const auth_1 = require("firebase-admin/auth");
@@ -11,6 +11,26 @@ const scheduler_1 = require("firebase-functions/v2/scheduler");
 const reputation_1 = require("./reputation");
 (0, app_1.initializeApp)();
 const db = (0, firestore_1.getFirestore)();
+const BOOST_PACKAGE_CONFIG = {
+    BOOST_24H: {
+        name: 'Đẩy top 24 giờ',
+        price: 39000,
+        durationHours: 24,
+        description: 'Ưu tiên hiển thị trong 24 giờ.',
+    },
+    BOOST_3D: {
+        name: 'Đẩy top 3 ngày',
+        price: 99000,
+        durationHours: 72,
+        description: 'Ưu tiên hiển thị trong 3 ngày.',
+    },
+    BOOST_7D: {
+        name: 'Đẩy top 7 ngày',
+        price: 199000,
+        durationHours: 168,
+        description: 'Ưu tiên hiển thị trong 7 ngày.',
+    },
+};
 function assertAuth(context) {
     if (!context.auth?.uid) {
         throw new https_1.HttpsError('unauthenticated', 'Bạn cần đăng nhập để thực hiện thao tác này.');
@@ -22,6 +42,52 @@ function normalizeApplicationId(candidateId, jobId, shiftId) {
 }
 function normalizeDocumentId(value) {
     return value.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 120);
+}
+function monthRange(now = new Date()) {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
+    return { start, end };
+}
+function calculateGeohash(latitude, longitude, precision = 9) {
+    const base32 = '0123456789bcdefghjkmnpqrstuvwxyz';
+    let latRange = [-90, 90];
+    let lngRange = [-180, 180];
+    let hash = '';
+    let bit = 0;
+    let ch = 0;
+    let isEven = true;
+    while (hash.length < precision) {
+        if (isEven) {
+            const mid = (lngRange[0] + lngRange[1]) / 2;
+            if (longitude >= mid) {
+                ch |= 1 << (4 - bit);
+                lngRange[0] = mid;
+            }
+            else {
+                lngRange[1] = mid;
+            }
+        }
+        else {
+            const mid = (latRange[0] + latRange[1]) / 2;
+            if (latitude >= mid) {
+                ch |= 1 << (4 - bit);
+                latRange[0] = mid;
+            }
+            else {
+                latRange[1] = mid;
+            }
+        }
+        isEven = !isEven;
+        if (bit < 4) {
+            bit += 1;
+        }
+        else {
+            hash += base32[ch];
+            bit = 0;
+            ch = 0;
+        }
+    }
+    return hash;
 }
 function haversineDistanceMeters(lat1, lon1, lat2, lon2) {
     const R = 6371000;
@@ -41,25 +107,6 @@ function decodeQrPayload(payload) {
     catch {
         return null;
     }
-}
-function getCapacity(jobData, shiftId) {
-    const shiftCapacity = (jobData.shift_capacity ?? {});
-    const capacity = shiftCapacity[shiftId];
-    if (capacity) {
-        return {
-            totalSlots: Number(capacity.total_slots ?? 0),
-            remainingSlots: Number(capacity.remaining_slots ?? 0),
-            appliedCount: Number(capacity.applied_count ?? 0),
-        };
-    }
-    const shifts = Array.isArray(jobData.shifts) ? jobData.shifts : [];
-    const targetShift = shifts.find((item) => String(item.id) === shiftId);
-    const quantity = Number(targetShift?.quantity ?? 0);
-    return {
-        totalSlots: quantity,
-        remainingSlots: quantity,
-        appliedCount: 0,
-    };
 }
 function getChatPermissionFromApplicationStatus(status) {
     if (['APPROVED', 'CHECKED_IN', 'COMPLETED'].includes(status)) {
@@ -97,9 +144,37 @@ function timestampToDate(value) {
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
-function getShiftWindow(jobData, shiftId) {
+function getShiftFromJobData(jobData, shiftId) {
     const shifts = Array.isArray(jobData.shifts) ? jobData.shifts : [];
-    const targetShift = shifts.find((item) => String(item.id) === shiftId);
+    return shifts.find((item) => String(item.id) === shiftId) ?? null;
+}
+async function getShiftData(jobRef, jobData, shiftId, tx) {
+    const shiftRef = jobRef.collection('shifts').doc(shiftId);
+    const shiftSnap = tx ? await tx.get(shiftRef) : await shiftRef.get();
+    if (shiftSnap.exists) {
+        return shiftSnap.data() || null;
+    }
+    return getShiftFromJobData(jobData, shiftId);
+}
+async function getCapacityForShift(jobRef, jobData, shiftId, tx) {
+    const shiftCapacity = (jobData.shift_capacity ?? {});
+    const capacity = shiftCapacity[shiftId];
+    if (capacity) {
+        return {
+            totalSlots: Number(capacity.total_slots ?? 0),
+            remainingSlots: Number(capacity.remaining_slots ?? 0),
+            appliedCount: Number(capacity.applied_count ?? 0),
+        };
+    }
+    const targetShift = await getShiftData(jobRef, jobData, shiftId, tx);
+    const quantity = Number(targetShift?.quantity ?? 0);
+    return {
+        totalSlots: quantity,
+        remainingSlots: quantity,
+        appliedCount: 0,
+    };
+}
+function getShiftWindowFromData(jobData, targetShift) {
     const startDate = String(jobData.start_date ?? jobData.startDate ?? '').trim();
     const startTime = String(targetShift?.start_time ?? targetShift?.startTime ?? '').trim();
     const endTime = String(targetShift?.end_time ?? targetShift?.endTime ?? '').trim();
@@ -123,8 +198,12 @@ function getShiftWindow(jobData, shiftId) {
         title: String(jobData.title ?? 'Công việc'),
     };
 }
-function getHoursUntilShift(jobData, shiftId, now = new Date()) {
-    const shiftWindow = getShiftWindow(jobData, shiftId);
+async function getShiftWindow(jobRef, jobData, shiftId, tx) {
+    const targetShift = await getShiftData(jobRef, jobData, shiftId, tx);
+    return getShiftWindowFromData(jobData, targetShift);
+}
+async function getHoursUntilShift(jobRef, jobData, shiftId, now = new Date(), tx) {
+    const shiftWindow = await getShiftWindow(jobRef, jobData, shiftId, tx);
     if (!shiftWindow)
         return null;
     return (shiftWindow.start.getTime() - now.getTime()) / (1000 * 60 * 60);
@@ -151,6 +230,49 @@ function calculatePayoutAmount(jobData, applicationData) {
     }
     const hoursWorked = (checkOutTime.getTime() - checkInTime.getTime()) / (1000 * 60 * 60);
     return Math.max(Math.round(hoursWorked * salary), 0);
+}
+function normalizeVerificationStatus(value) {
+    const status = String(value ?? 'UNVERIFIED').toUpperCase();
+    if (status === 'VERIFIED' || status === 'PENDING') {
+        return status;
+    }
+    return 'UNVERIFIED';
+}
+async function getJobPostingQuota(userId) {
+    const userSnap = await db.collection('users').doc(userId).get();
+    const verificationStatus = normalizeVerificationStatus(userSnap.data()?.verification_status);
+    const monthlyLimit = verificationStatus === 'VERIFIED' ? 10 : 2;
+    const activeShiftLimit = verificationStatus === 'VERIFIED' ? 999 : 1;
+    const { start } = monthRange();
+    const [snakeJobsSnap, camelJobsSnap] = await Promise.all([
+        db.collection('jobs').where('employer_id', '==', userId).get(),
+        db.collection('jobs').where('employerId', '==', userId).get(),
+    ]);
+    const dedupedJobs = Array.from(new Map([...snakeJobsSnap.docs, ...camelJobsSnap.docs].map((docSnap) => [docSnap.id, docSnap])).values());
+    const monthlyUsed = dedupedJobs.filter((docSnap) => {
+        const createdAt = timestampToDate(docSnap.data().created_at ?? docSnap.data().createdAt);
+        return createdAt ? createdAt >= start : false;
+    }).length;
+    const activeShiftUsed = dedupedJobs.reduce((sum, docSnap) => {
+        const data = docSnap.data();
+        const status = String(data.status ?? '').toUpperCase();
+        const moderationStatus = String(data.moderation_status ?? 'APPROVED').toUpperCase();
+        const isActiveJob = ['OPEN', 'ACTIVE', 'FULL'].includes(status) && moderationStatus !== 'REJECTED';
+        if (!isActiveJob)
+            return sum;
+        const shifts = Array.isArray(data.shifts) ? data.shifts : [];
+        return sum + shifts.length;
+    }, 0);
+    return {
+        monthlyLimit,
+        monthlyUsed,
+        monthlyRemaining: Math.max(monthlyLimit - monthlyUsed, 0),
+        activeShiftLimit,
+        activeShiftUsed,
+        activeShiftRemaining: Math.max(activeShiftLimit - activeShiftUsed, 0),
+        verificationStatus,
+        tierLabel: verificationStatus === 'VERIFIED' ? 'Verified' : 'Starter',
+    };
 }
 function buildNotificationPayload(userId, type, title, body, data = {}, category = 'APPLICATION') {
     return {
@@ -253,7 +375,7 @@ exports.applyJob = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (req
         throw new https_1.HttpsError('not-found', 'Công việc không tồn tại.');
     }
     const jobPreviewData = jobPreviewSnap.data() || {};
-    const targetWindow = getShiftWindow(jobPreviewData, input.shiftId);
+    const targetWindow = await getShiftWindow(jobRef, jobPreviewData, input.shiftId);
     if (targetWindow) {
         const approvedApps = await db
             .collection('applications')
@@ -271,7 +393,7 @@ exports.applyJob = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (req
             const otherJobSnap = await db.collection('jobs').doc(otherJobId).get();
             if (!otherJobSnap.exists)
                 continue;
-            const otherWindow = getShiftWindow(otherJobSnap.data() || {}, otherShiftId);
+            const otherWindow = await getShiftWindow(otherJobSnap.ref, otherJobSnap.data() || {}, otherShiftId);
             if (!otherWindow)
                 continue;
             if (targetWindow.start < otherWindow.end && targetWindow.end > otherWindow.start) {
@@ -302,13 +424,13 @@ exports.applyJob = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (req
         if (status !== 'OPEN' && status !== 'ACTIVE') {
             throw new https_1.HttpsError('failed-precondition', 'Công việc đã đóng tuyển.');
         }
-        const capacity = getCapacity(jobData, input.shiftId);
+        const capacity = await getCapacityForShift(jobRef, jobData, input.shiftId, tx);
         if (capacity.remainingSlots <= 0) {
             throw new https_1.HttpsError('failed-precondition', 'Ca làm đã đủ số lượng.');
         }
         const employerId = String(jobData.employer_id ?? jobData.employerId ?? '');
         const employerName = String(jobData.employer_name ?? jobData.employerName ?? '');
-        const shiftWindow = getShiftWindow(jobData, input.shiftId);
+        const shiftWindow = await getShiftWindow(jobRef, jobData, input.shiftId, tx);
         // ─── Denormalize candidate snapshot ───
         const candidateData = candidateSnap.exists ? (candidateSnap.data() || {}) : {};
         const candidateName = String(candidateData.full_name ?? candidateData.fullName ?? candidateData.display_name ?? candidateData.displayName ?? '');
@@ -392,7 +514,7 @@ exports.withdrawApplication = (0, https_1.onCall)({ region: 'asia-southeast1' },
         if (!jobSnap.exists)
             return;
         const jobData = jobSnap.data() || {};
-        const capacity = getCapacity(jobData, shiftId);
+        const capacity = await getCapacityForShift(jobRef, jobData, shiftId, tx);
         tx.set(jobRef, {
             shift_capacity: {
                 ...(jobData.shift_capacity ?? {}),
@@ -407,7 +529,7 @@ exports.withdrawApplication = (0, https_1.onCall)({ region: 'asia-southeast1' },
         const candidateRole = getUserRoleFromData(candidateSnap.data());
         let actionCode = null;
         let isUrgent = false;
-        const hoursUntilShift = getHoursUntilShift(jobData, shiftId);
+        const hoursUntilShift = await getHoursUntilShift(jobRef, jobData, shiftId, new Date(), tx);
         if (hoursUntilShift !== null) {
             isUrgent = hoursUntilShift > 0 && hoursUntilShift < 12;
             actionCode = (0, reputation_1.getCancellationActionCode)(hoursUntilShift);
@@ -1185,11 +1307,15 @@ exports.deleteJobPosting = (0, https_1.onCall)({ region: 'asia-southeast1' }, as
             .where('status', 'in', ['NEW', 'PENDING', 'APPROVED', 'CHECKED_IN']));
         let actionCode = null;
         if (!applicationsSnap.empty) {
-            const hasLateCancellation = applicationsSnap.docs.some((docSnap) => {
+            let hasLateCancellation = false;
+            for (const docSnap of applicationsSnap.docs) {
                 const appData = docSnap.data();
-                const hoursUntilShift = getHoursUntilShift(jobData, String(appData.shift_id ?? appData.shiftId ?? ''));
-                return hoursUntilShift !== null && hoursUntilShift < 2;
-            });
+                const hoursUntilShift = await getHoursUntilShift(jobRef, jobData, String(appData.shift_id ?? appData.shiftId ?? ''), new Date(), tx);
+                if (hoursUntilShift !== null && hoursUntilShift < 2) {
+                    hasLateCancellation = true;
+                    break;
+                }
+            }
             actionCode = hasLateCancellation ? 'E_CANCEL_L2' : 'E_CANCEL_POST';
         }
         applicationsSnap.docs.forEach((docSnap) => {
@@ -1512,6 +1638,320 @@ exports.adminSetUserStatus = (0, https_1.onCall)({ region: 'asia-southeast1' }, 
     });
     return { success: true, status: next.status };
 });
+exports.getMyJobPostingQuota = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    const uid = assertAuth(request);
+    const quota = await getJobPostingQuota(uid);
+    return quota;
+});
+exports.createJobPosting = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    const uid = assertAuth(request);
+    const input = request.data;
+    if (!input.title?.trim() || !input.description?.trim() || !Array.isArray(input.shifts) || input.shifts.length === 0) {
+        throw new https_1.HttpsError('invalid-argument', 'Thiếu thông tin cơ bản để đăng tin.');
+    }
+    const employerRef = db.collection('users').doc(uid);
+    const employerSnap = await employerRef.get();
+    if (!employerSnap.exists) {
+        throw new https_1.HttpsError('not-found', 'Không tìm thấy hồ sơ nhà tuyển dụng.');
+    }
+    const employerData = employerSnap.data() || {};
+    if (String(employerData.role ?? '').toUpperCase() !== 'EMPLOYER') {
+        throw new https_1.HttpsError('permission-denied', 'Chỉ nhà tuyển dụng mới có thể đăng tin.');
+    }
+    const quota = await getJobPostingQuota(uid);
+    const requestedShiftCount = input.shifts.length;
+    if (quota.monthlyUsed >= quota.monthlyLimit) {
+        throw new https_1.HttpsError('failed-precondition', `Bạn đã dùng hết quota ${quota.monthlyLimit} tin trong tháng này.`);
+    }
+    if (quota.activeShiftUsed + requestedShiftCount > quota.activeShiftLimit) {
+        throw new https_1.HttpsError('failed-precondition', `Tài khoản hiện tại chỉ được có tối đa ${quota.activeShiftLimit} ca đang hoạt động cùng lúc.`);
+    }
+    const jobRef = db.collection('jobs').doc();
+    const timestamp = firestore_1.FieldValue.serverTimestamp();
+    const employerName = String(employerData.company_name ??
+        employerData.full_name ??
+        employerData.fullName ??
+        'Nhà tuyển dụng JobNow');
+    const normalizedShifts = input.shifts.map((shift, index) => {
+        const id = String(shift.id ?? normalizeDocumentId(`shift_${Date.now()}_${index + 1}`));
+        return {
+            id,
+            name: String(shift.name ?? `Ca ${index + 1}`),
+            start_time: String(shift.startTime ?? '08:00'),
+            end_time: String(shift.endTime ?? '17:00'),
+            quantity: Math.max(Number(shift.quantity ?? 1), 1),
+            status: 'OPEN',
+        };
+    });
+    const shiftCapacity = normalizedShifts.reduce((acc, shift) => {
+        acc[shift.id] = {
+            total_slots: shift.quantity,
+            remaining_slots: shift.quantity,
+            applied_count: 0,
+        };
+        return acc;
+    }, {});
+    const jobPayload = {
+        employer_id: uid,
+        employer_name: employerName,
+        category_id: String(input.categoryId ?? ''),
+        title: input.title.trim(),
+        description: input.description.trim(),
+        salary: Number(input.salary ?? 0),
+        salary_type: String(input.salaryType ?? 'HOURLY').toUpperCase(),
+        address: String(input.location?.address ?? ''),
+        location: {
+            latitude: Number(input.location?.latitude ?? 0),
+            longitude: Number(input.location?.longitude ?? 0),
+        },
+        geohash: calculateGeohash(Number(input.location?.latitude ?? 0), Number(input.location?.longitude ?? 0)),
+        is_gps_required: Boolean(input.isGpsRequired ?? true),
+        status: 'DRAFT',
+        moderation_status: 'PENDING_REVIEW',
+        shifts: normalizedShifts,
+        shift_capacity: shiftCapacity,
+        vacancies: Number(input.vacancies ?? normalizedShifts.reduce((sum, shift) => sum + shift.quantity, 0)),
+        deadline: input.deadline ?? null,
+        requirements: Array.isArray(input.requirements) ? input.requirements : [],
+        images: Array.isArray(input.images) ? input.images : [],
+        gender_preference: String(input.genderPreference ?? 'ANY').toUpperCase(),
+        start_date: input.startDate ?? null,
+        is_premium: false,
+        is_boosted: false,
+        boost_expires_at: null,
+        created_at: timestamp,
+        updated_at: timestamp,
+    };
+    await db.runTransaction(async (tx) => {
+        tx.set(jobRef, jobPayload);
+        normalizedShifts.forEach((shift) => {
+            tx.set(jobRef.collection('shifts').doc(shift.id), {
+                ...shift,
+                job_id: jobRef.id,
+                employer_id: uid,
+                created_at: timestamp,
+                updated_at: timestamp,
+            });
+        });
+    });
+    return {
+        jobId: jobRef.id,
+        moderationStatus: 'PENDING_REVIEW',
+        quota: {
+            ...quota,
+            monthlyUsed: quota.monthlyUsed + 1,
+            monthlyRemaining: Math.max(quota.monthlyRemaining - 1, 0),
+            activeShiftUsed: quota.activeShiftUsed + requestedShiftCount,
+            activeShiftRemaining: Math.max(quota.activeShiftRemaining - requestedShiftCount, 0),
+        },
+    };
+});
+exports.reviewJobModeration = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    const uid = assertAuth(request);
+    const input = request.data;
+    await assertAdmin(uid);
+    const jobRef = db.collection('jobs').doc(input.jobId);
+    await db.runTransaction(async (tx) => {
+        const jobSnap = await tx.get(jobRef);
+        if (!jobSnap.exists) {
+            throw new https_1.HttpsError('not-found', 'Không tìm thấy tin tuyển dụng.');
+        }
+        const jobData = jobSnap.data() || {};
+        const employerId = String(jobData.employer_id ?? jobData.employerId ?? '');
+        const reason = String(input.reason ?? '').trim();
+        const action = input.action;
+        if (action === 'REJECT' && reason.length < 5) {
+            throw new https_1.HttpsError('invalid-argument', 'Vui lòng nhập lý do từ chối rõ ràng.');
+        }
+        tx.set(jobRef, {
+            moderation_status: action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
+            moderation_reason: action === 'APPROVE' ? firestore_1.FieldValue.delete() : reason,
+            status: action === 'APPROVE'
+                ? (String(jobData.status ?? '').toUpperCase() === 'CLOSED' ? 'CLOSED' : 'OPEN')
+                : 'DRAFT',
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        if (employerId) {
+            await createNotification(tx, employerId, 'JOB_MODERATION_UPDATE', action === 'APPROVE' ? 'Tin của bạn đã được phê duyệt' : 'Tin của bạn chưa được phê duyệt', action === 'APPROVE'
+                ? `Tin "${String(jobData.title ?? 'Tin tuyển dụng')}" đã được phê duyệt và sẵn sàng hiển thị.`
+                : `Tin "${String(jobData.title ?? 'Tin tuyển dụng')}" bị từ chối. Lý do: ${reason}`, { jobId: input.jobId, action }, 'JOB');
+        }
+    });
+    return { success: true };
+});
+exports.purchaseBoostPackage = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    const uid = assertAuth(request);
+    const input = request.data;
+    const pack = BOOST_PACKAGE_CONFIG[input.packageCode];
+    if (!pack) {
+        throw new https_1.HttpsError('invalid-argument', 'Gói boost không hợp lệ.');
+    }
+    const jobRef = db.collection('jobs').doc(input.jobId);
+    const userRef = db.collection('users').doc(uid);
+    const packageRef = db.collection('packages').doc(input.packageCode);
+    const result = await db.runTransaction(async (tx) => {
+        const [jobSnap, userSnap, packageSnap] = await Promise.all([
+            tx.get(jobRef),
+            tx.get(userRef),
+            tx.get(packageRef),
+        ]);
+        if (!jobSnap.exists || !userSnap.exists) {
+            throw new https_1.HttpsError('not-found', 'Không tìm thấy tin tuyển dụng hoặc ví nhà tuyển dụng.');
+        }
+        const jobData = jobSnap.data() || {};
+        const userData = userSnap.data() || {};
+        if (String(jobData.employer_id ?? jobData.employerId ?? '') !== uid) {
+            throw new https_1.HttpsError('permission-denied', 'Bạn không thể mua gói cho tin tuyển dụng này.');
+        }
+        if (String(jobData.moderation_status ?? 'APPROVED').toUpperCase() !== 'APPROVED') {
+            throw new https_1.HttpsError('failed-precondition', 'Chỉ có thể đẩy top các tin đã được duyệt.');
+        }
+        if (!['OPEN', 'ACTIVE', 'FULL'].includes(String(jobData.status ?? '').toUpperCase())) {
+            throw new https_1.HttpsError('failed-precondition', 'Chỉ có thể đẩy top các tin đang hoạt động.');
+        }
+        const balance = Number(userData.balance ?? 0);
+        if (balance < pack.price) {
+            throw new https_1.HttpsError('failed-precondition', `Số dư không đủ. Bạn cần nạp thêm ${(pack.price - balance).toLocaleString('vi-VN')}đ.`);
+        }
+        const expiresAt = new Date(Date.now() + pack.durationHours * 60 * 60 * 1000);
+        const purchaseRef = db.collection('purchases').doc(normalizeDocumentId(`${input.jobId}_${input.packageCode}_${Date.now()}`));
+        const transactionRef = db.collection('transactions').doc(normalizeDocumentId(`boost_${input.jobId}_${input.packageCode}_${Date.now()}`));
+        if (!packageSnap.exists) {
+            tx.set(packageRef, {
+                code: input.packageCode,
+                name: pack.name,
+                description: pack.description,
+                price: pack.price,
+                duration_hours: pack.durationHours,
+                active: true,
+                created_at: firestore_1.FieldValue.serverTimestamp(),
+                updated_at: firestore_1.FieldValue.serverTimestamp(),
+            });
+        }
+        tx.set(userRef, {
+            balance: balance - pack.price,
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        tx.set(jobRef, {
+            is_boosted: true,
+            is_premium: true,
+            boost_package_code: input.packageCode,
+            boost_expires_at: firestore_1.Timestamp.fromDate(expiresAt),
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        tx.set(purchaseRef, {
+            user_id: uid,
+            job_id: input.jobId,
+            package_code: input.packageCode,
+            package_name: pack.name,
+            amount: pack.price,
+            status: 'ACTIVE',
+            started_at: firestore_1.FieldValue.serverTimestamp(),
+            expires_at: firestore_1.Timestamp.fromDate(expiresAt),
+            created_at: firestore_1.FieldValue.serverTimestamp(),
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        });
+        tx.set(transactionRef, {
+            userId: uid,
+            user_id: uid,
+            type: 'PAYMENT',
+            entry_type: 'DEBIT',
+            amount: -pack.price,
+            description: `Mua gói ${pack.name} cho tin "${String(jobData.title ?? 'Tin tuyển dụng')}"`,
+            related_job_id: input.jobId,
+            status: 'COMPLETED',
+            created_at: firestore_1.FieldValue.serverTimestamp(),
+            createdAt: firestore_1.FieldValue.serverTimestamp(),
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        });
+        await createNotification(tx, uid, 'BOOST_PURCHASED', 'Đẩy top thành công', `Tin "${String(jobData.title ?? 'Tin tuyển dụng')}" được ưu tiên hiển thị tới ${expiresAt.toLocaleString('vi-VN')}.`, { jobId: input.jobId, packageCode: input.packageCode }, 'JOB');
+        return { expiresAt: expiresAt.toISOString(), price: pack.price };
+    });
+    return { success: true, ...result };
+});
+exports.closeJobSafely = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    const uid = assertAuth(request);
+    const input = request.data;
+    const jobRef = db.collection('jobs').doc(input.jobId);
+    const approvedAppsSnap = await db.collection('applications')
+        .where('job_id', '==', input.jobId)
+        .where('status', 'in', ['APPROVED', 'CHECKED_IN'])
+        .get();
+    const jobSnap = await jobRef.get();
+    if (!jobSnap.exists) {
+        throw new https_1.HttpsError('not-found', 'Không tìm thấy tin tuyển dụng.');
+    }
+    const jobData = jobSnap.data() || {};
+    if (String(jobData.employer_id ?? jobData.employerId ?? '') !== uid) {
+        throw new https_1.HttpsError('permission-denied', 'Bạn không có quyền đóng tin này.');
+    }
+    let latePenaltyPossible = false;
+    for (const appDoc of approvedAppsSnap.docs) {
+        const hoursUntilShift = await getHoursUntilShift(jobRef, jobData, String(appDoc.data().shift_id ?? appDoc.data().shiftId ?? ''));
+        if (hoursUntilShift !== null && hoursUntilShift < 2) {
+            latePenaltyPossible = true;
+            break;
+        }
+    }
+    if (approvedAppsSnap.size > 0 && !input.confirmed) {
+        return {
+            requiresConfirmation: true,
+            affectedCandidates: approvedAppsSnap.size,
+            latePenaltyPossible,
+        };
+    }
+    await db.runTransaction(async (tx) => {
+        const freshJobSnap = await tx.get(jobRef);
+        if (!freshJobSnap.exists) {
+            throw new https_1.HttpsError('not-found', 'Không tìm thấy tin tuyển dụng.');
+        }
+        const freshJobData = freshJobSnap.data() || {};
+        const employerRef = db.collection('users').doc(uid);
+        const employerSnap = await tx.get(employerRef);
+        const employerRole = getUserRoleFromData(employerSnap.data());
+        tx.set(jobRef, {
+            status: 'CLOSED',
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        for (const appDoc of approvedAppsSnap.docs) {
+            const appData = appDoc.data();
+            tx.set(appDoc.ref, {
+                status: 'CANCELLED',
+                updated_at: firestore_1.FieldValue.serverTimestamp(),
+            }, { merge: true });
+            if (input.notifyCandidates !== false) {
+                const candidateId = String(appData.candidate_id ?? appData.candidateId ?? '');
+                if (candidateId) {
+                    await createNotification(tx, candidateId, 'JOB_CLOSED', 'Nhà tuyển dụng đã đóng tin', `Tin "${String(freshJobData.title ?? 'Tin tuyển dụng')}" đã được đóng và ca làm của bạn không còn hiệu lực.`, { jobId: input.jobId, applicationId: appDoc.id }, 'JOB');
+                }
+            }
+        }
+        if (!approvedAppsSnap.empty && employerRole === 'EMPLOYER') {
+            await (0, reputation_1.applyReputationAction)({
+                tx,
+                db,
+                userId: uid,
+                userRole: employerRole,
+                userData: employerSnap.data() || {},
+                actionCode: latePenaltyPossible ? 'E_CANCEL_L2' : 'E_CANCEL_POST',
+                dedupeKey: `close_${input.jobId}`,
+                jobId: input.jobId,
+                actorId: uid,
+                metadata: {
+                    source: 'closeJobSafely',
+                    impacted_applications: approvedAppsSnap.size,
+                    notified_candidates: input.notifyCandidates !== false,
+                },
+            });
+        }
+    });
+    return {
+        success: true,
+        requiresConfirmation: false,
+        affectedCandidates: approvedAppsSnap.size,
+        latePenaltyPossible,
+    };
+});
 /* ── Firestore Triggers ────────────────────────── */
 exports.onApplicationCreated = (0, firestore_2.onDocumentCreated)({
     document: 'applications/{applicationId}',
@@ -1636,7 +2076,7 @@ exports.sendShiftReminders = (0, scheduler_1.onSchedule)({
         if (!jobSnap.exists)
             return;
         const jobData = jobSnap.data() || {};
-        const shiftWindow = getShiftWindow(jobData, shiftId);
+        const shiftWindow = await getShiftWindow(jobSnap.ref, jobData, shiftId);
         if (!shiftWindow)
             return;
         const minutesUntilShift = Math.round((shiftWindow.start.getTime() - now.getTime()) / (1000 * 60));
@@ -1645,6 +2085,25 @@ exports.sendShiftReminders = (0, scheduler_1.onSchedule)({
         await createNotificationDoc(candidateId, 'SHIFT_REMINDER', 'Nhắc ca làm sắp bắt đầu', `Ca làm tại ${String(jobData.employer_name ?? jobData.employerName ?? employerId)} bắt đầu lúc ${shiftWindow.startTime}. Đừng quên!`, { applicationId: appDoc.id, jobId, shiftId }, 'SHIFT');
         await appDoc.ref.set({
             shift_reminder_sent_at: firestore_1.FieldValue.serverTimestamp(),
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+    }));
+});
+exports.expireBoostedJobs = (0, scheduler_1.onSchedule)({
+    schedule: 'every 60 minutes',
+    region: 'asia-southeast1',
+    timeZone: 'Asia/Ho_Chi_Minh',
+}, async () => {
+    const now = firestore_1.Timestamp.now();
+    const boostedJobsSnap = await db.collection('jobs')
+        .where('is_boosted', '==', true)
+        .where('boost_expires_at', '<=', now)
+        .get();
+    await Promise.all(boostedJobsSnap.docs.map(async (jobDoc) => {
+        await jobDoc.ref.set({
+            is_boosted: false,
+            boost_package_code: firestore_1.FieldValue.delete(),
+            boost_expires_at: firestore_1.FieldValue.delete(),
             updated_at: firestore_1.FieldValue.serverTimestamp(),
         }, { merge: true });
     }));
@@ -1667,7 +2126,7 @@ exports.penalizeNoShowCandidates = (0, scheduler_1.onSchedule)({
         const jobSnap = await db.collection('jobs').doc(jobId).get();
         if (!jobSnap.exists)
             return;
-        const shiftWindow = getShiftWindow(jobSnap.data() || {}, shiftId);
+        const shiftWindow = await getShiftWindow(jobSnap.ref, jobSnap.data() || {}, shiftId);
         if (!shiftWindow)
             return;
         if ((Date.now() - shiftWindow.start.getTime()) < (30 * 60 * 1000))

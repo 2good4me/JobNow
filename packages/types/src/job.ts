@@ -2,6 +2,8 @@ export type JobStatus = 'ACTIVE' | 'OPEN' | 'FULL' | 'CLOSED' | 'HIDDEN' | 'DRAF
 export type SalaryType = 'HOURLY' | 'DAILY' | 'PER_SHIFT' | 'MONTHLY';
 export type GenderPreference = 'MALE' | 'FEMALE' | 'ANY';
 export type ShiftTimeBucket = 'MORNING' | 'AFTERNOON' | 'EVENING' | 'NIGHT';
+export type JobModerationStatus = 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
+export type BoostPackageCode = 'BOOST_24H' | 'BOOST_3D' | 'BOOST_7D';
 
 export interface Shift {
     id: string;
@@ -57,6 +59,11 @@ export interface Job {
     startDate?: string;          // Ngày bắt đầu làm việc
     isPremium?: boolean;         // Tin ưu tiên
     totalAppliedCount?: number;  // Computed from shift_capacity for fast empty state
+    moderationStatus?: JobModerationStatus;
+    moderationReason?: string;
+    isBoosted?: boolean;
+    boostExpiresAt?: any;
+    boostPackageCode?: BoostPackageCode;
 }
 
 /**
@@ -104,8 +111,34 @@ export interface JobDoc {
     age_range?: { min: number; max: number };
     start_date?: string;
     is_premium?: boolean;
+    moderation_status?: JobModerationStatus;
+    moderation_reason?: string;
+    is_boosted?: boolean;
+    boost_expires_at?: any;
+    boost_package_code?: BoostPackageCode;
     created_at?: any;
     updated_at?: any;
+}
+
+export interface JobPostingQuota {
+    monthlyLimit: number;
+    monthlyUsed: number;
+    monthlyRemaining: number;
+    activeShiftLimit: number;
+    activeShiftUsed: number;
+    activeShiftRemaining: number;
+    verificationStatus: 'UNVERIFIED' | 'PENDING' | 'VERIFIED';
+    tierLabel: 'Starter' | 'Verified';
+}
+
+export interface BoostPackage {
+    id: string;
+    code: BoostPackageCode;
+    name: string;
+    description: string;
+    price: number;
+    durationHours: number;
+    active: boolean;
 }
 
 export interface JobSearchFilters {

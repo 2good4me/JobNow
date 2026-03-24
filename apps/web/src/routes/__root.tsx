@@ -17,6 +17,7 @@ export const Route = createRootRoute({
 const AUTH_ROUTES = ['/login', '/register', '/forgot-password', '/onboarding'];
 const ADMIN_ROUTES_PREFIX = '/admin';
 const ONBOARDING_STORAGE_KEY = 'jobnow_onboarding_seen';
+const GUEST_PUBLIC_ROUTES = ['/jobs', '/support-center'];
 
 function hasSeenGuestOnboarding() {
     try {
@@ -31,6 +32,7 @@ function RootLayout() {
     const { user, role, needsProfileSetup, loading } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
+    const isPublicGuestRoute = GUEST_PUBLIC_ROUTES.some((route) => location.pathname === route || location.pathname.startsWith(`${route}/`));
     
     // Heartbeat for online status
     useOnlineStatus();
@@ -40,7 +42,7 @@ function RootLayout() {
     const isAuthPage = AUTH_ROUTES.some((r) => location.pathname.startsWith(r));
     const guestOnboardingSeen = hasSeenGuestOnboarding();
     const shouldRedirectGuestToOnboarding =
-        !loading && !user && !guestOnboardingSeen && location.pathname !== '/onboarding';
+        !loading && !user && !guestOnboardingSeen && location.pathname !== '/onboarding' && !isPublicGuestRoute;
 
     // Guest-first onboarding: first open must see onboarding before auth pages.
     useEffect(() => {

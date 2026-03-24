@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { JobCard } from '@/features/jobs/components/JobCard';
 import { MapPicker } from '@/features/jobs/components/MapPicker';
+import { JobMapView } from '@/features/jobs/components/JobMapView';
 
 export const Route = createFileRoute('/jobs/')({
   component: CandidateSearchDashboard,
@@ -112,9 +113,33 @@ function CandidateSearchDashboard() {
         });
         if (!matchesCategory) return false;
       }
+
+      // 6. Time filter
+      if (selectedTime) {
+        const jobDate = job.start_date || job.startDate;
+        if (jobDate) {
+          const today = new Date().toISOString().split('T')[0];
+          const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+          if (selectedTime === 'Hôm nay' && jobDate !== today) return false;
+          if (selectedTime === 'Ngày mai' && jobDate !== tomorrow) return false;
+        }
+      }
+
+      // 7. Shift time filter
+      if (selectedShifts.length > 0) {
+        const jobShifts = job.shifts || [];
+        const hasMatchingShift = jobShifts.some((s: any) => {
+          const hour = parseInt((s.startTime || s.start_time || '0').split(':')[0] || '0');
+          if (selectedShifts.includes('Sáng') && hour >= 5 && hour < 12) return true;
+          if (selectedShifts.includes('Chiều') && hour >= 12 && hour < 17) return true;
+          if (selectedShifts.includes('Tối') && hour >= 17) return true;
+          return false;
+        });
+        if (!hasMatchingShift) return false;
+      }
       return true;
     });
-  }, [jobs, searchText, minWage, verifiedOnly, selectedDistrict, selectedLocation, distance, selectedCategories]);
+  }, [jobs, searchText, minWage, verifiedOnly, selectedDistrict, selectedLocation, distance, selectedCategories, selectedTime, selectedShifts]);
 
   // Reset pagination when filters change
   useEffect(() => {
@@ -409,6 +434,8 @@ function CandidateSearchDashboard() {
             <div className="text-center py-10 text-red-500">Có lỗi xảy ra khi tải danh sách việc làm.</div>
           ) : filteredJobs.length === 0 ? (
             <div className="text-center py-10 text-slate-500">Không tìm thấy việc làm phù hợp.</div>
+          ) : viewMode === 'map' ? (
+            <JobMapView jobs={filteredJobs as any} selectedLocation={selectedLocation} />
           ) : (
             <>
               {filteredJobs.slice(0, visibleCount).map((job: any) => (
@@ -419,9 +446,10 @@ function CandidateSearchDashboard() {
                   title={job.title}
                   wage={job.salary ? `${job.salary.toLocaleString()}đ/${job.salaryType === 'PER_SHIFT' ? 'ca' : 'tháng'}` : 'Thỏa thuận'}
                   distance={job.location?.address?.split(',')[0] || job.address?.split(',')[0] || 'Toàn quốc'}
-                  shift={job.employmentType === 'PART_TIME' ? 'Bán thời gian' : 'Toàn thời gian'}
+                  shift={job.shifts?.[0] ? `${job.shifts[0].startTime || job.shifts[0].start_time} - ${job.shifts[0].endTime || job.shifts[0].end_time}` : 'Linh hoạt'}
                   logoUrl={job.images?.[0] || `https://api.dicebear.com/7.x/initials/svg?seed=${job.title}&backgroundColor=3b82f6`}
                   hasVerifiedBadge={job.isPremium || false}
+                  detailVariant="public"
                 />
               ))}
               {visibleCount < filteredJobs.length && (

@@ -21,6 +21,7 @@ import { Route as JobsIndexRouteImport } from './routes/jobs/index'
 import { Route as EmployerIndexRouteImport } from './routes/employer/index'
 import { Route as CandidateIndexRouteImport } from './routes/candidate/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as JobsJobIdRouteImport } from './routes/jobs/$jobId'
 import { Route as EmployerWalletRouteImport } from './routes/employer/wallet'
 import { Route as EmployerVnpayReturnRouteImport } from './routes/employer/vnpay-return'
 import { Route as EmployerVerificationRouteImport } from './routes/employer/verification'
@@ -130,6 +131,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRoute,
+} as any)
+const JobsJobIdRoute = JobsJobIdRouteImport.update({
+  id: '/jobs/$jobId',
+  path: '/jobs/$jobId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const EmployerWalletRoute = EmployerWalletRouteImport.update({
   id: '/employer/wallet',
@@ -428,6 +434,7 @@ export interface FileRoutesByFullPath {
   '/employer/verification': typeof EmployerVerificationRouteWithChildren
   '/employer/vnpay-return': typeof EmployerVnpayReturnRoute
   '/employer/wallet': typeof EmployerWalletRoute
+  '/jobs/$jobId': typeof JobsJobIdRoute
   '/admin/': typeof AdminIndexRoute
   '/candidate/': typeof CandidateIndexRoute
   '/employer/': typeof EmployerIndexRoute
@@ -487,6 +494,7 @@ export interface FileRoutesByTo {
   '/employer/shift-management': typeof EmployerShiftManagementRoute
   '/employer/vnpay-return': typeof EmployerVnpayReturnRoute
   '/employer/wallet': typeof EmployerWalletRoute
+  '/jobs/$jobId': typeof JobsJobIdRoute
   '/admin': typeof AdminIndexRoute
   '/candidate': typeof CandidateIndexRoute
   '/employer': typeof EmployerIndexRoute
@@ -551,6 +559,7 @@ export interface FileRoutesById {
   '/employer/verification': typeof EmployerVerificationRouteWithChildren
   '/employer/vnpay-return': typeof EmployerVnpayReturnRoute
   '/employer/wallet': typeof EmployerWalletRoute
+  '/jobs/$jobId': typeof JobsJobIdRoute
   '/admin/': typeof AdminIndexRoute
   '/candidate/': typeof CandidateIndexRoute
   '/employer/': typeof EmployerIndexRoute
@@ -616,6 +625,7 @@ export interface FileRouteTypes {
     | '/employer/verification'
     | '/employer/vnpay-return'
     | '/employer/wallet'
+    | '/jobs/$jobId'
     | '/admin/'
     | '/candidate/'
     | '/employer/'
@@ -675,6 +685,7 @@ export interface FileRouteTypes {
     | '/employer/shift-management'
     | '/employer/vnpay-return'
     | '/employer/wallet'
+    | '/jobs/$jobId'
     | '/admin'
     | '/candidate'
     | '/employer'
@@ -738,6 +749,7 @@ export interface FileRouteTypes {
     | '/employer/verification'
     | '/employer/vnpay-return'
     | '/employer/wallet'
+    | '/jobs/$jobId'
     | '/admin/'
     | '/candidate/'
     | '/employer/'
@@ -795,6 +807,7 @@ export interface RootRouteChildren {
   EmployerVerificationRoute: typeof EmployerVerificationRouteWithChildren
   EmployerVnpayReturnRoute: typeof EmployerVnpayReturnRoute
   EmployerWalletRoute: typeof EmployerWalletRoute
+  JobsJobIdRoute: typeof JobsJobIdRoute
   CandidateIndexRoute: typeof CandidateIndexRoute
   EmployerIndexRoute: typeof EmployerIndexRoute
   JobsIndexRoute: typeof JobsIndexRoute
@@ -889,6 +902,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/jobs/$jobId': {
+      id: '/jobs/$jobId'
+      path: '/jobs/$jobId'
+      fullPath: '/jobs/$jobId'
+      preLoaderRoute: typeof JobsJobIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/employer/wallet': {
       id: '/employer/wallet'
@@ -1377,6 +1397,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmployerVerificationRoute: EmployerVerificationRouteWithChildren,
   EmployerVnpayReturnRoute: EmployerVnpayReturnRoute,
   EmployerWalletRoute: EmployerWalletRoute,
+  JobsJobIdRoute: JobsJobIdRoute,
   CandidateIndexRoute: CandidateIndexRoute,
   EmployerIndexRoute: EmployerIndexRoute,
   JobsIndexRoute: JobsIndexRoute,

@@ -7,6 +7,7 @@ import 'leaflet/dist/leaflet.css';
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 import { ArrowLeft, Check, Loader2, MapPin, Search, LocateFixed } from 'lucide-react';
+import { toast } from 'sonner';
 
 let DefaultIcon = L.icon({
   iconUrl: icon,
@@ -141,13 +142,13 @@ export function MapPicker({ onSelect, onClose, initialLocation }: MapPickerProps
         },
         (err) => {
           console.error("Lỗi lấy vị trí:", err);
-          alert("Không thể lấy vị trí của bạn để định vị.");
+          toast.error("Không thể lấy vị trí của bạn để định vị.");
           setIsLocating(false);
         },
         { enableHighAccuracy: true }
       );
     } else {
-      alert("Trình duyệt của bạn không hỗ trợ định vị.");
+      toast.error("Trình duyệt của bạn không hỗ trợ định vị.");
     }
   };
 

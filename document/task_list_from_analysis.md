@@ -80,6 +80,7 @@
 ---
 
 ### TASK 4: Thay `alert()` bằng `toast` (10 chỗ)
+- [x] Done
 - **Mức độ:** 🟡 Medium
 - **Vấn đề:** 10 chỗ dùng `alert()` mang trải nghiệm UX rất kém, chặn luồng UI.
 - **Danh sách file cần sửa:**
@@ -202,6 +203,7 @@
 ---
 
 ### TASK 8: Fix filter Ca làm & Thời gian trên `/jobs`
+- [x] Done
 - **Mức độ:** 🟠 High
 - **File:** `apps/web/src/routes/jobs/index.tsx`
 - **Vấn đề:** Bộ lọc "Thời gian" (Hôm nay/Ngày mai) và "Ca làm" (Sáng/Chiều/Tối) có UI chọn được nhưng **không ảnh hưởng kết quả** – biến `selectedTime` và `selectedShifts` không được sử dụng trong `filteredJobs` useMemo.
@@ -236,6 +238,7 @@
 ---
 
 ### TASK 9: Tích hợp Google Maps cho Map View trên trang tìm việc
+- [x] Done
 - **Mức độ:** 🟠 High
 - **File:** `apps/web/src/routes/jobs/index.tsx`
 - **Vấn đề:** Nút toggle Map/List có nhưng chế độ Map **không render bản đồ**. Đây là core feature – "Uber/Grab cho việc làm".
@@ -250,6 +253,7 @@
 ---
 
 ### TASK 10: Admin Job Moderation – Kiểm duyệt tin trước khi công khai
+- [x] Done
 - **Mức độ:** 🟠 High
 - **Vấn đề:** Yêu cầu Admin 2.3: "Duyệt tin tuyển dụng trước khi hiển thị". Hiện tại tin vào Firestore = hiển thị ngay.
 - **Cần sửa:**
@@ -267,6 +271,7 @@
 ## 🧹 SPRINT 3 – NÂNG CẤP & TỐI ƯU (2-4 tuần)
 
 ### TASK 11: Tách `shifts` thành subcollection
+- [x] Done
 - **Mức độ:** 🟡 Medium
 - **Vấn đề:** Shifts hiện là mảng con `jobs.shifts[]`. Firestore **không thể query tối ưu** vào phần tử mảng → chặn tính năng tìm ca trống theo thời gian.
 - **Migration plan:**
@@ -280,6 +285,7 @@
 ---
 
 ### TASK 12: Implement Tier/Anti-spam
+- [x] Done
 - **Mức độ:** 🟡 Medium
 - **Vấn đề:** Không có giới hạn tin đăng. Tài khoản chưa verify đăng được vô hạn. Hacker có thể spam.
 - **Cần làm:**
@@ -292,6 +298,7 @@
 ---
 
 ### TASK 13: Guest Mode – Xem việc không cần đăng nhập
+- [x] Done
 - **Mức độ:** 🟡 Medium
 - **Vấn đề:** App bắt buộc login trước khi truy cập bất kỳ trang nào. Yêu cầu cho guest xem bản đồ/danh sách.
 - **Cần làm:**
@@ -353,6 +360,7 @@
 ---
 
 ### TASK 18: Boost/VIP Package
+- [x] Done
 - **Mức độ:** 🟢 Low
 - **Vấn đề:** Use case 5.1 yêu cầu hệ thống mua gói đẩy top. Hoàn toàn chưa có code.
 - **Cần tạo:**
@@ -364,6 +372,7 @@
 ---
 
 ### TASK 19: Đóng tin an toàn – Cảnh báo ứng viên đã duyệt
+- [x] Done
 - **Mức độ:** 🟢 Low
 - **File:** `routes/employer/job-detail.tsx` hoặc `job-list.tsx`
 - **Vấn đề:** Use case 3.2 yêu cầu: khi đóng tin có ứng viên đã duyệt → cảnh báo + gửi notification hủy.

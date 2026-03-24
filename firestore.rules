@@ -58,7 +58,7 @@ service cloud.firestore {
 
     // --- JOBS ---
     match /jobs/{jobId} {
-      allow read: if isSignedIn();
+      allow read: if true;
 
       function isValidJobCreate() {
         let d = request.resource.data;
@@ -70,15 +70,18 @@ service cloud.firestore {
           && d.description is string;
       }
 
-      allow create: if isSignedIn() 
-                    && (getUserRole() == 'EMPLOYER' || getUserRole() == 'employer')
-                    && isValidJobCreate();
+      allow create: if false;
       allow update: if isSignedIn() && (
         resource.data.employer_id == request.auth.uid ||
         resource.data.employerId == request.auth.uid ||
         isAdmin()
       );
       allow delete: if false;
+
+      match /shifts/{shiftId} {
+        allow read: if true;
+        allow write: if false;
+      }
     }
 
     // --- APPLICATIONS ---
@@ -204,6 +207,17 @@ service cloud.firestore {
     match /analytics/{analyticId} {
       allow read: if isAdmin();
       allow write: if false;
+    }
+
+    // --- BOOST PACKAGES / PURCHASES ---
+    match /packages/{packageId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /purchases/{purchaseId} {
+      allow read: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow create, update, delete: if false;
     }
   }
 }

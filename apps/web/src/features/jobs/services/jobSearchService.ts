@@ -86,8 +86,17 @@ export async function fetchAllJobs(): Promise<Job[]> {
                 updated_at: raw.updated_at ?? raw.updatedAt,
                 images: Array.isArray(raw.images) ? raw.images : [],
                 is_premium: Boolean(raw.is_premium ?? raw.isPremium ?? false),
+                moderation_status: (raw.moderation_status ?? raw.moderationStatus) as JobDoc['moderation_status'],
+                moderation_reason: String(raw.moderation_reason ?? raw.moderationReason ?? ''),
+                is_boosted: Boolean(raw.is_boosted ?? raw.isBoosted ?? false),
+                boost_expires_at: raw.boost_expires_at ?? raw.boostExpiresAt,
+                boost_package_code: (raw.boost_package_code ?? raw.boostPackageCode) as JobDoc['boost_package_code'],
             };
             return mapJobDocToJob(docSnap.id, normalized);
+        })
+        .filter(job => {
+            const moderationStatus = String(job.moderationStatus ?? '').toUpperCase();
+            return (moderationStatus === '' || moderationStatus === 'APPROVED') && ['OPEN', 'ACTIVE', 'FULL'].includes(String(job.status ?? '').toUpperCase());
         })
         .filter(job => {
             // Hide jobs where ALL shifts are fully booked (remaining_slots <= 0)
@@ -101,6 +110,15 @@ export async function fetchAllJobs(): Promise<Job[]> {
                 (cap: any) => !cap || cap.remaining_slots === undefined || Number(cap.remaining_slots) > 0
             );
             return hasOpenSlot;
+        })
+        .sort((a, b) => {
+            const boostA = a.isBoosted ? 1 : 0;
+            const boostB = b.isBoosted ? 1 : 0;
+            if (boostA !== boostB) return boostB - boostA;
+
+            const timeA = new Date(a.createdAt ?? 0).getTime();
+            const timeB = new Date(b.createdAt ?? 0).getTime();
+            return timeB - timeA;
         });
 }
 

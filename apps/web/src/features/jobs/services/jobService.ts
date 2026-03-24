@@ -1,7 +1,6 @@
 import {
     collection,
     doc,
-    setDoc,
     getDoc,
     getDocs,
     query,
@@ -12,7 +11,7 @@ import {
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '@/config/firebase';
-import type { Job } from '@jobnow/types';
+import type { BoostPackage, Job, JobPostingQuota } from '@jobnow/types';
 import { mapJobDocToJob, mapNearbyApiToJobDoc } from './adapters';
 
 export type CreateJobDTO = Omit<Job, 'id' | 'createdAt' | 'updatedAt'>;
@@ -67,7 +66,24 @@ function dedupeJobs(items: Job[]): Job[] {
     return Array.from(map.values());
 }
 
-function mapJobSnapshot(docSnap: { id: string; data: () => Record<string, unknown> }): Job {
+async function fetchShiftDocs(jobId: string): Promise<Array<{ id: string; name: string; start_time: string; end_time: string; quantity: number }>> {
+    const snapshot = await getDocs(collection(db, 'jobs', jobId, 'shifts'));
+    return snapshot.docs.map((docSnap) => {
+        const data = docSnap.data();
+        return {
+            id: docSnap.id,
+            name: String(data.name ?? ''),
+            start_time: String(data.start_time ?? data.startTime ?? '00:00'),
+            end_time: String(data.end_time ?? data.endTime ?? '00:00'),
+            quantity: Number(data.quantity ?? 0),
+        };
+    });
+}
+
+function mapJobSnapshot(
+    docSnap: { id: string; data: () => Record<string, unknown> },
+    shiftsOverride?: Array<{ id: string; name: string; start_time: string; end_time: string; quantity: number }>,
+): Job {
     const raw = docSnap.data();
     
     // Convert Firestore Timestamp to Date if it has a toDate method
@@ -86,7 +102,9 @@ function mapJobSnapshot(docSnap: { id: string; data: () => Record<string, unknow
         category_id: String(raw.category_id ?? raw.categoryId ?? ''),
         salary_type: (raw.salary_type ?? raw.salaryType ?? 'HOURLY') as any,
         is_gps_required: Boolean(raw.is_gps_required ?? raw.isGpsRequired ?? false),
-        shifts: Array.isArray(raw.shifts)
+        shifts: Array.isArray(shiftsOverride) && shiftsOverride.length > 0
+            ? shiftsOverride
+            : Array.isArray(raw.shifts)
             ? raw.shifts.map((shift) => {
                 const s = shift as Record<string, unknown>;
                 return {
@@ -100,6 +118,11 @@ function mapJobSnapshot(docSnap: { id: string; data: () => Record<string, unknow
             : [],
         created_at: convertTimestamp(raw.created_at ?? raw.createdAt),
         updated_at: convertTimestamp(raw.updated_at ?? raw.updatedAt),
+        moderation_status: (raw.moderation_status ?? raw.moderationStatus) as any,
+        moderation_reason: String(raw.moderation_reason ?? raw.moderationReason ?? ''),
+        is_boosted: Boolean(raw.is_boosted ?? raw.isBoosted ?? false),
+        boost_expires_at: raw.boost_expires_at ?? raw.boostExpiresAt,
+        boost_package_code: (raw.boost_package_code ?? raw.boostPackageCode) as any,
     };
 
     return mapJobDocToJob(docSnap.id, normalized);
@@ -116,10 +139,11 @@ export async function fetchEmployerJobs(employerId: string): Promise<Job[]> {
             getDocs(query(jobsRef, where('employer_id', '==', employerId))),
         ]);
 
-        const allItems = [
-            ...camelSnapshot.docs.map((docSnap) => mapJobSnapshot(docSnap)),
-            ...snakeSnapshot.docs.map((docSnap) => mapJobSnapshot(docSnap)),
-        ];
+        const allDocs = [...camelSnapshot.docs, ...snakeSnapshot.docs];
+        const allItems = await Promise.all(allDocs.map(async (docSnap) => {
+            const shifts = await fetchShiftDocs(docSnap.id);
+            return mapJobSnapshot(docSnap, shifts);
+        }));
 
         return dedupeJobs(allItems);
     } catch (error) {
@@ -135,7 +159,8 @@ export async function fetchJobById(jobId: string): Promise<Job | null> {
     try {
         const docSnap = await getDoc(doc(db, 'jobs', jobId));
         if (!docSnap.exists()) return null;
-        return mapJobSnapshot(docSnap as any);
+        const shifts = await fetchShiftDocs(docSnap.id);
+        return mapJobSnapshot(docSnap as any, shifts);
     } catch (error) {
         console.error('Error in fetchJobById:', error);
         throw new Error('Không thể lấy thông tin tin tuyển dụng.');
@@ -147,54 +172,61 @@ export async function fetchJobById(jobId: string): Promise<Job | null> {
  */
 export async function createJob(jobData: Partial<Job>): Promise<Job> {
     try {
-        const jobsRef = collection(db, 'jobs');
-        const newJobRef = doc(jobsRef);
-        const latitude = Number(jobData.location?.latitude ?? 0);
-        const longitude = Number(jobData.location?.longitude ?? 0);
-
-        const geohash = latitude && longitude
-            ? encodeGeohash(latitude, longitude)
-            : '';
-
-        const jobToSave: any = {
-            employer_id: jobData.employerId,
-            category_id: jobData.categoryId,
-            title: jobData.title,
-            description: jobData.description,
-            salary: jobData.salary,
-            salary_type: jobData.salaryType,
-            address: jobData.location?.address ?? '',
-            location: {
-                latitude,
-                longitude,
+        const callable = httpsCallable<
+            {
+                categoryId?: string;
+                title: string;
+                description: string;
+                salary: number;
+                salaryType: 'HOURLY' | 'DAILY' | 'PER_SHIFT' | 'MONTHLY';
+                location: { latitude: number; longitude: number; address?: string };
+                isGpsRequired?: boolean;
+                shifts: Array<{ id?: string; name: string; startTime: string; endTime: string; quantity: number }>;
+                vacancies?: number;
+                deadline?: string;
+                requirements?: string[];
+                images?: string[];
+                genderPreference?: 'MALE' | 'FEMALE' | 'ANY';
+                startDate?: string;
             },
-            geohash,
-            is_gps_required: jobData.isGpsRequired ?? false,
-            status: jobData.status === 'ACTIVE' ? 'OPEN' : (jobData.status ?? 'OPEN'),
+            { jobId: string }
+        >(functions, 'createJobPosting');
+
+        const response = await callable({
+            categoryId: jobData.categoryId,
+            title: String(jobData.title ?? ''),
+            description: String(jobData.description ?? ''),
+            salary: Number(jobData.salary ?? 0),
+            salaryType: (jobData.salaryType ?? 'HOURLY') as 'HOURLY' | 'DAILY' | 'PER_SHIFT' | 'MONTHLY',
+            location: {
+                latitude: Number(jobData.location?.latitude ?? 0),
+                longitude: Number(jobData.location?.longitude ?? 0),
+                address: jobData.location?.address ?? '',
+            },
+            isGpsRequired: jobData.isGpsRequired ?? false,
             shifts: (jobData.shifts ?? []).map((shift) => ({
                 id: shift.id,
                 name: shift.name,
-                start_time: shift.startTime,
-                end_time: shift.endTime,
+                startTime: shift.startTime,
+                endTime: shift.endTime,
                 quantity: shift.quantity,
             })),
-            created_at: serverTimestamp(),
-            updated_at: serverTimestamp(),
-        };
+            vacancies: jobData.vacancies,
+            deadline: typeof jobData.deadline === 'string' ? jobData.deadline : undefined,
+            requirements: jobData.requirements,
+            images: jobData.images,
+            genderPreference: jobData.genderPreference,
+            startDate: jobData.startDate,
+        });
 
-        if (jobData.vacancies !== undefined) jobToSave.vacancies = jobData.vacancies;
-        if (jobData.deadline !== undefined) jobToSave.deadline = jobData.deadline;
-        if (jobData.requirements !== undefined) jobToSave.requirements = jobData.requirements;
-        if (jobData.images !== undefined) jobToSave.images = jobData.images;
-        if (jobData.genderPreference !== undefined) jobToSave.gender_preference = jobData.genderPreference;
-        if (jobData.startDate !== undefined) jobToSave.start_date = jobData.startDate;
-        if (jobData.isPremium !== undefined) jobToSave.is_premium = jobData.isPremium;
-
-        await setDoc(newJobRef, jobToSave);
-        return mapJobDocToJob(newJobRef.id, jobToSave as any);
+        const created = await fetchJobById(response.data.jobId);
+        if (!created) {
+            throw new Error('Không thể tải lại tin sau khi tạo.');
+        }
+        return created;
     } catch (error) {
         console.error('Error in createJob:', error);
-        throw new Error('Không thể tạo tin tuyển dụng. Vui lòng thử lại sau.');
+        throw new Error((error as { message?: string })?.message || 'Không thể tạo tin tuyển dụng. Vui lòng thử lại sau.');
     }
 }
 
@@ -228,6 +260,11 @@ export async function updateJob(jobId: string, data: Partial<Job>): Promise<void
         if (data.startDate !== undefined) updateData.start_date = data.startDate;
         if (data.isPremium !== undefined) updateData.is_premium = data.isPremium;
         if (data.isGpsRequired !== undefined) updateData.is_gps_required = data.isGpsRequired;
+        if (data.moderationStatus !== undefined) updateData.moderation_status = data.moderationStatus;
+        if (data.moderationReason !== undefined) updateData.moderation_reason = data.moderationReason;
+        if (data.isBoosted !== undefined) updateData.is_boosted = data.isBoosted;
+        if (data.boostExpiresAt !== undefined) updateData.boost_expires_at = data.boostExpiresAt;
+        if (data.boostPackageCode !== undefined) updateData.boost_package_code = data.boostPackageCode;
 
         if (data.location !== undefined) {
             updateData.address = data.location?.address ?? '';
@@ -266,6 +303,84 @@ export async function deleteJob(jobId: string): Promise<void> {
         console.error('Error in deleteJob:', error);
         throw new Error('Không thể xoá tin tuyển dụng.');
     }
+}
+
+export async function fetchMyJobPostingQuota(): Promise<JobPostingQuota> {
+    const callable = httpsCallable<Record<string, never>, JobPostingQuota>(functions, 'getMyJobPostingQuota');
+    const result = await callable({});
+    return result.data;
+}
+
+export async function reviewJobModeration(
+    jobId: string,
+    action: 'APPROVE' | 'REJECT',
+    reason?: string,
+): Promise<void> {
+    const callable = httpsCallable<{ jobId: string; action: 'APPROVE' | 'REJECT'; reason?: string }, { success: boolean }>(
+        functions,
+        'reviewJobModeration',
+    );
+    await callable({ jobId, action, reason });
+}
+
+export async function purchaseBoostPackage(
+    jobId: string,
+    packageCode: BoostPackage['code'],
+): Promise<{ expiresAt: string; price: number }> {
+    const callable = httpsCallable<
+        { jobId: string; packageCode: BoostPackage['code'] },
+        { success: boolean; expiresAt: string; price: number }
+    >(functions, 'purchaseBoostPackage');
+    const result = await callable({ jobId, packageCode });
+    return {
+        expiresAt: result.data.expiresAt,
+        price: result.data.price,
+    };
+}
+
+export async function closeJobSafely(
+    jobId: string,
+    confirmed = false,
+    notifyCandidates = true,
+): Promise<{ requiresConfirmation: boolean; affectedCandidates: number; latePenaltyPossible: boolean; success?: boolean }> {
+    const callable = httpsCallable<
+        { jobId: string; confirmed?: boolean; notifyCandidates?: boolean },
+        { requiresConfirmation: boolean; affectedCandidates: number; latePenaltyPossible: boolean; success?: boolean }
+    >(functions, 'closeJobSafely');
+    const result = await callable({ jobId, confirmed, notifyCandidates });
+    return result.data;
+}
+
+export function getBoostPackages(): BoostPackage[] {
+    return [
+        {
+            id: 'BOOST_24H',
+            code: 'BOOST_24H',
+            name: 'Đẩy top 24 giờ',
+            description: 'Ưu tiên hiển thị trong 24 giờ.',
+            price: 39000,
+            durationHours: 24,
+            active: true,
+        },
+        {
+            id: 'BOOST_3D',
+            code: 'BOOST_3D',
+            name: 'Đẩy top 3 ngày',
+            description: 'Ưu tiên hiển thị trong 3 ngày.',
+            price: 99000,
+            durationHours: 72,
+            active: true,
+        },
+        {
+            id: 'BOOST_7D',
+            code: 'BOOST_7D',
+            name: 'Đẩy top 7 ngày',
+            description: 'Ưu tiên hiển thị trong 7 ngày.',
+            price: 199000,
+            durationHours: 168,
+            active: true,
+        },
+    ];
 }
 
 /**

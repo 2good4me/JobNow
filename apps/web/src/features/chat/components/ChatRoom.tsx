@@ -9,6 +9,7 @@ import { useUserProfile } from '../hooks/useUserProfile';
 import { useNavigate } from '@tanstack/react-router';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 interface ChatRoomProps {
     conversation: Conversation;
@@ -75,7 +76,7 @@ export function ChatRoom({ conversation, currentUserId, onBack }: ChatRoomProps)
             {
                 onError: (err: any) => {
                     setInputText(messageText); // Restore on error
-                    alert(err.message || 'Gửi tin nhắn thất bại. Vui lòng thử lại.');
+                    toast.error(err.message || 'Gửi tin nhắn thất bại. Vui lòng thử lại.');
                 }
             }
         );
