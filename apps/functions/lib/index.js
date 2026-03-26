@@ -526,35 +526,37 @@ exports.withdrawApplication = (0, https_1.onCall)({ region: 'asia-southeast1' },
             },
             updated_at: firestore_1.FieldValue.serverTimestamp(),
         }, { merge: true });
-        const candidateRole = getUserRoleFromData(candidateSnap.data());
-        let actionCode = null;
+        let penalty = 0;
         let isUrgent = false;
-        const hoursUntilShift = await getHoursUntilShift(jobRef, jobData, shiftId, new Date(), tx);
-        if (hoursUntilShift !== null) {
-            isUrgent = hoursUntilShift > 0 && hoursUntilShift < 12;
-            actionCode = (0, reputation_1.getCancellationActionCode)(hoursUntilShift);
-        }
-        if (actionCode && candidateRole === 'CANDIDATE') {
-            const result = await (0, reputation_1.applyReputationAction)({
-                tx,
-                db,
-                userId: uid,
-                userRole: candidateRole,
-                userData: candidateSnap.data() || {},
-                actionCode,
-                dedupeKey: input.applicationId,
-                jobId,
-                applicationId: input.applicationId,
-                shiftId,
-                actorId: uid,
-                metadata: {
-                    source: 'withdrawApplication',
-                    hours_until_shift: hoursUntilShift,
-                },
-            });
-            if (result.delta < 0) {
-                await createNotification(tx, uid, 'SYSTEM_ALERT', 'Điểm uy tín bị trừ', `Bạn bị trừ ${Math.abs(result.delta)} điểm uy tín do hủy đơn ứng tuyển.`, { applicationId: input.applicationId, jobId, shiftId }, 'SYSTEM');
+        const shifts = Array.isArray(jobData.shifts) ? jobData.shifts : [];
+        const targetShift = shifts.find((s) => String(s.id) === shiftId);
+        if (jobData.start_date && targetShift?.start_time) {
+            const shiftDateTimeStr = `${jobData.start_date}T${targetShift.start_time}:00`;
+            const shiftTimeMs = new Date(shiftDateTimeStr).getTime();
+            if (!isNaN(shiftTimeMs)) {
+                const hoursUntilShift = (shiftTimeMs - Date.now()) / (1000 * 60 * 60);
+                if (hoursUntilShift > 0 && hoursUntilShift < 12) {
+                    penalty = 30;
+                    isUrgent = true;
+                }
+                else if (hoursUntilShift >= 12 && hoursUntilShift <= 24) {
+                    penalty = 10;
+                }
+                else if (hoursUntilShift > 24) {
+                    penalty = 2;
+                }
+                else {
+                    penalty = 30;
+                }
             }
+        }
+        if (penalty > 0) {
+            const candidateRef = db.collection('users').doc(uid);
+            tx.set(candidateRef, {
+                reputation_score: firestore_1.FieldValue.increment(-penalty),
+                updated_at: firestore_1.FieldValue.serverTimestamp()
+            }, { merge: true });
+            await createNotification(tx, uid, 'SYSTEM_ALERT', 'Trừ điểm uy tín', `Bạn bị trừ ${penalty} điểm uy tín do hủy đơn ứng tuyển!`);
         }
         if (isUrgent) {
             const shiftRef = jobRef.collection('shifts').doc(shiftId);
