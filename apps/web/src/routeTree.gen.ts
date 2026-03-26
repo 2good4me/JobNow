@@ -73,6 +73,7 @@ import { Route as EmployerProfileSettingsPasswordRouteImport } from './routes/em
 import { Route as EmployerProfileSettingsDevicesRouteImport } from './routes/employer/profile/settings/devices'
 import { Route as EmployerProfileSettingsDeleteRouteImport } from './routes/employer/profile/settings/delete'
 import { Route as EmployerProfileSettingsDeactivateRouteImport } from './routes/employer/profile/settings/deactivate'
+import { Route as CandidateWalletTransactionsTransactionIdRouteImport } from './routes/candidate/wallet_.transactions.$transactionId'
 
 const SupportCenterDataRoute = SupportCenterDataRouteImport.update({
   id: '/support-center-data',
@@ -411,6 +412,12 @@ const EmployerProfileSettingsDeactivateRoute =
     path: '/settings/deactivate',
     getParentRoute: () => EmployerProfileRoute,
   } as any)
+const CandidateWalletTransactionsTransactionIdRoute =
+  CandidateWalletTransactionsTransactionIdRouteImport.update({
+    id: '/candidate/wallet_/transactions/$transactionId',
+    path: '/candidate/wallet/transactions/$transactionId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -469,6 +476,7 @@ export interface FileRoutesByFullPath {
   '/candidate/verification/': typeof CandidateVerificationIndexRoute
   '/employer/profile/': typeof EmployerProfileIndexRoute
   '/employer/verification/': typeof EmployerVerificationIndexRoute
+  '/candidate/wallet/transactions/$transactionId': typeof CandidateWalletTransactionsTransactionIdRoute
   '/employer/profile/settings/deactivate': typeof EmployerProfileSettingsDeactivateRoute
   '/employer/profile/settings/delete': typeof EmployerProfileSettingsDeleteRoute
   '/employer/profile/settings/devices': typeof EmployerProfileSettingsDevicesRoute
@@ -531,6 +539,7 @@ export interface FileRoutesByTo {
   '/candidate/verification': typeof CandidateVerificationIndexRoute
   '/employer/profile': typeof EmployerProfileIndexRoute
   '/employer/verification': typeof EmployerVerificationIndexRoute
+  '/candidate/wallet/transactions/$transactionId': typeof CandidateWalletTransactionsTransactionIdRoute
   '/employer/profile/settings/deactivate': typeof EmployerProfileSettingsDeactivateRoute
   '/employer/profile/settings/delete': typeof EmployerProfileSettingsDeleteRoute
   '/employer/profile/settings/devices': typeof EmployerProfileSettingsDevicesRoute
@@ -598,6 +607,7 @@ export interface FileRoutesById {
   '/candidate/verification/': typeof CandidateVerificationIndexRoute
   '/employer/profile/': typeof EmployerProfileIndexRoute
   '/employer/verification/': typeof EmployerVerificationIndexRoute
+  '/candidate/wallet_/transactions/$transactionId': typeof CandidateWalletTransactionsTransactionIdRoute
   '/employer/profile/settings/deactivate': typeof EmployerProfileSettingsDeactivateRoute
   '/employer/profile/settings/delete': typeof EmployerProfileSettingsDeleteRoute
   '/employer/profile/settings/devices': typeof EmployerProfileSettingsDevicesRoute
@@ -666,6 +676,7 @@ export interface FileRouteTypes {
     | '/candidate/verification/'
     | '/employer/profile/'
     | '/employer/verification/'
+    | '/candidate/wallet/transactions/$transactionId'
     | '/employer/profile/settings/deactivate'
     | '/employer/profile/settings/delete'
     | '/employer/profile/settings/devices'
@@ -728,6 +739,7 @@ export interface FileRouteTypes {
     | '/candidate/verification'
     | '/employer/profile'
     | '/employer/verification'
+    | '/candidate/wallet/transactions/$transactionId'
     | '/employer/profile/settings/deactivate'
     | '/employer/profile/settings/delete'
     | '/employer/profile/settings/devices'
@@ -794,6 +806,7 @@ export interface FileRouteTypes {
     | '/candidate/verification/'
     | '/employer/profile/'
     | '/employer/verification/'
+    | '/candidate/wallet_/transactions/$transactionId'
     | '/employer/profile/settings/deactivate'
     | '/employer/profile/settings/delete'
     | '/employer/profile/settings/devices'
@@ -842,6 +855,7 @@ export interface RootRouteChildren {
   EmployerCandidateCandidateIdRoute: typeof EmployerCandidateCandidateIdRoute
   CandidateJobsIndexRoute: typeof CandidateJobsIndexRoute
   CandidateVerificationIndexRoute: typeof CandidateVerificationIndexRoute
+  CandidateWalletTransactionsTransactionIdRoute: typeof CandidateWalletTransactionsTransactionIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1294,6 +1308,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmployerProfileSettingsDeactivateRouteImport
       parentRoute: typeof EmployerProfileRoute
     }
+    '/candidate/wallet_/transactions/$transactionId': {
+      id: '/candidate/wallet_/transactions/$transactionId'
+      path: '/candidate/wallet/transactions/$transactionId'
+      fullPath: '/candidate/wallet/transactions/$transactionId'
+      preLoaderRoute: typeof CandidateWalletTransactionsTransactionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1448,6 +1469,8 @@ const rootRouteChildren: RootRouteChildren = {
   EmployerCandidateCandidateIdRoute: EmployerCandidateCandidateIdRoute,
   CandidateJobsIndexRoute: CandidateJobsIndexRoute,
   CandidateVerificationIndexRoute: CandidateVerificationIndexRoute,
+  CandidateWalletTransactionsTransactionIdRoute:
+    CandidateWalletTransactionsTransactionIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

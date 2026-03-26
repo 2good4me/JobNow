@@ -124,6 +124,7 @@ function RootLayout() {
                              location.pathname.startsWith('/candidate/jobs/') || 
                              location.pathname.startsWith('/candidate/employer/') ||
                              location.pathname.startsWith('/candidate/profile/edit') ||
+                             location.pathname.startsWith('/candidate/wallet/transactions') ||
                              location.pathname.startsWith('/jobs/');
     const isChatRoute = location.pathname.includes('/chat');
 

@@ -193,7 +193,8 @@ function CandidateWalletPage() {
                 return (
                   <div
                     key={tx.id}
-                    className="flex items-center gap-4 rounded-[24px] bg-white p-4 shadow-[0_12px_32px_rgba(15,23,42,0.06)] transition-transform active:scale-[0.99]"
+                    onClick={() => navigate({ to: '/candidate/wallet/transactions/$transactionId', params: { transactionId: tx.id } })}
+                    className="flex items-center gap-4 rounded-[24px] bg-white p-4 shadow-[0_12px_32px_rgba(15,23,42,0.06)] transition-transform active:scale-[0.99] cursor-pointer"
                   >
                     <div
                       className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${
