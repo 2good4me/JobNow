@@ -1,237 +1,257 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { useAuth } from '@/features/auth/context/AuthContext';
+import { createFileRoute } from '@tanstack/react-router';
 import { useAllJobs } from '@/features/jobs/hooks/useAllJobs';
-import { useMyApplicationsRealtime } from '@/features/jobs/hooks/useMyApplicationsRealtime';
-import { useWishlistJobs } from '@/features/jobs/hooks/useWishlistJobs';
 import { JobCard } from '@/features/jobs/components/JobCard';
-import { useState } from 'react';
+import { JobMapView } from '@/features/jobs/components/JobMapView';
+import { useNearbyJobs } from '@/features/jobs/hooks/useNearbyJobs';
+import { mapJobDocToJob } from '@/features/jobs/services/adapters';
+import { mapNearbyApiToJobDocSafe } from '@/features/jobs/services/jobSearchService';
+import { useEffect, useMemo, useState } from 'react';
 
 export const Route = createFileRoute('/candidate/')({ component: CandidateDashboard });
 
 const CATEGORIES = [
-  { label: 'Tất cả', icon: 'bolt', color: 'indigo' },
-  { label: 'F&B', icon: 'coffee', color: 'orange' },
-  { label: 'Giao hàng', icon: 'local_shipping', color: 'sky' },
-  { label: 'Bán hàng', icon: 'shopping_bag', color: 'pink' },
-  { label: 'Sự kiện', icon: 'event', color: 'violet' },
+  { label: 'Tất cả' },
+  { label: 'F&B' },
+  { label: 'Giao hàng' },
+  { label: 'Văn phòng' },
+  { label: 'Lao động chân tay' },
 ];
 
-function getGreeting() {
-  const hour = new Date().getHours();
-  if (hour < 6) return 'Chào đêm khuya';
-  if (hour < 12) return 'Chào buổi sáng';
-  if (hour < 18) return 'Chào buổi chiều';
-  return 'Chào buổi tối';
-}
-
 function CandidateDashboard() {
-  const navigate = useNavigate();
-  const { userProfile } = useAuth();
   const { data: jobs = [], isLoading, isError } = useAllJobs();
   const [activeCategory, setActiveCategory] = useState('Tất cả');
-  const [selectedDistrict, setSelectedDistrict] = useState('Hà Đông');
-  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const [viewMode, setViewMode] = useState<'map' | 'list'>('list');
+  const [mapLocation, setMapLocation] = useState<{ lat: number; lng: number; address?: string } | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
-  const DISTRICTS = [
-    'Ba Đình', 'Hoàn Kiếm', 'Tây Hồ', 'Long Biên', 'Cầu Giấy',
-    'Đống Đa', 'Hai Bà Trưng', 'Hoàng Mai', 'Thanh Xuân',
-    'Nam Từ Liêm', 'Bắc Từ Liêm', 'Hà Đông'
-  ];
+  const matchesJobFilters = (job: any) => {
+    // Search filter
+    if (searchText) {
+      const text = `${job.title} ${job.employerName} ${job.description}`.toLowerCase();
+      if (!text.includes(searchText.toLowerCase())) return false;
+    }
 
-  const { data: applications = [] } = useMyApplicationsRealtime({
-    candidateId: userProfile?.uid,
-    limit: 100,
-  });
-
-  const { data: wishlistJobs = [] } = useWishlistJobs(userProfile?.uid);
-
-  const activeShiftsCount = applications.filter(
-    (app) => app.status === 'APPROVED' || app.status === 'CHECKED_IN'
-  ).length;
-  const totalAppliedCount = applications.length;
-  const totalWishlistCount = wishlistJobs.length;
-  const heroMessage = activeShiftsCount
-    ? `Bạn đang có ${activeShiftsCount} ca trong tiến trình`
-    : 'Khám phá ca làm mới để tích điểm nhanh hơn';
-
-  const greeting = getGreeting();
-
-  const filteredJobs = jobs.filter((job: any) => {
+    // Category filter
     if (activeCategory !== 'Tất cả') {
       const text = `${job.title} ${job.description}`.toLowerCase();
       let categoryMatch = false;
-      if (activeCategory === 'F&B') categoryMatch = text.includes('phục vụ') || text.includes('pha chế') || text.includes('nhà hàng') || text.includes('f&b');
-      else if (activeCategory === 'Giao hàng') categoryMatch = text.includes('giao hàng') || text.includes('shipper');
-      else if (activeCategory === 'Bán hàng') categoryMatch = text.includes('bán hàng') || text.includes('sale') || text.includes('thu ngân');
-      else if (activeCategory === 'Sự kiện') categoryMatch = text.includes('sự kiện') || text.includes('event') || text.includes('pg');
-
+      if (activeCategory === 'F&B') categoryMatch = text.includes('phục vụ') || text.includes('pha chế') || text.includes('nhà hàng') || text.includes('f&b') || text.includes('coffee');
+      else if (activeCategory === 'Giao hàng') categoryMatch = text.includes('giao hàng') || text.includes('shipper') || text.includes('kho vận');
+      else if (activeCategory === 'Văn phòng') categoryMatch = text.includes('văn phòng') || text.includes('cộng tác viên') || text.includes('sale') || text.includes('thu ngân');
+      else if (activeCategory === 'Lao động chân tay') categoryMatch = text.includes('lao động') || text.includes('kho') || text.includes('bốc xếp') || text.includes('sự kiện') || text.includes('event');
       if (!categoryMatch) return false;
     }
-
-    const address = (job.location?.address || job.address || '').toLowerCase();
-    if (!address.includes(selectedDistrict.toLowerCase())) {
-      return false;
-    }
     return true;
+  };
+
+  const filteredJobs = jobs.filter(matchesJobFilters);
+
+  useEffect(() => {
+    if (viewMode !== 'map' || mapLocation) return;
+
+    const fallbackJob = filteredJobs.find((job: any) => job.location?.latitude && job.location?.longitude);
+
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      if (fallbackJob) {
+        setMapLocation({
+          lat: fallbackJob.location.latitude,
+          lng: fallbackJob.location.longitude,
+          address: fallbackJob.location.address || fallbackJob.address || 'Khu vực có việc làm',
+        });
+      }
+      setLocationError('Thiết bị không hỗ trợ lấy vị trí hiện tại. Đã chuyển sang khu vực có việc làm gần nhất.');
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setMapLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          address: 'Vị trí của bạn',
+        });
+        setLocationError(null);
+        setIsLocating(false);
+      },
+      () => {
+        if (fallbackJob) {
+          setMapLocation({
+            lat: fallbackJob.location.latitude,
+            lng: fallbackJob.location.longitude,
+            address: fallbackJob.location.address || fallbackJob.address || 'Khu vực có việc làm',
+          });
+        }
+        setLocationError('Không lấy được GPS. Bạn vẫn có thể bấm trực tiếp lên bản đồ để xem việc làm quanh đó.');
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+    );
+  }, [filteredJobs, mapLocation, viewMode]);
+
+  const {
+    data: nearbyJobsRaw = [],
+    isLoading: isNearbyLoading,
+    isError: isNearbyError,
+  } = useNearbyJobs({
+    lat: mapLocation?.lat ?? 0,
+    lng: mapLocation?.lng ?? 0,
+    radius: 5000,
+    enabled: viewMode === 'map' && !!mapLocation,
   });
+
+  const nearbyJobs = useMemo(
+    () =>
+      nearbyJobsRaw
+        .map((job) => mapJobDocToJob(job.id, mapNearbyApiToJobDocSafe(job)))
+        .filter(matchesJobFilters),
+    [nearbyJobsRaw, activeCategory, searchText]
+  );
 
   if (isLoading || isError) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6 text-center">
+      <div className="min-h-screen bg-[#F2F4F6] flex flex-col items-center justify-center p-6 text-center">
         {isLoading ? (
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <div className="w-12 h-12 border-4 border-[#006399] border-t-transparent rounded-full animate-spin mb-4" />
         ) : (
           <span className="material-symbols-outlined text-rose-500 text-5xl mb-4">error</span>
         )}
-        <p className="text-slate-600 font-medium">{isLoading ? 'Đang tải trang chủ...' : 'Không thể tải dữ liệu. Vui lòng thử lại sau.'}</p>
+        <p className="text-[#45464D] font-medium">{isLoading ? 'Đang tải trang chủ...' : 'Không thể tải dữ liệu. Vui lòng thử lại sau.'}</p>
       </div>
     );
   }
 
-  const heroStats = [
-    { label: 'Đã ứng tuyển', value: totalAppliedCount, accent: 'bg-amber-50/80', icon: 'description' },
-    { label: 'Ca đang theo dõi', value: activeShiftsCount, accent: 'bg-emerald-50/80', icon: 'schedule' },
-    { label: 'Đã lưu', value: totalWishlistCount, accent: 'bg-rose-50/80', icon: 'favorite' },
-  ];
-
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-28 font-body">
-      <section className="relative overflow-hidden bg-[#0F172A] px-5 pt-12 pb-10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,#3b82f6_0%,#0f172a_60%,#020617_100%)] opacity-60" />
-        <div className="absolute top-8 left-5 w-20 h-20 bg-white/5 rounded-full blur-[80px]" />
-        <div className="absolute bottom-0 right-0 w-48 h-48 bg-[#2dd4bf]/20 rounded-full blur-[90px]" />
-        <div className="relative z-10 space-y-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[12px] uppercase tracking-[0.6em] text-blue-200/80">{greeting}</p>
-              <h1 className="text-white text-3xl font-headline font-black tracking-tight mt-2">
-                {userProfile?.full_name || 'Bạn'} đang sẵn sàng
-              </h1>
+    <div className="min-h-screen bg-[#F2F4F6] pb-28 font-body">
+      {/* Content */}
+      <main className="pb-4 min-h-screen">
+        {/* Search & Filter Section */}
+        <section className="px-6 pt-6 pb-2 space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="flex-1 flex items-center bg-white rounded-2xl px-4 py-3 shadow-[0_4px_24px_-2px_rgba(124,131,155,0.04)] group focus-within:ring-2 focus-within:ring-[#006399]/20 transition-all">
+              <span className="material-symbols-outlined text-[#45464D] mr-3">search</span>
+              <input
+                className="bg-transparent border-none focus:ring-0 focus:outline-none w-full text-sm font-medium placeholder:text-[#76777D]"
+                placeholder="Tìm kiếm công việc..."
+                type="text"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+              />
             </div>
-            <button className="w-12 h-12 rounded-2xl bg-white/10 border border-white/30 flex items-center justify-center relative text-white font-bold shadow-lg shadow-slate-900/30">
-              <span className="material-symbols-outlined text-xl">notifications</span>
-              <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-[#0F172A]"></span>
+            <button className="bg-white p-3.5 rounded-2xl shadow-[0_4px_24px_-2px_rgba(124,131,155,0.04)] hover:bg-[#E6E8EA] transition-colors">
+              <span className="material-symbols-outlined text-[#191C1E]">tune</span>
             </button>
           </div>
-          <p className="text-blue-100 text-[15px] max-w-xl">{heroMessage}</p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <button
-              onClick={() => navigate({ to: '/jobs' })}
-              className="flex items-center gap-3 rounded-[1.5rem] border border-white/20 bg-white/10 px-4 py-3 text-left text-white shadow-[0_20px_40px_rgba(15,23,42,0.35)] transition-all hover:-translate-y-0.5"
-            >
-              <span className="material-symbols-outlined text-2xl text-blue-200">search</span>
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.4em] text-blue-200/80">Tìm việc</p>
-                <p className="text-base font-bold">Tìm việc phù hợp ngay</p>
-              </div>
-            </button>
-            <button
-              onClick={() => setShowLocationPicker(!showLocationPicker)}
-              className="flex items-center gap-3 rounded-[1.5rem] border border-white/20 bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-3 text-white shadow-[0_20px_40px_rgba(15,23,42,0.35)]"
-            >
-              <span className="material-symbols-outlined text-2xl">location_on</span>
-              <div className="text-left">
-                <p className="text-[11px] uppercase tracking-[0.4em] text-white/80">Vị trí</p>
-                <p className="text-base font-bold">{selectedDistrict}</p>
-              </div>
-            </button>
-          </div>
-        </div>
-        {showLocationPicker && (
-          <div className="absolute inset-x-5 -bottom-12 rounded-[2rem] bg-white p-5 shadow-2xl border border-slate-100 z-20">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-slate-900 font-bold">Chọn khu vực</h3>
-              <button onClick={() => setShowLocationPicker(false)} className="text-slate-400">
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              {DISTRICTS.map((district) => (
-                <button
-                  key={district}
-                  onClick={() => {
-                    setSelectedDistrict(district);
-                    setShowLocationPicker(false);
-                  }}
-                  className={`rounded-2xl px-3 py-2 text-sm font-bold transition-colors ${
-                    selectedDistrict === district
-                      ? 'bg-slate-900 text-white border border-slate-800'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  {district}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </section>
 
-      <section className="px-5 -mt-10 relative z-10 space-y-4">
-        <div className="grid gap-4 md:grid-cols-3">
-          {heroStats.map(({ label, value, accent, icon }) => (
-            <Link
-              key={label}
-              to={
-                label === 'Ca đang theo dõi'
-                  ? '/candidate/shifts'
-                  : label === 'Đã lưu'
-                    ? '/candidate/wishlist'
-                    : '/candidate/applications'
-              }
-              className="rounded-3xl border border-slate-100 bg-white p-5 shadow-lg shadow-slate-900/5 flex flex-col gap-4 transition-all hover:-translate-y-0.5"
+          {/* View Switcher */}
+          <div className="bg-[#E6E8EA] p-1 rounded-2xl flex items-center max-w-[280px]">
+            <button
+              onClick={() => setViewMode('map')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm transition-all ${
+                viewMode === 'map'
+                  ? 'bg-white font-bold text-[#006399] shadow-[0_4px_24px_-2px_rgba(124,131,155,0.04)]'
+                  : 'font-semibold text-[#45464D] hover:text-[#191C1E]'
+              }`}
             >
-              <div className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl ${accent}`}>
-                <span className="material-symbols-outlined text-xl text-slate-700">{icon}</span>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.4em] text-slate-400">{label}</p>
-                <p className="text-3xl font-headline font-black text-slate-900">{value}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="px-5 mt-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.5em] text-slate-500">Đổi mới</p>
-            <h2 className="text-2xl font-headline font-black text-slate-900">Việc làm gợi ý</h2>
+              <span className="material-symbols-outlined text-[20px]">map</span>
+              Bản đồ
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm transition-all ${
+                viewMode === 'list'
+                  ? 'bg-white font-bold text-[#006399] shadow-[0_4px_24px_-2px_rgba(124,131,155,0.04)]'
+                  : 'font-semibold text-[#45464D] hover:text-[#191C1E]'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[20px]">list</span>
+              Danh sách
+            </button>
           </div>
-          <Link
-            to="/jobs"
-            className="inline-flex items-center gap-2 text-sm font-bold text-blue-600"
-          >
-            Xem tất cả
-            <span className="material-symbols-outlined">arrow_forward</span>
-          </Link>
-        </div>
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 hide-scrollbar">
-          {CATEGORIES.map(({ label, icon }) => (
+        </section>
+
+        {/* Category Horizontal Scroll */}
+        <section className="overflow-x-auto no-scrollbar hide-scrollbar flex items-center gap-3 px-6 py-4">
+          {CATEGORIES.map(({ label }) => (
             <button
               key={label}
               onClick={() => setActiveCategory(label)}
-              className={`flex items-center gap-2 rounded-[1.8rem] border px-4 py-2 text-sm font-bold transition-all whitespace-nowrap ${
+              className={`whitespace-nowrap px-6 py-2.5 rounded-full font-semibold text-sm transition-colors ${
                 activeCategory === label
-                  ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-lg shadow-blue-100'
-                  : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+                  ? 'bg-[#131B2E] text-white'
+                  : 'bg-[#E6E8EA] text-[#45464D] hover:bg-[#E0E3E5]'
               }`}
             >
-              <span className="material-symbols-outlined text-base">{icon}</span>
               {label}
             </button>
           ))}
-        </div>
-        <div className="space-y-4">
-          {filteredJobs.length === 0 ? (
-            <div className="rounded-[2.5rem] border-2 border-dashed border-slate-200 bg-white/80 p-10 text-center text-slate-500">
-              <span className="material-symbols-outlined text-5xl text-slate-300 mb-4 block">search_off</span>
-              <h3 className="text-lg font-bold text-slate-900 mb-1">Không tìm thấy việc làm</h3>
-              <p className="text-sm">Thử thay đổi khu vực, bộ lọc hoặc tần suất để mở rộng danh sách.</p>
+        </section>
+
+        {/* Job List / Map */}
+        <section className="px-6 space-y-4 mt-2">
+          {viewMode === 'map' ? (
+            <div className="space-y-4">
+              <div className="rounded-3xl bg-white p-4 shadow-[0_4px_24px_-2px_rgba(124,131,155,0.04)]">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#76777D]">Việc làm quanh đây</p>
+                    <h3 className="mt-1 text-lg font-headline font-bold text-[#191C1E]">
+                      Bấm lên bản đồ để xem công việc gần khu vực bạn chọn
+                    </h3>
+                    <p className="mt-1 text-sm text-[#45464D]">
+                      {mapLocation?.address || 'Mở bản đồ để lấy vị trí hiện tại hoặc chọn một điểm khác.'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMapLocation(null)}
+                    className="rounded-full bg-[#E6E8EA] px-3 py-2 text-xs font-semibold text-[#191C1E] transition-colors hover:bg-[#D9DDE1]"
+                  >
+                    Định vị lại
+                  </button>
+                </div>
+                {isLocating && (
+                  <p className="mt-3 text-sm font-medium text-[#006399]">Đang lấy vị trí hiện tại...</p>
+                )}
+                {locationError && (
+                  <p className="mt-3 text-sm text-[#B26A00]">{locationError}</p>
+                )}
+                {isNearbyError && (
+                  <p className="mt-3 text-sm text-rose-600">Không tải được việc làm gần đây. Bạn hãy bấm lại một vị trí khác trên bản đồ.</p>
+                )}
+              </div>
+
+              <JobMapView
+                jobs={nearbyJobs}
+                selectedLocation={mapLocation}
+                onSelectLocation={(location) => {
+                  setMapLocation(location);
+                  setLocationError(null);
+                }}
+                detailVariant="candidate"
+              />
+
+              <div className="rounded-3xl bg-white p-4 shadow-[0_4px_24px_-2px_rgba(124,131,155,0.04)]">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-bold text-[#191C1E]">Công việc gần điểm đã chọn</h3>
+                    <p className="mt-1 text-sm text-[#45464D]">
+                      {isNearbyLoading ? 'Đang tìm việc làm trong bán kính 5km...' : `${nearbyJobs.length} công việc phù hợp trong bán kính 5km.`}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : filteredJobs.length === 0 ? (
+            <div className="bg-white rounded-xl p-10 text-center shadow-[0_4px_24px_-2px_rgba(124,131,155,0.04)]">
+              <span className="material-symbols-outlined text-5xl text-[#C6C6CD] mb-4 block">search_off</span>
+              <h3 className="text-lg font-headline font-bold text-[#191C1E] mb-1">Không tìm thấy việc làm</h3>
+              <p className="text-sm text-[#45464D]">Thử thay đổi bộ lọc hoặc từ khóa để mở rộng danh sách.</p>
             </div>
           ) : (
-            filteredJobs.slice(0, 10).map((job: any) => (
+            filteredJobs.slice(0, 15).map((job: any) => (
               <JobCard
                 key={job.id}
                 id={job.id}
@@ -245,36 +265,8 @@ function CandidateDashboard() {
               />
             ))
           )}
-        </div>
-      </section>
-
-      <section className="px-5 mt-8 space-y-4">
-        <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white">
-              <span className="material-symbols-outlined text-2xl">event_upcoming</span>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-[0.4em] text-slate-400">Hôm nay</p>
-              <h3 className="text-xl font-headline font-black text-slate-900">
-                {activeShiftsCount > 0 ? `${activeShiftsCount} ca đang chờ` : 'Không có ca nào'}
-              </h3>
-              <p className="text-sm text-slate-500">
-                {activeShiftsCount > 0
-                  ? 'Bám sát tiến trình để nhận tiền kịp thời.'
-                  : 'Khám phá việc làm mới và đăng ký liền tay.'}
-              </p>
-            </div>
-          </div>
-          <Link
-            to="/candidate/shifts"
-            className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-bold text-white"
-          >
-            Quản lý ca
-            <span className="material-symbols-outlined">arrow_forward</span>
-          </Link>
-        </div>
-      </section>
+        </section>
+      </main>
     </div>
   );
 }

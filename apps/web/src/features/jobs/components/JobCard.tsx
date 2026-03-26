@@ -60,60 +60,56 @@ export function JobCard({
                     params: { jobId: id },
                 } as any);
             }}
-            className="group bg-white rounded-3xl p-5 flex items-start gap-4 cursor-pointer hover:bg-slate-50 transition-all duration-300 shadow-sm border border-slate-100/50 active:scale-[0.98]"
+            className="bg-white rounded-xl p-5 flex flex-col gap-4 relative overflow-hidden group hover:translate-y-[-2px] transition-transform cursor-pointer shadow-[0_4px_24px_-2px_rgba(124,131,155,0.04)]"
         >
-            <div className="relative shrink-0">
-                <div className="w-16 h-16 rounded-2xl overflow-hidden border border-slate-100 bg-white shadow-sm flex items-center justify-center p-1">
-                    <img src={logoUrl} alt={companyName} className="w-full h-full object-contain rounded-xl" />
-                </div>
-                {hasVerifiedBadge && (
-                    <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-sm">
-                        <span className="material-symbols-outlined text-emerald-500 text-[18px] block" style={{ fontVariationSettings: "'FILL' 1" }}>
-                            verified
-                        </span>
+            {/* Top Section: Logo + Title + Company + Badge */}
+            <div className="flex items-start justify-between">
+                <div className="flex gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-[#ECEEF0] overflow-hidden flex-shrink-0">
+                        <img src={logoUrl} alt={companyName} className="w-full h-full object-cover" />
                     </div>
-                )}
+                    <div>
+                        <h3 className="font-headline font-bold text-lg text-[#191C1E] leading-tight">{title}</h3>
+                        <p className="text-[#45464D] text-sm mt-1 font-medium flex items-center gap-1">
+                            {companyName}
+                            {hasVerifiedBadge && (
+                                <span className="text-amber-500 flex items-center">
+                                    <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                                    4.8
+                                </span>
+                            )}
+                        </p>
+                    </div>
+                </div>
             </div>
 
-            <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-start mb-1">
-                    <h3 className="font-headline font-bold text-[17px] text-slate-900 leading-tight truncate group-hover:text-blue-700 transition-colors">
-                        {title}
-                    </h3>
-                    <button
-                        type="button"
-                        onClick={handleToggleWishlist}
-                        disabled={toggleWishlistMutation.isPending}
-                        className={`transition-all shrink-0 p-2 rounded-xl flex items-center justify-center ${isWishlisted
-                                ? 'bg-rose-50 text-rose-500'
-                                : 'bg-slate-50 text-slate-400 hover:text-rose-500 hover:bg-rose-50'
-                            }`}
+            {/* Bottom Section: Salary + Meta + Bookmark */}
+            <div className="flex items-center justify-between border-t border-[#F2F4F6] pt-4">
+                <div className="flex flex-col">
+                    <span className="text-[#006399] font-bold text-lg">{wage}</span>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className="text-[#45464D] text-xs">{distance}</span>
+                        <span className="w-1 h-1 rounded-full bg-[#C6C6CD]" />
+                        <span className="text-[#45464D] text-xs">{shift}</span>
+                    </div>
+                </div>
+                <button
+                    type="button"
+                    onClick={handleToggleWishlist}
+                    disabled={toggleWishlistMutation.isPending}
+                    className={`p-2.5 rounded-full transition-colors ${
+                        isWishlisted
+                            ? 'bg-[#006399]/20 text-[#006399]'
+                            : 'bg-[#006399]/10 text-[#006399] hover:bg-[#006399]/20'
+                    }`}
+                >
+                    <span
+                        className="material-symbols-outlined"
+                        style={{ fontVariationSettings: isWishlisted ? "'FILL' 1" : "'FILL' 0" }}
                     >
-                        <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isWishlisted ? "'FILL' 1" : "'FILL' 0" }}>
-                            favorite
-                        </span>
-                    </button>
-                </div>
-
-                <div className="flex items-center gap-1.5 text-[13px] text-slate-500 mb-3 font-medium">
-                    <span className="truncate">{companyName}</span>
-                    <span className="text-slate-300">•</span>
-                    <span className="flex items-center gap-0.5 shrink-0">
-                        <span className="material-symbols-outlined text-[14px]">map</span>
-                        {distance}
+                        bookmark
                     </span>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                    <div className="bg-slate-100/80 text-slate-600 text-[11px] px-3 py-1.5 rounded-xl font-bold uppercase tracking-wider flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[13px]">schedule</span>
-                        {shift}
-                    </div>
-                    <div className="bg-blue-50 text-blue-700 text-[11px] px-3 py-1.5 rounded-xl font-bold uppercase tracking-wider flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[13px]">payments</span>
-                        {wage}
-                    </div>
-                </div>
+                </button>
             </div>
         </div>
     );

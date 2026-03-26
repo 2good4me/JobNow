@@ -1,4 +1,4 @@
-import { createRootRoute, Outlet, useNavigate, useLocation, Link } from '@tanstack/react-router';
+import { createRootRoute, Outlet, useNavigate, useLocation, Link, ScrollRestoration } from '@tanstack/react-router';
 import { BriefcaseBusiness } from 'lucide-react';
 import { useAuth } from '../features/auth/context/AuthContext';
 import { useEffect } from 'react';
@@ -123,6 +123,7 @@ function RootLayout() {
     const isFullScreenFlow = location.pathname.startsWith('/employer/post-job') || 
                              location.pathname.startsWith('/candidate/jobs/') || 
                              location.pathname.startsWith('/candidate/employer/') ||
+                             location.pathname.startsWith('/candidate/profile/edit') ||
                              location.pathname.startsWith('/jobs/');
     const isChatRoute = location.pathname.includes('/chat');
 
@@ -167,6 +168,7 @@ function RootLayout() {
 
     return (
         <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
+            <ScrollRestoration />
             {/* ── Global Header ─────────────────── */}
             {!isFullScreenFlow && <GlobalHeader isAppLayout={isAppLayout} />}
 
@@ -176,7 +178,7 @@ function RootLayout() {
             </main>
 
             {/* ── Bottom Navs (hidden during full-screen wizard flows) ── */}
-            {isCandidateRoute && <CandidateBottomNav />}
+            {isCandidateRoute && !isFullScreenFlow && <CandidateBottomNav />}
             {isEmployerRoute && !isFullScreenFlow && <EmployerBottomNav />}
 
             {/* ── Footer (Guest only) ─────────── */}

@@ -171,6 +171,7 @@ function CandidateProfilePage() {
                     {[
                         { icon: 'favorite', label: 'Việc đã lưu', href: '/candidate/wishlist', fill: false },
                         { icon: 'stars', label: 'Điểm uy tín', href: '/candidate/profile/reputation', fill: true },
+                        { icon: 'help', label: 'Trung tâm trợ giúp & FAQ', href: '/support-center', fill: false },
                         { icon: 'settings', label: 'Cài đặt', href: '/candidate/profile/settings', fill: false },
                     ].map((item) => (
                         <Link
