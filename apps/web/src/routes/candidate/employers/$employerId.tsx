@@ -11,7 +11,7 @@ import {
   Clock
 } from 'lucide-react';
 
-export const Route = createFileRoute('/candidate/employer/$employerId')({
+export const Route = createFileRoute('/candidate/employers/$employerId')({
   component: EmployerProfileComponent,
 });
 
@@ -155,9 +155,9 @@ function EmployerProfileComponent() {
             <h3 className="font-bold text-lg">Đang tuyển</h3>
             <Link to="/candidate/jobs" className="text-[#006399] text-sm font-semibold">Xem tất cả</Link>
           </div>
-          <div className="flex gap-4 overflow-x-auto px-4 pb-4 no-scrollbar border-b border-slate-100">
+          <div className="flex gap-4 overflow-x-auto px-4 pb-4 no-scrollbar">
             {activeJobs.map((job) => (
-              <div key={job.id} className="min-w-[200px] bg-white p-5 rounded-3xl shadow-sm border border-slate-100 mb-2">
+              <div key={job.id} className="min-w-[200px] bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                 <span className="text-[10px] font-bold text-[#005236] bg-[#6ffbbe]/30 px-2 py-0.5 rounded-full uppercase mb-3 inline-block">
                   {job.type}
                 </span>
@@ -197,19 +197,19 @@ function EmployerProfileComponent() {
         </section>
       </main>
 
-      {/* Sticky Bottom Action Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-[55] bg-white/95 backdrop-blur-xl border-t border-slate-200/50 shadow-[0_-2px_12px_rgba(0,0,0,0.06)] pb-safe">
-        <div className="flex items-center gap-3 max-w-[375px] mx-auto px-4 py-3">
-          <button className="flex-1 h-11 flex items-center justify-center gap-2 border border-[#006399] text-[#006399] rounded-xl font-bold text-[13px] hover:bg-sky-50 transition-all active:scale-95 bg-white">
-            <UserPlus size={18} />
+      {/* Bottom Action Bar */}
+      <nav className="fixed bottom-0 left-0 w-full bg-white border-t border-slate-100 p-4 pb-8 z-50">
+        <div className="flex gap-3 max-w-[375px] mx-auto">
+          <button className="flex-1 h-[48px] flex items-center justify-center gap-2 border border-[#006399] text-[#006399] rounded-xl font-semibold text-sm hover:bg-sky-50 transition-colors active:scale-95">
+            <UserPlus size={20} />
             Theo dõi
           </button>
-          <button className="flex-1 h-11 flex items-center justify-center gap-2 bg-gradient-to-r from-[#0369A1] to-[#004F7B] text-white rounded-xl font-bold text-[13px] hover:shadow-md transition-all active:scale-95 shadow-sm shadow-[#0369A1]/20">
-            <MessageSquare size={18} />
+          <button className="flex-1 h-[48px] flex items-center justify-center gap-2 bg-[#006399] text-white rounded-xl font-semibold text-sm hover:bg-[#004b74] transition-colors active:scale-95 shadow-sm">
+            <MessageSquare size={20} />
             Nhắn tin
           </button>
         </div>
-      </div>
+      </nav>
     </div>
   );
 }

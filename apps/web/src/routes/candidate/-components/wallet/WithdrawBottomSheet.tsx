@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, ChevronRight, Search, Building2, User, ShieldCheck, ArrowLeft, Check } from 'lucide-react';
+import { X, Search, Building2, Landmark, WalletCards } from 'lucide-react';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useWithdraw } from '@/features/wallet/hooks/useWallet';
 import { toast } from 'sonner';
@@ -25,10 +25,6 @@ const BANKS = [
   { id: 'vib', name: 'VIB', fullName: 'NH TMCP Quốc Tế Việt Nam', color: 'bg-orange-500' },
 ];
 
-const PRESET_AMOUNTS = [50000, 100000, 200000, 500000, 1000000, 2000000];
-
-type Step = 'amount' | 'bank' | 'account' | 'confirm';
-
 function removeVietnameseTones(str: string) {
   if (!str) return '';
   str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
@@ -50,15 +46,13 @@ function removeVietnameseTones(str: string) {
 
 export function WithdrawBottomSheet({ isOpen, onClose, userId, balance }: WithdrawBottomSheetProps) {
   const { userProfile } = useAuth();
-  const [step, setStep] = useState<Step>('amount');
   const [amount, setAmount] = useState<number>(0);
   const [customAmount, setCustomAmount] = useState('');
   const [selectedBank, setSelectedBank] = useState<typeof BANKS[0] | null>(null);
   const [bankAccount, setBankAccount] = useState('');
   const [accountHolder, setAccountHolder] = useState('');
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [password, setPassword] = useState('');
   const [searchBank, setSearchBank] = useState('');
+  const [showBankPicker, setShowBankPicker] = useState(false);
 
   const { mutate: withdraw, isPending } = useWithdraw();
 
@@ -66,16 +60,19 @@ export function WithdrawBottomSheet({ isOpen, onClose, userId, balance }: Withdr
   useEffect(() => {
     if (!isOpen) {
       setTimeout(() => {
-        setStep('amount');
         setAmount(0);
         setCustomAmount('');
         setSelectedBank(null);
         setBankAccount('');
-        setAccountHolder('');
-        setPassword('');
+        setAccountHolder(userProfile?.full_name ? removeVietnameseTones(userProfile.full_name) : '');
+        setSearchBank('');
+        setShowBankPicker(false);
       }, 300);
+      return;
     }
-  }, [isOpen]);
+
+    setAccountHolder(userProfile?.full_name ? removeVietnameseTones(userProfile.full_name) : '');
+  }, [isOpen, userProfile?.full_name]);
 
   if (!isOpen) return null;
 
@@ -87,31 +84,29 @@ export function WithdrawBottomSheet({ isOpen, onClose, userId, balance }: Withdr
     setAmount(num);
   };
 
-  const handleSelectPreset = (val: number) => {
-    const finalVal = val > balance ? balance : val;
-    setAmount(finalVal);
-    setCustomAmount(finalVal.toLocaleString('en-US'));
-  };
-
   const handleBankSelect = (bank: typeof BANKS[0]) => {
     setSelectedBank(bank);
-    setStep('account');
-  };
-
-  const verifyAccount = () => {
-    if (bankAccount.length < 6) return;
-    setIsVerifying(true);
-    // Simulate Napas Banking API call
-    setTimeout(() => {
-      const name = userProfile?.full_name ? removeVietnameseTones(userProfile?.full_name) : 'NGUYEN VAN A';
-      setAccountHolder(name);
-      setIsVerifying(false);
-    }, 1200);
+    setShowBankPicker(false);
   };
 
   const handleSubmit = () => {
-    if (!password) {
-      toast.error('Vui lòng nhập mã OTP/Mật khẩu');
+    if (!selectedBank) {
+      toast.error('Vui lòng chọn ngân hàng nhận tiền');
+      return;
+    }
+
+    if (bankAccount.trim().length < 6) {
+      toast.error('Số tài khoản chưa hợp lệ');
+      return;
+    }
+
+    if (!accountHolder.trim()) {
+      toast.error('Vui lòng nhập tên chủ tài khoản');
+      return;
+    }
+
+    if (amount < 50000) {
+      toast.error('Số tiền rút tối thiểu là 50.000đ');
       return;
     }
 
@@ -119,7 +114,7 @@ export function WithdrawBottomSheet({ isOpen, onClose, userId, balance }: Withdr
       { 
         userId, 
         amount, 
-        bankAccount: `${selectedBank?.name} - ${bankAccount}` 
+        bankAccount: `${selectedBank.name} - ${bankAccount} - ${accountHolder.trim()}`
       },
       {
         onSuccess: () => {
@@ -133,7 +128,7 @@ export function WithdrawBottomSheet({ isOpen, onClose, userId, balance }: Withdr
     );
   };
 
-  const withdrawFee = 1100;
+  const presetAmounts = [50000, 100000, 200000, 500000];
   const filteredBanks = BANKS.filter(b => 
     b.name.toLowerCase().includes(searchBank.toLowerCase()) || 
     b.fullName.toLowerCase().includes(searchBank.toLowerCase())
@@ -142,273 +137,195 @@ export function WithdrawBottomSheet({ isOpen, onClose, userId, balance }: Withdr
   return (
     <>
       <div className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm transition-opacity" onClick={onClose} />
-      <div className="fixed inset-x-0 bottom-0 z-60 bg-white rounded-t-[2.5rem] shadow-2xl p-6 pb-[calc(10px+env(safe-area-inset-bottom))] transform transition-transform animate-in slide-in-from-bottom max-h-[90dvh] flex flex-col">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6 shrink-0">
-          <div className="flex items-center gap-3">
-            {step !== 'amount' && (
-              <button 
-                onClick={() => setStep(step === 'bank' ? 'amount' : step === 'account' ? 'bank' : 'account')}
-                className="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-            )}
-            <h2 className="text-xl font-bold text-slate-800">
-              {step === 'amount' ? 'Rút tiền' : 
-               step === 'bank' ? 'Chọn ngân hàng' :
-               step === 'account' ? 'Thông tin thẻ' : 'Xác nhận'}
-            </h2>
+      <div className="fixed inset-x-0 bottom-0 z-50 max-h-[88dvh] rounded-t-[2rem] bg-white px-5 pb-[calc(18px+env(safe-area-inset-bottom))] pt-5 shadow-2xl animate-in slide-in-from-bottom">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">Withdraw</p>
+            <h2 className="mt-1 text-[22px] font-black tracking-tight text-slate-900">Rút tiền về tài khoản</h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-500">
+              Tiền sẽ về tài khoản trong 1-3 ngày làm việc sau khi giao dịch được duyệt.
+            </p>
           </div>
-          <button onClick={onClose} className="p-2 -mr-2 rounded-full hover:bg-slate-100 text-slate-500">
+          <button onClick={onClose} className="rounded-full p-2 text-slate-500 hover:bg-slate-100">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar pb-20">
-          {/* STEP 1: AMOUNT */}
-          {step === 'amount' && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-              <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-sm font-medium text-slate-500">Số dư khả dụng</span>
-                  <span className="font-bold text-slate-900">{balance.toLocaleString('en-US')}đ</span>
+        <div className="max-h-[calc(88dvh-110px)] overflow-y-auto pb-4">
+          <div className="space-y-5">
+            <div className="rounded-[28px] bg-slate-50 p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">Số dư khả dụng</p>
+                  <p className="mt-2 text-[28px] font-black tracking-tight text-slate-900">
+                    {balance.toLocaleString('vi-VN')}đ
+                  </p>
                 </div>
-                <div className="relative">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0f172a] text-white">
+                  <WalletCards className="h-5 w-5" />
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="text-[12px] font-bold text-slate-500">Số tiền rút</label>
+                  <button
+                    onClick={() => {
+                      setAmount(balance);
+                      setCustomAmount(balance ? balance.toLocaleString('en-US') : '');
+                    }}
+                    className="text-sm font-bold text-emerald-600"
+                  >
+                    Tối đa
+                  </button>
+                </div>
+                <div className="rounded-[24px] bg-white px-4 py-4 shadow-sm shadow-slate-200/60">
                   <input
                     type="text"
                     inputMode="numeric"
                     value={customAmount}
                     onChange={handleAmountChange}
                     placeholder="0"
-                    className="w-full text-center text-4xl font-black text-slate-900 bg-transparent py-4 outline-none placeholder:text-slate-200"
+                    className="w-full bg-transparent text-[30px] font-black tracking-tight text-slate-900 outline-none placeholder:text-slate-300"
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xl font-bold text-slate-400">đ</span>
+                  <p className="mt-2 text-xs text-slate-400">Số tiền rút tối thiểu 50.000đ</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                {PRESET_AMOUNTS.map(amt => (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {presetAmounts.map((preset) => (
                   <button
-                    key={amt}
-                    onClick={() => handleSelectPreset(amt)}
+                    key={preset}
+                    onClick={() => {
+                      const finalAmount = preset > balance ? balance : preset;
+                      setAmount(finalAmount);
+                      setCustomAmount(finalAmount ? finalAmount.toLocaleString('en-US') : '');
+                    }}
                     className={`py-3 px-1 rounded-xl border-2 font-bold text-sm transition-all ${
-                      amount === amt 
-                        ? 'border-red-500 bg-red-50 text-red-600' 
-                        : 'border-slate-100 text-slate-600 active:bg-slate-50'
+                      amount === preset
+                        ? 'border-[#0369a1] bg-sky-50 text-[#0369a1]'
+                        : 'border-transparent bg-white text-slate-600'
                     }`}
                   >
-                    {amt >= 1000000 ? `${amt/1000000}M` : `${amt/1000}k`}
+                    {preset >= 1000000 ? `${preset / 1000000}M` : `${preset / 1000}k`}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            <div className="rounded-[28px] bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.06)]">
+              <div className="flex items-center justify-between">
+                <label className="text-[12px] font-bold text-slate-500">Ngân hàng nhận tiền</label>
                 <button
-                  onClick={() => handleSelectPreset(balance)}
-                  className="col-span-3 py-3 rounded-xl border-2 border-slate-100 font-bold text-sm text-red-600 text-center"
+                  onClick={() => setShowBankPicker((prev) => !prev)}
+                  className="text-sm font-bold text-[#0369a1]"
                 >
-                  Rút tối đa
+                  {showBankPicker ? 'Đóng' : 'Chọn'}
                 </button>
               </div>
 
               <button
-                disabled={amount < 50000}
-                onClick={() => setStep('bank')}
-                className="w-full py-4 bg-slate-900 text-white font-bold rounded-2xl shadow-lg disabled:opacity-30 transition-all flex items-center justify-center gap-2"
+                onClick={() => setShowBankPicker((prev) => !prev)}
+                className="mt-3 flex w-full items-center gap-3 rounded-[22px] bg-slate-50 px-4 py-4 text-left"
               >
-                Tiếp tục <ChevronRight className="w-5 h-5" />
+                <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${selectedBank?.color ?? 'bg-slate-200'} text-white`}>
+                  <Landmark className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[14px] font-bold text-slate-900">{selectedBank?.name ?? 'Chọn ngân hàng thụ hưởng'}</p>
+                  <p className="truncate text-[12px] text-slate-500">{selectedBank?.fullName ?? 'Hỗ trợ rút tiền về tài khoản nội địa'}</p>
+                </div>
               </button>
-            </div>
-          )}
 
-          {/* STEP 2: BANK LIST */}
-          {step === 'bank' && (
-            <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Tìm kiếm ngân hàng..."
-                  value={searchBank}
-                  onChange={(e) => setSearchBank(e.target.value)}
-                  className="w-full bg-slate-50 border-none rounded-xl py-3 pl-11 pr-4 text-sm focus:ring-2 focus:ring-red-500/20 outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 gap-2">
-                {filteredBanks.map(bank => (
-                  <button
-                    key={bank.id}
-                    onClick={() => handleBankSelect(bank)}
-                    className="flex items-center gap-4 p-4 rounded-2xl border border-slate-100 hover:bg-slate-50 transition-all text-left group"
-                  >
-                    <div className={`w-12 h-12 rounded-xl ${bank.color} flex items-center justify-center text-white font-black text-xs shrink-0 shadow-sm`}>
-                      {bank.id.toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-slate-800 text-[15px]">{bank.name}</p>
-                      <p className="text-[11px] text-slate-400 truncate font-medium">{bank.fullName}</p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-red-500 transition-colors" />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* STEP 3: ACCOUNT INFO */}
-          {step === 'account' && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-              <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <div className={`w-12 h-12 rounded-xl ${selectedBank?.color} flex items-center justify-center text-white font-black text-xs shrink-0`}>
-                  {selectedBank?.id.toUpperCase()}
+              {showBankPicker && (
+                <div className="mt-3 space-y-3 rounded-[24px] bg-slate-50 p-4">
+                  <div className="relative">
+                    <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Tìm ngân hàng"
+                      value={searchBank}
+                      onChange={(e) => setSearchBank(e.target.value)}
+                      className="w-full rounded-2xl bg-white py-3 pl-11 pr-4 text-sm outline-none"
+                    />
+                  </div>
+                  <div className="max-h-52 space-y-2 overflow-y-auto">
+                    {filteredBanks.map((bank) => (
+                      <button
+                        key={bank.id}
+                        onClick={() => handleBankSelect(bank)}
+                        className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors ${
+                          selectedBank?.id === bank.id ? 'bg-white shadow-sm shadow-slate-200/60' : 'bg-transparent hover:bg-white/70'
+                        }`}
+                      >
+                        <div className={`flex h-10 w-10 items-center justify-center rounded-2xl ${bank.color} text-white`}>
+                          <Landmark className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-bold text-slate-900">{bank.name}</p>
+                          <p className="truncate text-[11px] text-slate-500">{bank.fullName}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div>
-                  <p className="font-bold text-slate-800">{selectedBank?.name}</p>
-                  <p className="text-xs text-slate-500">Chuyển tiền nhanh 24/7</p>
-                </div>
-              </div>
+              )}
+            </div>
 
+            <div className="rounded-[28px] bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.06)]">
               <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Số tài khoản / Số thẻ</label>
+                <div>
+                  <label className="mb-2 block text-[12px] font-bold text-slate-500">Số tài khoản</label>
                   <div className="relative">
                     <input
                       type="text"
                       inputMode="numeric"
                       value={bankAccount}
-                      onChange={(e) => setBankAccount(e.target.value)}
-                      onBlur={verifyAccount}
-                      placeholder="Nhập số tài khoản..."
-                      className="w-full bg-white border-2 border-slate-100 rounded-xl px-4 py-4 text-lg font-bold focus:border-red-500 outline-none transition-all pr-12"
+                      onChange={(e) => setBankAccount(e.target.value.replace(/[^0-9]/g, ''))}
+                      placeholder="Nhập số tài khoản ngân hàng"
+                      className="w-full rounded-[22px] bg-slate-50 px-4 py-4 pr-12 text-[15px] font-bold text-slate-900 outline-none"
                     />
-                    <Building2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300" />
+                    <Building2 className="absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-300" />
                   </div>
                 </div>
 
-                {isVerifying ? (
-                  <div className="flex items-center gap-3 p-4 bg-blue-50 text-blue-600 rounded-xl border border-blue-100 animate-pulse">
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span className="text-sm font-bold uppercase tracking-tight">Đang xác thực tài khoản...</span>
-                  </div>
-                ) : accountHolder ? (
-                  <div className="flex items-center gap-3 p-4 bg-emerald-50 text-emerald-700 rounded-xl border border-emerald-100 animate-in zoom-in-95">
-                    <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
-                      <User className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold uppercase opacity-60">Tên chủ tài khoản</p>
-                      <p className="font-black tracking-tight">{accountHolder}</p>
-                    </div>
-                    <Check className="w-5 h-5 ml-auto" />
-                  </div>
-                ) : null}
-              </div>
-
-              <button
-                disabled={!accountHolder || isVerifying}
-                onClick={() => setStep('confirm')}
-                className="w-full py-4 bg-slate-900 text-white font-bold rounded-2xl shadow-lg disabled:opacity-30 transition-all flex items-center justify-center gap-2"
-              >
-                Tiếp tục <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-          )}
-
-          {/* STEP 4: CONFIRMATION */}
-          {step === 'confirm' && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-              <div className="bg-slate-900 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
-                <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/5 rounded-full" />
-                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4">Tóm tắt giao dịch</p>
-                
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-slate-400">Số tiền rút</span>
-                    <span className="font-bold">{amount.toLocaleString()}đ</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-slate-400">Phí dịch vụ</span>
-                    <span className="font-bold">{withdrawFee.toLocaleString()}đ</span>
-                  </div>
-                  <div className="pt-4 border-t border-white/10 flex justify-between items-end">
-                    <span className="text-slate-400 text-sm">Tổng thanh toán</span>
-                    <span className="text-2xl font-black text-red-400">{(amount + withdrawFee).toLocaleString()}đ</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="p-4 bg-slate-50 rounded-2xl space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-400 font-medium">Ngân hàng thụ hưởng</span>
-                    <span className="font-bold text-slate-800">{selectedBank?.name}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-400 font-medium">Chủ tài khoản</span>
-                    <span className="font-bold text-slate-800">{accountHolder}</span>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 ml-1 text-slate-400 font-bold text-[10px] uppercase tracking-widest">
-                    <ShieldCheck className="w-3 h-3" /> Bảo mật 2 lớp
-                  </div>
+                <div>
+                  <label className="mb-2 block text-[12px] font-bold text-slate-500">Tên chủ tài khoản</label>
                   <input
-                    type="password"
-                    maxLength={6}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Nhập mã OTP (6 chữ số)"
-                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-4 px-4 text-center text-2xl font-black tracking-[1em] focus:border-red-500 outline-none transition-all placeholder:tracking-normal placeholder:font-sans placeholder:text-sm placeholder:font-bold"
+                    type="text"
+                    value={accountHolder}
+                    onChange={(e) => setAccountHolder(removeVietnameseTones(e.target.value))}
+                    placeholder="NGUYEN VAN A"
+                    className="w-full rounded-[22px] bg-slate-50 px-4 py-4 text-[15px] font-bold uppercase tracking-[0.04em] text-slate-900 outline-none"
                   />
                 </div>
               </div>
-
-              <button
-                disabled={isPending || !password}
-                onClick={handleSubmit}
-                className="w-full py-4 bg-red-600 hover:bg-red-700 text-white font-black rounded-2xl shadow-xl shadow-red-500/20 active:scale-[0.98] transition-all"
-              >
-                {isPending ? 'Đang xác thực...' : 'Xác nhận rút tiền'}
-              </button>
             </div>
-          )}
-        </div>
 
-        {/* Floating Nav hint for step 1 & 2 */}
-        {(step === 'amount' || step === 'bank') && (
-           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 pointer-events-none">
-             {[1,2,3,4].map(idx => (
-               <div key={idx} className={`h-1.5 rounded-full transition-all duration-300 ${
-                 (step === 'amount' && idx === 1) || (step === 'bank' && idx === 2) 
-                 ? 'w-6 bg-red-500' : 'w-1.5 bg-slate-200'
-               }`} />
-             ))}
-           </div>
-        )}
+            <div className="rounded-[28px] bg-emerald-50 p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[12px] font-bold text-emerald-700">Phí rút: 0đ (miễn phí)</p>
+                  <p className="mt-2 text-sm leading-relaxed text-emerald-800/80">
+                    Tiền sẽ về tài khoản trong 1-3 ngày làm việc. Với giao dịch lỗi, số dư sẽ được hoàn lại tự động.
+                  </p>
+                </div>
+                <div className="rounded-full bg-white/80 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-emerald-700">
+                  Free
+                </div>
+              </div>
+            </div>
+
+            <button
+              disabled={isPending || amount < 50000 || !selectedBank || bankAccount.trim().length < 6 || !accountHolder.trim()}
+              onClick={handleSubmit}
+              className="w-full rounded-[22px] bg-[#0f172a] px-4 py-4 text-sm font-black text-white shadow-lg shadow-slate-300/60 transition-opacity disabled:opacity-40"
+            >
+              {isPending ? 'Đang xử lý...' : 'Xác nhận rút tiền'}
+            </button>
+          </div>
+        </div>
       </div>
     </>
-  );
-}
-
-function RefreshCw(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-      <path d="M21 3v5h-5" />
-      <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-      <path d="M3 21v-5h5" />
-    </svg>
   );
 }

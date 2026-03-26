@@ -1,5 +1,4 @@
 import { useNavigate } from '@tanstack/react-router';
-import { Heart } from 'lucide-react';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useIsJobWishlisted, useToggleWishlist } from '@/features/jobs/hooks/useWishlistJobs';
 import { MouseEvent } from 'react';
@@ -61,42 +60,57 @@ export function JobCard({
                     params: { jobId: id },
                 } as any);
             }}
-            className="bg-white rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:bg-slate-50 transition-colors shadow-sm border border-slate-100"
+            className="group bg-white rounded-3xl p-5 flex items-start gap-4 cursor-pointer hover:bg-slate-50 transition-all duration-300 shadow-sm border border-slate-100/50 active:scale-[0.98]"
         >
-            <div className="relative">
-                <div className="w-[60px] h-[60px] rounded-full overflow-hidden shrink-0 border border-slate-200">
-                    <img src={logoUrl} alt={companyName} className="w-full h-full object-cover bg-slate-50" />
+            <div className="relative shrink-0">
+                <div className="w-16 h-16 rounded-2xl overflow-hidden border border-slate-100 bg-white shadow-sm flex items-center justify-center p-1">
+                    <img src={logoUrl} alt={companyName} className="w-full h-full object-contain rounded-xl" />
                 </div>
                 {hasVerifiedBadge && (
-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full"></div>
+                    <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-sm">
+                        <span className="material-symbols-outlined text-emerald-500 text-[18px] block" style={{ fontVariationSettings: "'FILL' 1" }}>
+                            verified
+                        </span>
+                    </div>
                 )}
             </div>
 
-            <div className="flex-1 min-w-0 py-1">
-                <div className="flex justify-between items-start mb-0.5">
-                    <h3 className="font-bold text-[16px] text-slate-900 truncate pr-2">{title}</h3>
+            <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-start mb-1">
+                    <h3 className="font-headline font-bold text-[17px] text-slate-900 leading-tight truncate group-hover:text-blue-700 transition-colors">
+                        {title}
+                    </h3>
                     <button
                         type="button"
                         onClick={handleToggleWishlist}
                         disabled={toggleWishlistMutation.isPending}
-                        className={`transition-colors shrink-0 p-1.5 rounded-full ${isWishlisted
-                                ? 'bg-red-50 text-red-500 hover:bg-red-100'
-                                : 'bg-slate-50 text-slate-400 hover:text-red-500 hover:bg-slate-100'
+                        className={`transition-all shrink-0 p-2 rounded-xl flex items-center justify-center ${isWishlisted
+                                ? 'bg-rose-50 text-rose-500'
+                                : 'bg-slate-50 text-slate-400 hover:text-rose-500 hover:bg-rose-50'
                             }`}
                     >
-                        <Heart className={`w-4 h-4 ${isWishlisted ? 'fill-current' : ''}`} />
+                        <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isWishlisted ? "'FILL' 1" : "'FILL' 0" }}>
+                            favorite
+                        </span>
                     </button>
                 </div>
 
-                <p className="text-[13px] text-slate-500 mb-2 truncate">
-                    {companyName} <span className="text-slate-300">•</span> {distance}
-                </p>
+                <div className="flex items-center gap-1.5 text-[13px] text-slate-500 mb-3 font-medium">
+                    <span className="truncate">{companyName}</span>
+                    <span className="text-slate-300">•</span>
+                    <span className="flex items-center gap-0.5 shrink-0">
+                        <span className="material-symbols-outlined text-[14px]">map</span>
+                        {distance}
+                    </span>
+                </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                    <div className="bg-blue-50 border border-blue-100 text-blue-600 text-[12px] px-2.5 py-1 rounded-md font-medium">
+                    <div className="bg-slate-100/80 text-slate-600 text-[11px] px-3 py-1.5 rounded-xl font-bold uppercase tracking-wider flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[13px]">schedule</span>
                         {shift}
                     </div>
-                    <div className="bg-emerald-50 border border-emerald-100 text-emerald-600 text-[12px] px-2.5 py-1 rounded-md font-medium">
+                    <div className="bg-blue-50 text-blue-700 text-[11px] px-3 py-1.5 rounded-xl font-bold uppercase tracking-wider flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[13px]">payments</span>
                         {wage}
                     </div>
                 </div>
