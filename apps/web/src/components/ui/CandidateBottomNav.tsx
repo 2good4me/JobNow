@@ -2,7 +2,7 @@ import { Link, useLocation } from '@tanstack/react-router';
 
 const navItems = [
     { to: '/candidate', icon: 'home', label: 'Trang chủ' },
-    { to: '/jobs', icon: 'work', label: 'Việc của tôi' },
+    { to: '/candidate/jobs', icon: 'work', label: 'Việc của tôi' },
     { to: '/candidate/shifts', icon: 'schedule', label: 'Ca làm' },
     { to: '/candidate/wallet', icon: 'wallet', label: 'Ví tiền' },
     { to: '/candidate/profile', icon: 'person', label: 'Hồ sơ' },

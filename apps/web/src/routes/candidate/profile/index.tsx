@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useState } from 'react';
 import { useMyApplicationsRealtime } from '@/features/jobs/hooks/useMyApplicationsRealtime';
+import { getProgressToNextTier, getReputationTier } from '@/features/auth/helpers/reputationHelper';
 
 export const Route = createFileRoute('/candidate/profile/')({
     component: CandidateProfilePage,
@@ -63,6 +64,9 @@ function CandidateProfilePage() {
 
     const displayName = userProfile.full_name || 'Ứng viên';
     const avatarInitial = (userProfile.full_name?.[0] || 'U').toUpperCase();
+    const reputationScore = userProfile.reputation_score || 0;
+    const tierInfo = getReputationTier(reputationScore);
+    const tierProgress = getProgressToNextTier(reputationScore);
 
     return (
         <div className="min-h-[100dvh] bg-slate-50 pb-24">
@@ -105,22 +109,40 @@ function CandidateProfilePage() {
                 {/* Reputation Banner */}
                 <Link
                     to="/candidate/profile/reputation"
-                    className="block w-full text-left bg-gradient-to-r from-blue-50 to-indigo-50/50 rounded-[20px] p-4 border border-blue-100/50 relative overflow-hidden active:scale-[0.98] transition-transform"
+                    className="block w-full text-left bg-gradient-to-r from-emerald-50 to-sky-50/70 rounded-[24px] p-4 border border-emerald-100/70 relative overflow-hidden active:scale-[0.98] transition-transform shadow-[0_10px_30px_rgba(16,185,129,0.08)]"
                 >
-                    {/* Decorative element */}
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
                     
-                    <div className="flex justify-between items-center relative z-10">
-                        <div>
-                            <h3 className="font-headline font-bold text-blue-900 flex items-center gap-1.5 text-sm">
-                                <span className="material-symbols-outlined text-[18px] text-blue-500" style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
+                    <div className="relative z-10 flex items-center gap-4">
+                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-4 ring-emerald-100/80">
+                            <div className="text-center leading-none">
+                                <p className="text-[24px] font-black tracking-tight text-emerald-600">{reputationScore}</p>
+                                <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-400">Điểm</p>
+                            </div>
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                            <h3 className="font-headline font-bold text-slate-900 flex items-center gap-1.5 text-sm">
+                                <span className="material-symbols-outlined text-[18px] text-emerald-500" style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
                                 Điểm uy tín
                             </h3>
-                            <p className="text-[15px] font-semibold text-blue-900 mt-1">Xuất sắc — Top 15%</p>
-                            <p className="text-[13px] text-blue-700/80 mt-0.5">Xác thực danh tính để mở khóa Premium Jobs</p>
+                            <p className="text-[15px] font-semibold text-slate-900 mt-1">
+                                {tierInfo.labelVi} {tierProgress.nextTier ? `— còn ${tierProgress.pointsNeeded} điểm để lên ${tierProgress.nextTier.labelVi}` : '— đang ở hạng cao nhất'}
+                            </p>
+                            <p className="text-[13px] text-slate-600 mt-0.5">
+                                {tierInfo.descriptionVi}
+                            </p>
+
+                            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-white/80">
+                                <div
+                                    className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-sky-500 transition-all"
+                                    style={{ width: `${tierProgress.progressPercent}%` }}
+                                />
+                            </div>
                         </div>
+
                         <div className="w-8 h-8 rounded-full bg-white/60 flex items-center justify-center shadow-sm">
-                            <span className="material-symbols-outlined text-blue-600 text-[18px]">chevron_right</span>
+                            <span className="material-symbols-outlined text-emerald-600 text-[18px]">chevron_right</span>
                         </div>
                     </div>
                 </Link>

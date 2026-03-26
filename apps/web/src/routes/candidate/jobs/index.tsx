@@ -14,9 +14,15 @@ function CandidateJobsPage() {
 
   return (
     <div className="min-h-[100dvh] bg-[#F2F4F6] pb-24 font-sans selection:bg-[#006399]/20 selection:text-[#006399]">
-      {/* Top Tabs */}
-      <div className="bg-white sticky top-14 z-40 border-b border-[#F2F4F6]">
-        <div className="flex px-4 pt-2">
+      {/* Page Title Header — matching Stitch "Đơn ứng tuyển" */}
+      <div className="bg-white sticky top-14 z-40">
+        <div className="px-5 pt-4 pb-2">
+          <h1 className="text-[22px] font-extrabold text-[#191C1E] tracking-tight">
+            {activeTab === 'APPLIED' ? 'Đơn ứng tuyển' : 'Việc đã lưu'}
+          </h1>
+        </div>
+        {/* Tabs */}
+        <div className="flex px-4">
           <button
             onClick={() => setActiveTab('APPLIED')}
             className={`flex-1 text-center font-bold text-[15px] pb-3 border-b-2 transition-colors ${
