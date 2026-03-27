@@ -69,7 +69,7 @@ export async function updateCandidatePublicProfile(
 export async function uploadEkycAssets(uid: string, files: File[]): Promise<string[]> {
     const uploads = files.map(async (file) => {
         const fileRef = ref(storage, `users_private/${uid}/ekyc/${Date.now()}_${file.name}`);
-        await uploadBytes(fileRef, file);
+        await uploadBytes(fileRef, file, { contentType: file.type || 'image/jpeg' });
         return getDownloadURL(fileRef);
     });
 

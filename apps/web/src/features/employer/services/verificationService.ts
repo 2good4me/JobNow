@@ -15,7 +15,7 @@ export const uploadVerificationDocument = async (file: File, employerId: string)
     const fileName = `id_front_${Date.now()}.${fileExt}`;
     const storageRef = ref(storage, `verification_documents/${employerId}/${fileName}`);
 
-    const snapshot = await uploadBytes(storageRef, file);
+    const snapshot = await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
     return await getDownloadURL(snapshot.ref);
 };
 

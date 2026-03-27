@@ -8,7 +8,9 @@ import {
     serverTimestamp,
     updateDoc,
     increment,
+    writeBatch,
 } from 'firebase/firestore';
+
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '@/config/firebase';
 import type { BoostPackage, Job, JobPostingQuota } from '@jobnow/types';
@@ -168,67 +170,111 @@ export async function fetchJobById(jobId: string): Promise<Job | null> {
 }
 
 /**
- * Create a new job posting in Firestore.
+ * Create a new job posting in Firestore directly (bypassing Cloud Function for Spark plan compatibility).
  */
 export async function createJob(jobData: Partial<Job>): Promise<Job> {
     try {
-        const callable = httpsCallable<
-            {
-                categoryId?: string;
-                title: string;
-                description: string;
-                salary: number;
-                salaryType: 'HOURLY' | 'DAILY' | 'PER_SHIFT' | 'MONTHLY';
-                location: { latitude: number; longitude: number; address?: string };
-                isGpsRequired?: boolean;
-                shifts: Array<{ id?: string; name: string; startTime: string; endTime: string; quantity: number }>;
-                vacancies?: number;
-                deadline?: string;
-                requirements?: string[];
-                images?: string[];
-                genderPreference?: 'MALE' | 'FEMALE' | 'ANY';
-                startDate?: string;
-            },
-            { jobId: string }
-        >(functions, 'createJobPosting');
+        console.log('[createJob] v2 - DIRECT FIRESTORE WRITE - START');
+        const { getAuth } = await import('firebase/auth');
 
-        const response = await callable({
-            categoryId: jobData.categoryId,
-            title: String(jobData.title ?? ''),
-            description: String(jobData.description ?? ''),
-            salary: Number(jobData.salary ?? 0),
-            salaryType: (jobData.salaryType ?? 'HOURLY') as 'HOURLY' | 'DAILY' | 'PER_SHIFT' | 'MONTHLY',
-            location: {
-                latitude: Number(jobData.location?.latitude ?? 0),
-                longitude: Number(jobData.location?.longitude ?? 0),
-                address: jobData.location?.address ?? '',
-            },
-            isGpsRequired: jobData.isGpsRequired ?? false,
-            shifts: (jobData.shifts ?? []).map((shift) => ({
-                id: shift.id,
-                name: shift.name,
-                startTime: shift.startTime,
-                endTime: shift.endTime,
-                quantity: shift.quantity,
-            })),
-            vacancies: jobData.vacancies,
-            deadline: typeof jobData.deadline === 'string' ? jobData.deadline : undefined,
-            requirements: jobData.requirements,
-            images: jobData.images,
-            genderPreference: jobData.genderPreference,
-            startDate: jobData.startDate,
+        const auth = getAuth();
+        const user = auth.currentUser;
+        if (!user) throw new Error('Bạn cần đăng nhập để đăng tin.');
+
+        // Fetch employer profile to get name
+        const employerSnap = await getDoc(doc(db, 'users', user.uid));
+        if (!employerSnap.exists()) throw new Error('Không tìm thấy hồ sơ nhà tuyển dụng.');
+        const employerData = employerSnap.data();
+        const employerName = String(
+            employerData.company_name ??
+            employerData.full_name ??
+            employerData.fullName ??
+            'Nhà tuyển dụng JobNow'
+        );
+
+        const shifts = (jobData.shifts ?? []).map((shift, index) => {
+            const id = String(shift.id || `shift_${Date.now()}_${index + 1}`);
+            return {
+                id,
+                name: String(shift.name || `Ca ${index + 1}`),
+                start_time: String(shift.startTime || '08:00'),
+                end_time: String(shift.endTime || '17:00'),
+                quantity: Math.max(Number(shift.quantity || 1), 1),
+                status: 'OPEN',
+            };
         });
 
-        const created = await fetchJobById(response.data.jobId);
-        if (!created) {
-            throw new Error('Không thể tải lại tin sau khi tạo.');
-        }
+        const shiftCapacity: Record<string, { total_slots: number; remaining_slots: number; applied_count: number }> = {};
+        shifts.forEach((s) => {
+            shiftCapacity[s.id] = { total_slots: s.quantity, remaining_slots: s.quantity, applied_count: 0 };
+        });
+
+        const lat = Number(jobData.location?.latitude ?? 0);
+        const lng = Number(jobData.location?.longitude ?? 0);
+
+        const jobRef = doc(collection(db, 'jobs'));
+        const now = serverTimestamp();
+
+        const jobPayload = {
+            employer_id: user.uid,
+            employer_name: employerName,
+            category_id: String(jobData.categoryId ?? ''),
+            title: String(jobData.title ?? '').trim(),
+            description: String(jobData.description ?? '').trim(),
+            salary: Number(jobData.salary ?? 0),
+            salary_type: (jobData.salaryType ? String(jobData.salaryType).toUpperCase() : 'HOURLY'),
+            address: String(jobData.location?.address ?? ''),
+            location: { latitude: lat, longitude: lng },
+            geohash: encodeGeohash(lat, lng),
+            is_gps_required: Boolean(jobData.isGpsRequired ?? false),
+            status: ((jobData.status as string) ?? 'OPEN').toUpperCase() as 'OPEN' | 'ACTIVE' | 'DRAFT',
+            moderation_status: 'PENDING_REVIEW',
+
+            shifts,
+            shift_capacity: shiftCapacity,
+            vacancies: Number(jobData.vacancies ?? shifts.reduce((s, sh) => s + sh.quantity, 0)),
+            deadline: jobData.deadline ?? null,
+            requirements: Array.isArray(jobData.requirements) ? jobData.requirements : [],
+            images: Array.isArray(jobData.images) ? jobData.images : [],
+            gender_preference: String(jobData.genderPreference ?? 'ANY').toUpperCase(),
+            start_date: jobData.startDate ?? null,
+            is_premium: false,
+            is_boosted: false,
+            boost_expires_at: null,
+            created_at: now,
+            updated_at: now,
+        };
+
+        const batch = writeBatch(db);
+        batch.set(jobRef, jobPayload);
+        shifts.forEach((shift) => {
+            const shiftRef = doc(collection(db, 'jobs', jobRef.id, 'shifts'), shift.id);
+            batch.set(shiftRef, {
+                ...shift,
+                job_id: jobRef.id,
+                employer_id: user.uid,
+                created_at: now,
+                updated_at: now,
+            });
+        });
+        console.log('--- FIRESTORE JOB PAYLOAD ---', JSON.stringify(jobPayload, null, 2));
+        await batch.commit();
+
+
+        const created = await fetchJobById(jobRef.id);
+        if (!created) throw new Error('Không thể tải lại tin sau khi tạo.');
         return created;
     } catch (error) {
-        console.error('Error in createJob:', error);
+        console.error('--- FULL CREATE JOB ERROR ---', error);
+        if (error && typeof error === 'object') {
+            const fbError = error as any;
+            console.error('Error Code:', fbError.code);
+            console.error('Error Details:', fbError.details ?? fbError.message);
+        }
         throw new Error((error as { message?: string })?.message || 'Không thể tạo tin tuyển dụng. Vui lòng thử lại sau.');
     }
 }
+
 
 /**
  * Update an existing job posting in Firestore.
@@ -293,17 +339,25 @@ export async function updateJob(jobId: string, data: Partial<Job>): Promise<void
 }
 
 /**
- * Delete a job posting from Firestore.
+ * Delete a job posting directly from Firestore (bypassing Cloud Function for Spark plan).
  */
 export async function deleteJob(jobId: string): Promise<void> {
     try {
-        const callable = httpsCallable<{ jobId: string }, { success: boolean }>(functions, 'deleteJobPosting');
-        await callable({ jobId });
+        const jobRef = doc(db, 'jobs', jobId);
+        // Soft delete: mark as CLOSED then hard delete
+        await updateDoc(jobRef, {
+            status: 'CLOSED',
+            updated_at: serverTimestamp(),
+        });
+        // Then do hard delete
+        const { deleteDoc } = await import('firebase/firestore');
+        await deleteDoc(jobRef);
     } catch (error) {
         console.error('Error in deleteJob:', error);
-        throw new Error('Không thể xoá tin tuyển dụng.');
+        throw new Error('Không thể xoá tin tuyển dụng: ' + (error as { message?: string })?.message);
     }
 }
+
 
 export async function fetchMyJobPostingQuota(): Promise<JobPostingQuota> {
     const callable = httpsCallable<Record<string, never>, JobPostingQuota>(functions, 'getMyJobPostingQuota');

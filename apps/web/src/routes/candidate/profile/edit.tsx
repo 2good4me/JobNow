@@ -143,7 +143,7 @@ function CandidateProfileEditPage() {
         try {
             setIsUploading(true);
             const storageRef = ref(storage, `avatars/${userProfile.uid}/${file.name}`);
-            await uploadBytes(storageRef, file);
+            await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
             const url = await getDownloadURL(storageRef);
             setAvatarUrl(url);
             toast.success('Tải ảnh lên thành công');
@@ -167,7 +167,7 @@ function CandidateProfileEditPage() {
         try {
             setIsUploadingResume(true);
             const storageRef = ref(storage, `resumes/${userProfile.uid}/${file.name}`);
-            await uploadBytes(storageRef, file);
+            await uploadBytes(storageRef, file, { contentType: file.type || 'application/pdf' });
             const url = await getDownloadURL(storageRef);
             setResumeUrl(url);
             toast.success('Tải CV lên thành công');
