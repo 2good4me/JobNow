@@ -7,8 +7,8 @@ import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useCreateJob, useUpdateJob, useJobDetail, useGetCategories, useJobPostingQuota } from '@/features/jobs/hooks/useEmployerJobs';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '@/config/firebase';
+
+
 import type { Job, SalaryType, GenderPreference as GenderPref } from '@jobnow/types';
 
 import Step1Info from './-components/post-job/Step1Info';
@@ -132,6 +132,7 @@ function EmployerPostJobRoute() {
   const displayCategories = remoteCategories && remoteCategories.length > 0 ? remoteCategories : FALLBACK_CATEGORIES;
   const fileInputId = useId();
   const isSubmitting = isCreating || isUpdating;
+  const [globalError, setGlobalError] = useState<string | null>(null);
 
   // Validation for current step
   const validateStep = useCallback((stepNum: number) => {
@@ -187,7 +188,7 @@ function EmployerPostJobRoute() {
     if (step === 1) {
       return (
         form.title.trim().length >= 5 &&
-        form.description.trim().length > 0 &&
+        form.description.trim().length >= 20 &&
         form.category.length > 0 &&
         form.salary.trim().length > 0 &&
         Number(form.salary.replace(/\D/g, '')) >= 0
@@ -307,6 +308,14 @@ function EmployerPostJobRoute() {
     }
   }, [existingJob, editJobId, duplicateJobId]);
 
+  // Keep vacancies in sync with shifts
+  useEffect(() => {
+    const totalVacancies = form.shifts.reduce((acc, shift) => acc + shift.quantity, 0);
+    if (form.vacancies !== totalVacancies) {
+      setForm(prev => ({ ...prev, vacancies: totalVacancies }));
+    }
+  }, [form.shifts, form.vacancies]);
+
   // Load draft on mount
   useEffect(() => {
     if (!editJobId && !duplicateJobId) {
@@ -349,11 +358,14 @@ function EmployerPostJobRoute() {
   const handleSubmit = async () => {
     if (!user?.uid) {
       toast.error('Lỗi xác thực. Không tìm thấy ID nhà tuyển dụng.');
+      setGlobalError('Lỗi xác thực. Không tìm thấy ID nhà tuyển dụng.');
       return;
     }
 
     if (postingQuota && postingQuota.monthlyRemaining <= 0) {
-      toast.error(`Bạn đã dùng hết quota ${postingQuota.monthlyLimit} tin trong tháng này.`);
+      const msg = `Bạn đã dùng hết quota ${postingQuota.monthlyLimit} tin trong tháng này.`;
+      toast.error(msg);
+      setGlobalError(msg);
       return;
     }
 
@@ -363,11 +375,16 @@ function EmployerPostJobRoute() {
       if (!validationResult.success) {
         const zodErrors = validationResult.error.flatten().fieldErrors;
         const errorMap: Partial<Record<keyof JobFormState, string>> = {};
+        const errorMessages: string[] = [];
         Object.entries(zodErrors).forEach(([key, msgs]) => {
-          errorMap[key as keyof JobFormState] = msgs?.[0] || 'Invalid field';
+          const msg = msgs?.[0] || 'Invalid field';
+          errorMap[key as keyof JobFormState] = msg;
+          errorMessages.push(`${key}: ${msg}`);
         });
         setErrors(errorMap);
-        toast.error('Vui lòng kiểm tra lại các trường bị lỗi');
+        const errMsg = `Lỗi thông tin: ${errorMessages.join(', ')}`;
+        toast.error(errMsg);
+        setGlobalError(errMsg);
         return;
       }
 
@@ -375,27 +392,26 @@ function EmployerPostJobRoute() {
       let imageUrls: string[] = [];
       let imageUploadWarning: string | null = null;
       if (form.coverImage) {
-        const fileName = `${Date.now()}_${form.coverImage.name}`;
-        const primaryRef = ref(storage, `job-images/${user.uid}/${fileName}`);
-
         try {
-          await uploadBytes(primaryRef, form.coverImage);
-          const downloadUrl = await getDownloadURL(primaryRef);
-          imageUrls = [downloadUrl];
-        } catch (primaryUploadError) {
-          // Fallback to an owner-writable path so users can still submit when job-images rules are not synced yet.
-          const fallbackRef = ref(storage, `company-logos/${user.uid}/job-cover_${fileName}`);
-          try {
-            await uploadBytes(fallbackRef, form.coverImage);
-            const fallbackUrl = await getDownloadURL(fallbackRef);
-            imageUrls = [fallbackUrl];
-          } catch (fallbackUploadError) {
-            console.error('Image upload failed on both primary and fallback paths', {
-              primaryUploadError,
-              fallbackUploadError,
-            });
-            imageUploadWarning = 'Không thể tải ảnh lên lúc này. Tin vẫn được đăng/cập nhật nhưng chưa có ảnh.';
-          }
+          const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+          const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+          if (!cloudName || !uploadPreset) throw new Error('Cloudinary chưa cấu hình');
+
+          const fd = new FormData();
+          fd.append('file', form.coverImage);
+          fd.append('upload_preset', uploadPreset);
+          fd.append('folder', `jobnow/job-images/${user.uid}`);
+
+          const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+            method: 'POST',
+            body: fd,
+          });
+          if (!res.ok) throw new Error(`Upload lỗi: ${res.status}`);
+          const data = await res.json() as { secure_url: string };
+          imageUrls = [data.secure_url];
+        } catch (uploadError) {
+          console.error('Image upload failed:', uploadError);
+          imageUploadWarning = 'Không thể tải ảnh. Tin vẫn được đăng nhưng chưa có ảnh.';
         }
       } else if (editJobId && existingJob?.images) {
         // Keep existing images when editing without new upload
@@ -433,6 +449,7 @@ function EmployerPostJobRoute() {
         isPremium: form.isPremium,
       };
 
+      console.log('--- SUBMITTING JOB PAYLOAD ---', jobData);
       if (editJobId) {
         // Update existing job
         await updateJob({ jobId: editJobId, data: jobData });
@@ -460,7 +477,14 @@ function EmployerPostJobRoute() {
         return;
       }
 
-      toast.error('Đã xảy ra lỗi khi đăng/cập nhật tin. Vui lòng thử lại.');
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : (typeof error === 'object' && error !== null && 'message' in error) 
+          ? String((error as any).message) 
+          : 'Đã xảy ra lỗi khi đăng/cập nhật tin. Vui lòng thử lại.';
+          
+      toast.error(errorMessage);
+      setGlobalError(`Lỗi backend: ${errorMessage}`);
     }
   };
 
@@ -587,6 +611,12 @@ function EmployerPostJobRoute() {
 
       {/* ── Sticky Action Bar ─────────────────── */}
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200/60 bg-white/90 shadow-[0_-4px_24px_rgba(0,0,0,0.08)] backdrop-blur-xl">
+        {globalError && (
+          <div className="bg-rose-50 border-b border-rose-200 p-3 text-center">
+            <p className="text-sm font-bold text-rose-600">🚨 CHI TIẾT LỖI GÂY RA KHÔNG THỂ ĐĂNG TIN 🚨</p>
+            <p className="text-xs font-semibold text-rose-700 mt-1">{globalError}</p>
+          </div>
+        )}
         <div className="max-w-md mx-auto flex items-center gap-3 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
 
           {/* ── Secondary: Cancel / Back (Ghost style, left-aligned) ── */}

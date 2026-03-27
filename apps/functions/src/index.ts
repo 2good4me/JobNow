@@ -2244,126 +2244,132 @@ export const getMyJobPostingQuota = onCall({ region: 'asia-southeast1' }, async 
 });
 
 export const createJobPosting = onCall<CreateJobPostingInput>({ region: 'asia-southeast1' }, async (request) => {
-  const uid = assertAuth(request);
-  const input = request.data;
+  try {
+    const uid = assertAuth(request);
+    const input = request.data;
 
-  if (!input.title?.trim() || !input.description?.trim() || !Array.isArray(input.shifts) || input.shifts.length === 0) {
-    throw new HttpsError('invalid-argument', 'Thiếu thông tin cơ bản để đăng tin.');
-  }
+    if (!input.title?.trim() || !input.description?.trim() || !Array.isArray(input.shifts) || input.shifts.length === 0) {
+      throw new HttpsError('invalid-argument', 'Thiếu thông tin cơ bản để đăng tin.');
+    }
 
-  const employerRef = db.collection('users').doc(uid);
-  const employerSnap = await employerRef.get();
-  if (!employerSnap.exists) {
-    throw new HttpsError('not-found', 'Không tìm thấy hồ sơ nhà tuyển dụng.');
-  }
+    const employerRef = db.collection('users').doc(uid);
+    const employerSnap = await employerRef.get();
+    if (!employerSnap.exists) {
+      throw new HttpsError('not-found', 'Không tìm thấy hồ sơ nhà tuyển dụng.');
+    }
 
-  const employerData = employerSnap.data() || {};
-  if (String(employerData.role ?? '').toUpperCase() !== 'EMPLOYER') {
-    throw new HttpsError('permission-denied', 'Chỉ nhà tuyển dụng mới có thể đăng tin.');
-  }
+    const employerData = employerSnap.data() || {};
+    if (String(employerData.role ?? '').toUpperCase() !== 'EMPLOYER') {
+      throw new HttpsError('permission-denied', 'Chỉ nhà tuyển dụng mới có thể đăng tin.');
+    }
 
-  const quota = await getJobPostingQuota(uid);
-  const requestedShiftCount = input.shifts.length;
+    const quota = await getJobPostingQuota(uid);
+    const requestedShiftCount = input.shifts.length;
 
-  if (quota.monthlyUsed >= quota.monthlyLimit) {
-    throw new HttpsError(
-      'failed-precondition',
-      `Bạn đã dùng hết quota ${quota.monthlyLimit} tin trong tháng này.`
+    if (quota.monthlyUsed >= quota.monthlyLimit) {
+      throw new HttpsError(
+        'failed-precondition',
+        `Bạn đã dùng hết quota ${quota.monthlyLimit} tin trong tháng này.`
+      );
+    }
+
+    if (quota.activeShiftUsed + requestedShiftCount > quota.activeShiftLimit) {
+      throw new HttpsError(
+        'failed-precondition',
+        `Tài khoản hiện tại chỉ được có tối đa ${quota.activeShiftLimit} ca đang hoạt động cùng lúc.`
+      );
+    }
+
+    const jobRef = db.collection('jobs').doc();
+    const timestamp = FieldValue.serverTimestamp();
+    const employerName = String(
+      employerData.company_name ??
+      employerData.full_name ??
+      employerData.fullName ??
+      'Nhà tuyển dụng JobNow'
     );
-  }
+    const normalizedShifts = input.shifts.map((shift, index) => {
+      const id = String(shift.id ?? normalizeDocumentId(`shift_${Date.now()}_${index + 1}`));
+      return {
+        id,
+        name: String(shift.name ?? `Ca ${index + 1}`),
+        start_time: String(shift.startTime ?? '08:00'),
+        end_time: String(shift.endTime ?? '17:00'),
+        quantity: Math.max(Number(shift.quantity ?? 1), 1),
+        status: 'OPEN',
+      };
+    });
 
-  if (quota.activeShiftUsed + requestedShiftCount > quota.activeShiftLimit) {
-    throw new HttpsError(
-      'failed-precondition',
-      `Tài khoản hiện tại chỉ được có tối đa ${quota.activeShiftLimit} ca đang hoạt động cùng lúc.`
-    );
-  }
+    const shiftCapacity = normalizedShifts.reduce<Record<string, { total_slots: number; remaining_slots: number; applied_count: number }>>((acc, shift) => {
+      acc[shift.id] = {
+        total_slots: shift.quantity,
+        remaining_slots: shift.quantity,
+        applied_count: 0,
+      };
+      return acc;
+    }, {});
 
-  const jobRef = db.collection('jobs').doc();
-  const timestamp = FieldValue.serverTimestamp();
-  const employerName = String(
-    employerData.company_name ??
-    employerData.full_name ??
-    employerData.fullName ??
-    'Nhà tuyển dụng JobNow'
-  );
-  const normalizedShifts = input.shifts.map((shift, index) => {
-    const id = String(shift.id ?? normalizeDocumentId(`shift_${Date.now()}_${index + 1}`));
-    return {
-      id,
-      name: String(shift.name ?? `Ca ${index + 1}`),
-      start_time: String(shift.startTime ?? '08:00'),
-      end_time: String(shift.endTime ?? '17:00'),
-      quantity: Math.max(Number(shift.quantity ?? 1), 1),
-      status: 'OPEN',
+    const jobPayload = {
+      employer_id: uid,
+      employer_name: employerName,
+      category_id: String(input.categoryId ?? ''),
+      title: input.title.trim(),
+      description: input.description.trim(),
+      salary: Number(input.salary ?? 0),
+      salary_type: String(input.salaryType ?? 'HOURLY').toUpperCase(),
+      address: String(input.location?.address ?? ''),
+      location: {
+        latitude: Number(input.location?.latitude ?? 0),
+        longitude: Number(input.location?.longitude ?? 0),
+      },
+      geohash: calculateGeohash(Number(input.location?.latitude ?? 0), Number(input.location?.longitude ?? 0)),
+      is_gps_required: Boolean(input.isGpsRequired ?? true),
+      status: 'DRAFT',
+      moderation_status: 'PENDING_REVIEW',
+      shifts: normalizedShifts,
+      shift_capacity: shiftCapacity,
+      vacancies: Number(input.vacancies ?? normalizedShifts.reduce((sum, shift) => sum + shift.quantity, 0)),
+      deadline: input.deadline ?? null,
+      requirements: Array.isArray(input.requirements) ? input.requirements : [],
+      images: Array.isArray(input.images) ? input.images : [],
+      gender_preference: String(input.genderPreference ?? 'ANY').toUpperCase(),
+      start_date: input.startDate ?? null,
+      is_premium: false,
+      is_boosted: false,
+      boost_expires_at: null,
+      created_at: timestamp,
+      updated_at: timestamp,
     };
-  });
 
-  const shiftCapacity = normalizedShifts.reduce<Record<string, { total_slots: number; remaining_slots: number; applied_count: number }>>((acc, shift) => {
-    acc[shift.id] = {
-      total_slots: shift.quantity,
-      remaining_slots: shift.quantity,
-      applied_count: 0,
-    };
-    return acc;
-  }, {});
-
-  const jobPayload = {
-    employer_id: uid,
-    employer_name: employerName,
-    category_id: String(input.categoryId ?? ''),
-    title: input.title.trim(),
-    description: input.description.trim(),
-    salary: Number(input.salary ?? 0),
-    salary_type: String(input.salaryType ?? 'HOURLY').toUpperCase(),
-    address: String(input.location?.address ?? ''),
-    location: {
-      latitude: Number(input.location?.latitude ?? 0),
-      longitude: Number(input.location?.longitude ?? 0),
-    },
-    geohash: calculateGeohash(Number(input.location?.latitude ?? 0), Number(input.location?.longitude ?? 0)),
-    is_gps_required: Boolean(input.isGpsRequired ?? true),
-    status: 'DRAFT',
-    moderation_status: 'PENDING_REVIEW',
-    shifts: normalizedShifts,
-    shift_capacity: shiftCapacity,
-    vacancies: Number(input.vacancies ?? normalizedShifts.reduce((sum, shift) => sum + shift.quantity, 0)),
-    deadline: input.deadline ?? null,
-    requirements: Array.isArray(input.requirements) ? input.requirements : [],
-    images: Array.isArray(input.images) ? input.images : [],
-    gender_preference: String(input.genderPreference ?? 'ANY').toUpperCase(),
-    start_date: input.startDate ?? null,
-    is_premium: false,
-    is_boosted: false,
-    boost_expires_at: null,
-    created_at: timestamp,
-    updated_at: timestamp,
-  };
-
-  await db.runTransaction(async (tx) => {
-    tx.set(jobRef, jobPayload);
-    normalizedShifts.forEach((shift) => {
-      tx.set(jobRef.collection('shifts').doc(shift.id), {
-        ...shift,
-        job_id: jobRef.id,
-        employer_id: uid,
-        created_at: timestamp,
-        updated_at: timestamp,
+    await db.runTransaction(async (tx) => {
+      tx.set(jobRef, jobPayload);
+      normalizedShifts.forEach((shift) => {
+        tx.set(jobRef.collection('shifts').doc(shift.id), {
+          ...shift,
+          job_id: jobRef.id,
+          employer_id: uid,
+          created_at: timestamp,
+          updated_at: timestamp,
+        });
       });
     });
-  });
 
-  return {
-    jobId: jobRef.id,
-    moderationStatus: 'PENDING_REVIEW',
-    quota: {
-      ...quota,
-      monthlyUsed: quota.monthlyUsed + 1,
-      monthlyRemaining: Math.max(quota.monthlyRemaining - 1, 0),
-      activeShiftUsed: quota.activeShiftUsed + requestedShiftCount,
-      activeShiftRemaining: Math.max(quota.activeShiftRemaining - requestedShiftCount, 0),
-    },
-  };
+    return {
+      jobId: jobRef.id,
+      moderationStatus: 'PENDING_REVIEW',
+      quota: {
+        ...quota,
+        monthlyUsed: quota.monthlyUsed + 1,
+        monthlyRemaining: Math.max(quota.monthlyRemaining - 1, 0),
+        activeShiftUsed: quota.activeShiftUsed + requestedShiftCount,
+        activeShiftRemaining: Math.max(quota.activeShiftRemaining - requestedShiftCount, 0),
+      },
+    };
+  } catch (error) {
+    console.error('[createJobPosting] Error:', error);
+    if (error instanceof HttpsError) throw error;
+    throw new HttpsError('internal', `Lỗi hệ thống: ${(error as Error).message || 'Không rõ nguyên nhân'}`);
+  }
 });
 
 export const reviewJobModeration = onCall<ReviewJobModerationInput>({ region: 'asia-southeast1' }, async (request) => {

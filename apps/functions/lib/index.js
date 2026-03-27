@@ -526,37 +526,35 @@ exports.withdrawApplication = (0, https_1.onCall)({ region: 'asia-southeast1' },
             },
             updated_at: firestore_1.FieldValue.serverTimestamp(),
         }, { merge: true });
-        let penalty = 0;
+        const candidateRole = getUserRoleFromData(candidateSnap.data());
+        let actionCode = null;
         let isUrgent = false;
-        const shifts = Array.isArray(jobData.shifts) ? jobData.shifts : [];
-        const targetShift = shifts.find((s) => String(s.id) === shiftId);
-        if (jobData.start_date && targetShift?.start_time) {
-            const shiftDateTimeStr = `${jobData.start_date}T${targetShift.start_time}:00`;
-            const shiftTimeMs = new Date(shiftDateTimeStr).getTime();
-            if (!isNaN(shiftTimeMs)) {
-                const hoursUntilShift = (shiftTimeMs - Date.now()) / (1000 * 60 * 60);
-                if (hoursUntilShift > 0 && hoursUntilShift < 12) {
-                    penalty = 30;
-                    isUrgent = true;
-                }
-                else if (hoursUntilShift >= 12 && hoursUntilShift <= 24) {
-                    penalty = 10;
-                }
-                else if (hoursUntilShift > 24) {
-                    penalty = 2;
-                }
-                else {
-                    penalty = 30;
-                }
-            }
+        const hoursUntilShift = await getHoursUntilShift(jobRef, jobData, shiftId, new Date(), tx);
+        if (hoursUntilShift !== null) {
+            isUrgent = hoursUntilShift > 0 && hoursUntilShift < 12;
+            actionCode = (0, reputation_1.getCancellationActionCode)(hoursUntilShift);
         }
-        if (penalty > 0) {
-            const candidateRef = db.collection('users').doc(uid);
-            tx.set(candidateRef, {
-                reputation_score: firestore_1.FieldValue.increment(-penalty),
-                updated_at: firestore_1.FieldValue.serverTimestamp()
-            }, { merge: true });
-            await createNotification(tx, uid, 'SYSTEM_ALERT', 'Trừ điểm uy tín', `Bạn bị trừ ${penalty} điểm uy tín do hủy đơn ứng tuyển!`);
+        if (actionCode && candidateRole === 'CANDIDATE') {
+            const result = await (0, reputation_1.applyReputationAction)({
+                tx,
+                db,
+                userId: uid,
+                userRole: candidateRole,
+                userData: candidateSnap.data() || {},
+                actionCode,
+                dedupeKey: input.applicationId,
+                jobId,
+                applicationId: input.applicationId,
+                shiftId,
+                actorId: uid,
+                metadata: {
+                    source: 'withdrawApplication',
+                    hours_until_shift: hoursUntilShift,
+                },
+            });
+            if (result.delta < 0) {
+                await createNotification(tx, uid, 'SYSTEM_ALERT', 'Điểm uy tín bị trừ', `Bạn bị trừ ${Math.abs(result.delta)} điểm uy tín do hủy đơn ứng tuyển.`, { applicationId: input.applicationId, jobId, shiftId }, 'SYSTEM');
+            }
         }
         if (isUrgent) {
             const shiftRef = jobRef.collection('shifts').doc(shiftId);
@@ -1646,107 +1644,115 @@ exports.getMyJobPostingQuota = (0, https_1.onCall)({ region: 'asia-southeast1' }
     return quota;
 });
 exports.createJobPosting = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
-    const uid = assertAuth(request);
-    const input = request.data;
-    if (!input.title?.trim() || !input.description?.trim() || !Array.isArray(input.shifts) || input.shifts.length === 0) {
-        throw new https_1.HttpsError('invalid-argument', 'Thiếu thông tin cơ bản để đăng tin.');
-    }
-    const employerRef = db.collection('users').doc(uid);
-    const employerSnap = await employerRef.get();
-    if (!employerSnap.exists) {
-        throw new https_1.HttpsError('not-found', 'Không tìm thấy hồ sơ nhà tuyển dụng.');
-    }
-    const employerData = employerSnap.data() || {};
-    if (String(employerData.role ?? '').toUpperCase() !== 'EMPLOYER') {
-        throw new https_1.HttpsError('permission-denied', 'Chỉ nhà tuyển dụng mới có thể đăng tin.');
-    }
-    const quota = await getJobPostingQuota(uid);
-    const requestedShiftCount = input.shifts.length;
-    if (quota.monthlyUsed >= quota.monthlyLimit) {
-        throw new https_1.HttpsError('failed-precondition', `Bạn đã dùng hết quota ${quota.monthlyLimit} tin trong tháng này.`);
-    }
-    if (quota.activeShiftUsed + requestedShiftCount > quota.activeShiftLimit) {
-        throw new https_1.HttpsError('failed-precondition', `Tài khoản hiện tại chỉ được có tối đa ${quota.activeShiftLimit} ca đang hoạt động cùng lúc.`);
-    }
-    const jobRef = db.collection('jobs').doc();
-    const timestamp = firestore_1.FieldValue.serverTimestamp();
-    const employerName = String(employerData.company_name ??
-        employerData.full_name ??
-        employerData.fullName ??
-        'Nhà tuyển dụng JobNow');
-    const normalizedShifts = input.shifts.map((shift, index) => {
-        const id = String(shift.id ?? normalizeDocumentId(`shift_${Date.now()}_${index + 1}`));
-        return {
-            id,
-            name: String(shift.name ?? `Ca ${index + 1}`),
-            start_time: String(shift.startTime ?? '08:00'),
-            end_time: String(shift.endTime ?? '17:00'),
-            quantity: Math.max(Number(shift.quantity ?? 1), 1),
-            status: 'OPEN',
+    try {
+        const uid = assertAuth(request);
+        const input = request.data;
+        if (!input.title?.trim() || !input.description?.trim() || !Array.isArray(input.shifts) || input.shifts.length === 0) {
+            throw new https_1.HttpsError('invalid-argument', 'Thiếu thông tin cơ bản để đăng tin.');
+        }
+        const employerRef = db.collection('users').doc(uid);
+        const employerSnap = await employerRef.get();
+        if (!employerSnap.exists) {
+            throw new https_1.HttpsError('not-found', 'Không tìm thấy hồ sơ nhà tuyển dụng.');
+        }
+        const employerData = employerSnap.data() || {};
+        if (String(employerData.role ?? '').toUpperCase() !== 'EMPLOYER') {
+            throw new https_1.HttpsError('permission-denied', 'Chỉ nhà tuyển dụng mới có thể đăng tin.');
+        }
+        const quota = await getJobPostingQuota(uid);
+        const requestedShiftCount = input.shifts.length;
+        if (quota.monthlyUsed >= quota.monthlyLimit) {
+            throw new https_1.HttpsError('failed-precondition', `Bạn đã dùng hết quota ${quota.monthlyLimit} tin trong tháng này.`);
+        }
+        if (quota.activeShiftUsed + requestedShiftCount > quota.activeShiftLimit) {
+            throw new https_1.HttpsError('failed-precondition', `Tài khoản hiện tại chỉ được có tối đa ${quota.activeShiftLimit} ca đang hoạt động cùng lúc.`);
+        }
+        const jobRef = db.collection('jobs').doc();
+        const timestamp = firestore_1.FieldValue.serverTimestamp();
+        const employerName = String(employerData.company_name ??
+            employerData.full_name ??
+            employerData.fullName ??
+            'Nhà tuyển dụng JobNow');
+        const normalizedShifts = input.shifts.map((shift, index) => {
+            const id = String(shift.id ?? normalizeDocumentId(`shift_${Date.now()}_${index + 1}`));
+            return {
+                id,
+                name: String(shift.name ?? `Ca ${index + 1}`),
+                start_time: String(shift.startTime ?? '08:00'),
+                end_time: String(shift.endTime ?? '17:00'),
+                quantity: Math.max(Number(shift.quantity ?? 1), 1),
+                status: 'OPEN',
+            };
+        });
+        const shiftCapacity = normalizedShifts.reduce((acc, shift) => {
+            acc[shift.id] = {
+                total_slots: shift.quantity,
+                remaining_slots: shift.quantity,
+                applied_count: 0,
+            };
+            return acc;
+        }, {});
+        const jobPayload = {
+            employer_id: uid,
+            employer_name: employerName,
+            category_id: String(input.categoryId ?? ''),
+            title: input.title.trim(),
+            description: input.description.trim(),
+            salary: Number(input.salary ?? 0),
+            salary_type: String(input.salaryType ?? 'HOURLY').toUpperCase(),
+            address: String(input.location?.address ?? ''),
+            location: {
+                latitude: Number(input.location?.latitude ?? 0),
+                longitude: Number(input.location?.longitude ?? 0),
+            },
+            geohash: calculateGeohash(Number(input.location?.latitude ?? 0), Number(input.location?.longitude ?? 0)),
+            is_gps_required: Boolean(input.isGpsRequired ?? true),
+            status: 'DRAFT',
+            moderation_status: 'PENDING_REVIEW',
+            shifts: normalizedShifts,
+            shift_capacity: shiftCapacity,
+            vacancies: Number(input.vacancies ?? normalizedShifts.reduce((sum, shift) => sum + shift.quantity, 0)),
+            deadline: input.deadline ?? null,
+            requirements: Array.isArray(input.requirements) ? input.requirements : [],
+            images: Array.isArray(input.images) ? input.images : [],
+            gender_preference: String(input.genderPreference ?? 'ANY').toUpperCase(),
+            start_date: input.startDate ?? null,
+            is_premium: false,
+            is_boosted: false,
+            boost_expires_at: null,
+            created_at: timestamp,
+            updated_at: timestamp,
         };
-    });
-    const shiftCapacity = normalizedShifts.reduce((acc, shift) => {
-        acc[shift.id] = {
-            total_slots: shift.quantity,
-            remaining_slots: shift.quantity,
-            applied_count: 0,
-        };
-        return acc;
-    }, {});
-    const jobPayload = {
-        employer_id: uid,
-        employer_name: employerName,
-        category_id: String(input.categoryId ?? ''),
-        title: input.title.trim(),
-        description: input.description.trim(),
-        salary: Number(input.salary ?? 0),
-        salary_type: String(input.salaryType ?? 'HOURLY').toUpperCase(),
-        address: String(input.location?.address ?? ''),
-        location: {
-            latitude: Number(input.location?.latitude ?? 0),
-            longitude: Number(input.location?.longitude ?? 0),
-        },
-        geohash: calculateGeohash(Number(input.location?.latitude ?? 0), Number(input.location?.longitude ?? 0)),
-        is_gps_required: Boolean(input.isGpsRequired ?? true),
-        status: 'DRAFT',
-        moderation_status: 'PENDING_REVIEW',
-        shifts: normalizedShifts,
-        shift_capacity: shiftCapacity,
-        vacancies: Number(input.vacancies ?? normalizedShifts.reduce((sum, shift) => sum + shift.quantity, 0)),
-        deadline: input.deadline ?? null,
-        requirements: Array.isArray(input.requirements) ? input.requirements : [],
-        images: Array.isArray(input.images) ? input.images : [],
-        gender_preference: String(input.genderPreference ?? 'ANY').toUpperCase(),
-        start_date: input.startDate ?? null,
-        is_premium: false,
-        is_boosted: false,
-        boost_expires_at: null,
-        created_at: timestamp,
-        updated_at: timestamp,
-    };
-    await db.runTransaction(async (tx) => {
-        tx.set(jobRef, jobPayload);
-        normalizedShifts.forEach((shift) => {
-            tx.set(jobRef.collection('shifts').doc(shift.id), {
-                ...shift,
-                job_id: jobRef.id,
-                employer_id: uid,
-                created_at: timestamp,
-                updated_at: timestamp,
+        await db.runTransaction(async (tx) => {
+            tx.set(jobRef, jobPayload);
+            normalizedShifts.forEach((shift) => {
+                tx.set(jobRef.collection('shifts').doc(shift.id), {
+                    ...shift,
+                    job_id: jobRef.id,
+                    employer_id: uid,
+                    created_at: timestamp,
+                    updated_at: timestamp,
+                });
             });
         });
-    });
-    return {
-        jobId: jobRef.id,
-        moderationStatus: 'PENDING_REVIEW',
-        quota: {
-            ...quota,
-            monthlyUsed: quota.monthlyUsed + 1,
-            monthlyRemaining: Math.max(quota.monthlyRemaining - 1, 0),
-            activeShiftUsed: quota.activeShiftUsed + requestedShiftCount,
-            activeShiftRemaining: Math.max(quota.activeShiftRemaining - requestedShiftCount, 0),
-        },
-    };
+        return {
+            jobId: jobRef.id,
+            moderationStatus: 'PENDING_REVIEW',
+            quota: {
+                ...quota,
+                monthlyUsed: quota.monthlyUsed + 1,
+                monthlyRemaining: Math.max(quota.monthlyRemaining - 1, 0),
+                activeShiftUsed: quota.activeShiftUsed + requestedShiftCount,
+                activeShiftRemaining: Math.max(quota.activeShiftRemaining - requestedShiftCount, 0),
+            },
+        };
+    }
+    catch (error) {
+        console.error('[createJobPosting] Error:', error);
+        if (error instanceof https_1.HttpsError)
+            throw error;
+        throw new https_1.HttpsError('internal', `Lỗi hệ thống: ${error.message || 'Không rõ nguyên nhân'}`);
+    }
 });
 exports.reviewJobModeration = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
     const uid = assertAuth(request);

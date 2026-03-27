@@ -70,19 +70,28 @@ service cloud.firestore {
           && d.description is string;
       }
 
-      allow create: if false;
+      // Cho phép EMPLOYER tạo job trực tiếp (bypass Cloud Function khi Spark plan)
+      allow create: if isSignedIn() && isValidJobCreate();
       allow update: if isSignedIn() && (
         resource.data.employer_id == request.auth.uid ||
         resource.data.employerId == request.auth.uid ||
         isAdmin()
       );
-      allow delete: if false;
+      allow delete: if isSignedIn() && (
+        resource.data.employer_id == request.auth.uid ||
+        resource.data.employerId == request.auth.uid ||
+        isAdmin()
+      );
+
 
       match /shifts/{shiftId} {
         allow read: if true;
-        allow write: if false;
+        // Dùng request.resource.data thay vì get() vì job chưa commit trong batch write
+        allow create: if isSignedIn() && request.resource.data.employer_id == request.auth.uid;
+        allow update, delete: if false;
       }
     }
+
 
     // --- APPLICATIONS ---
     match /applications/{applicationId} {
