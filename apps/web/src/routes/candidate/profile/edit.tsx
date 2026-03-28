@@ -102,6 +102,7 @@ function CandidateProfileEditPage() {
                 skills: data.skills.split(',').map((skill) => skill.trim()).filter(Boolean),
                 avatar_url: avatarUrl,
                 resume_url: resumeUrl,
+                cccd_dob: birthday,
             };
 
             await updateUserDocument(userProfile.uid, updatedData as never);
@@ -132,7 +133,6 @@ function CandidateProfileEditPage() {
 
         updateProfileMutation.mutate({
             ...formData,
-            experience: stringifyExperienceItems(experienceItems),
         });
     };
 
@@ -221,6 +221,25 @@ function CandidateProfileEditPage() {
         setExperienceItems((prev) => prev.filter((item) => item.id !== id));
     };
 
+    const addEducation = () => {
+        updateFormValue('education', [
+            ...formData.education,
+            { school: '', degree: '', field: '', start_date: '', description: '' },
+        ]);
+    };
+
+    const updateEducation = (index: number, field: keyof EducationItem, value: string) => {
+        const newEdu = [...formData.education];
+        newEdu[index] = { ...newEdu[index], [field]: value };
+        updateFormValue('education', newEdu);
+    };
+
+    const removeEducation = (index: number) => {
+        const newEdu = [...formData.education];
+        newEdu.splice(index, 1);
+        updateFormValue('education', newEdu);
+    };
+
     if (!userProfile) return null;
 
     return (
@@ -242,7 +261,6 @@ function CandidateProfileEditPage() {
                             </p>
                         </div>
                     </div>
-
                 </div>
             </header>
 
@@ -268,10 +286,6 @@ function CandidateProfileEditPage() {
                             <input type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} disabled={isUploading} />
                         </label>
                     </div>
-                    <label className="mt-4 cursor-pointer text-sm font-semibold text-[#006399] hover:underline">
-                        Thay đổi ảnh đại diện
-                        <input type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} disabled={isUploading} />
-                    </label>
                 </section>
 
                 <form onSubmit={handleSubmit} className="space-y-8">
@@ -289,12 +303,13 @@ function CandidateProfileEditPage() {
                         </div>
 
                         <div className="space-y-1.5">
-                            <label className="ml-1 block text-sm font-medium text-[#45464D]">Email</label>
+                            <label className="ml-1 block text-sm font-medium text-[#45464D]">Địa chỉ hiện tại</label>
                             <input
-                                name="email"
-                                value={formData.email}
-                                disabled
-                                className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-[15px] text-slate-500 outline-none"
+                                name="address_text"
+                                value={formData.address_text}
+                                onChange={(e) => updateFormValue('address_text', e.target.value)}
+                                placeholder="Ghi rõ quận/huyện, thành phố để nhà tuyển dụng dễ tìm kiếm"
+                                className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-[15px] outline-none transition-all focus:border-[#006399] focus:ring-4 focus:ring-[#006399]/10"
                             />
                         </div>
 
@@ -448,6 +463,62 @@ function CandidateProfileEditPage() {
                         >
                             <Plus className="h-4 w-4" />
                             Thêm kinh nghiệm
+                        </button>
+                    </section>
+
+                    <section className="space-y-4">
+                        <h2 className="font-headline text-base font-bold tracking-tight text-slate-700">Học vấn & Bằng cấp</h2>
+                        <div className="space-y-3">
+                            {formData.education.map((item, index) => (
+                                <div
+                                    key={`edu-${index}`}
+                                    className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_20px_40px_-12px_rgba(15,23,42,0.08)]"
+                                >
+                                    <div className="mb-3 flex items-start justify-between gap-3">
+                                        <div className="min-w-0 flex-1 space-y-2">
+                                            <input
+                                                value={item.school}
+                                                onChange={(e) => updateEducation(index, 'school', e.target.value)}
+                                                placeholder="Trường / Đơn vị đào tạo"
+                                                className="w-full border-none bg-transparent p-0 font-bold text-slate-900 outline-none placeholder:text-slate-400"
+                                            />
+                                            <input
+                                                value={item.field}
+                                                onChange={(e) => updateEducation(index, 'field', e.target.value)}
+                                                placeholder="Chuyên ngành"
+                                                className="w-full border-none bg-transparent p-0 text-sm font-medium text-[#006399] outline-none placeholder:text-slate-400"
+                                            />
+                                            <input
+                                                value={item.degree}
+                                                onChange={(e) => updateEducation(index, 'degree', e.target.value)}
+                                                placeholder="Bằng cấp / Chứng chỉ"
+                                                className="w-full border-none bg-transparent p-0 text-sm font-medium text-slate-700 outline-none placeholder:text-slate-400"
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => removeEducation(index)}
+                                            className="rounded-full p-2 text-rose-500 transition-colors hover:bg-rose-50"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                    <input
+                                        value={item.start_date}
+                                        onChange={(e) => updateEducation(index, 'start_date', e.target.value)}
+                                        placeholder="Niên khóa (VD: 2020 - 2024)"
+                                        className="w-full border-none bg-transparent p-0 text-xs font-bold uppercase tracking-[0.2em] text-slate-400 outline-none placeholder:text-slate-400"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={addEducation}
+                            className="flex h-14 w-full items-center justify-center gap-2 rounded-3xl border-2 border-dashed border-slate-300 text-sm font-semibold text-[#006399] transition-all hover:border-[#006399] hover:bg-[#006399]/5"
+                        >
+                            <Plus className="h-4 w-4" />
+                            Thêm học vấn
                         </button>
                     </section>
 

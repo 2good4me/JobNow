@@ -1,8 +1,10 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useAuth } from '@/features/auth/context/AuthContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMyApplicationsRealtime } from '@/features/jobs/hooks/useMyApplicationsRealtime';
 import { getProgressToNextTier, getReputationTier } from '@/features/auth/helpers/reputationHelper';
+import { getFollowingCount } from '@/features/auth/services/followService';
+import { AchievementBadges, CANDIDATE_ACHIEVEMENTS } from '@/features/auth/components/AchievementBadges';
 
 export const Route = createFileRoute('/candidate/profile/')({
     component: CandidateProfilePage,
@@ -35,6 +37,7 @@ function CandidateProfilePage() {
     const { userProfile, signOut } = useAuth();
     const navigate = useNavigate();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [followingCount, setFollowingCount] = useState(0);
 
     // Fetch real applications data just for counts
     const { data: applications = [] } = useMyApplicationsRealtime({
@@ -45,6 +48,12 @@ function CandidateProfilePage() {
     const activeApplications = applications.filter(
         (app) => app.status === 'PENDING' || app.status === 'APPROVED' || app.status === 'CHECKED_IN'
     ).length;
+
+    useEffect(() => {
+        if (userProfile?.uid) {
+            getFollowingCount(userProfile.uid).then(setFollowingCount).catch(console.error);
+        }
+    }, [userProfile?.uid]);
 
     const handleLogout = async () => {
         try {
@@ -158,6 +167,22 @@ function CandidateProfilePage() {
                     <p className="text-[15px] leading-relaxed text-slate-600">
                         {userProfile.bio || "Chưa có thông tin giới thiệu. Hãy cập nhật để nhà tuyển dụng hiểu rõ hơn về bạn."}
                     </p>
+                </section>
+
+                {/* Follow Stats */}
+                <section className="flex items-center gap-6 pb-2">
+                    <div>
+                        <span className="font-black text-lg text-slate-900">{followingCount}</span>
+                        <span className="text-sm font-medium text-slate-500 ml-1.5">Đang theo dõi</span>
+                    </div>
+                    {/* Danh hiệu (Badges) */}
+                    <div className="flex-1 bg-white border border-slate-100/60 rounded-[20px] px-4 py-3 shadow-[0_4px_24px_-2px_rgba(124,131,155,0.04)]">
+                        <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Danh hiệu nổi bật</h4>
+                            <Link to="/candidate/profile/reputation" className="text-xs font-semibold text-blue-600">Xem tất cả</Link>
+                        </div>
+                        <AchievementBadges achievements={CANDIDATE_ACHIEVEMENTS} maxDisplay={4} size="md" />
+                    </div>
                 </section>
 
                 {/* Quick Actions Grid */}
