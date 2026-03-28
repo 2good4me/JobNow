@@ -38,6 +38,11 @@ export function mapNearbyApiToJobDoc(data: Record<string, unknown>): JobDoc {
         age_range: getValue(data, ['age_range', 'ageRange']),
         start_date: getValue<string>(data, ['start_date', 'startDate']),
         is_premium: getValue<boolean>(data, ['is_premium', 'isPremium']),
+        moderation_status: getValue(data, ['moderation_status', 'moderationStatus']),
+        moderation_reason: getValue(data, ['moderation_reason', 'moderationReason']),
+        is_boosted: getValue<boolean>(data, ['is_boosted', 'isBoosted']),
+        boost_expires_at: getValue(data, ['boost_expires_at', 'boostExpiresAt']),
+        boost_package_code: getValue(data, ['boost_package_code', 'boostPackageCode']),
         created_at: getValue(data, ['created_at', 'createdAt']),
         updated_at: getValue(data, ['updated_at', 'updatedAt']),
     };
@@ -80,6 +85,11 @@ export function mapJobDocToJob(id: string, data: Partial<JobDoc>): Job {
         ageRange: data.age_range,
         startDate: data.start_date ?? '',
         isPremium: data.is_premium ?? false,
+        moderationStatus: data.moderation_status,
+        moderationReason: data.moderation_reason,
+        isBoosted: data.is_boosted ?? false,
+        boostExpiresAt: data.boost_expires_at,
+        boostPackageCode: data.boost_package_code,
         totalAppliedCount: data.shift_capacity && Object.keys(data.shift_capacity).length > 0
             ? Object.values(data.shift_capacity).reduce((sum, shift) => sum + (shift.applied_count || 0), 0)
             : undefined,

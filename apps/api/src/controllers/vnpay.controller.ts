@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { vnpayService } from '../services/vnpay.service';
-import { db } from '../config/firebase';
+import { admin, db } from '../config/firebase';
 
 export const createPaymentUrl = async (req: Request, res: Response) => {
     try {
@@ -25,7 +25,19 @@ export const createPaymentUrl = async (req: Request, res: Response) => {
             returnUrl
         );
 
-        // Transaction creation will be handled by UI (Frontend) / Real Webhook to avoid Admin SDK local crash.
+        await db.collection('transactions').doc(orderId).set({
+            userId,
+            user_id: userId,
+            type: 'DEPOSIT',
+            amount,
+            description: `Nạp tiền qua VNPAY-QR`,
+            external_ref: orderId,
+            status: 'PENDING',
+            created_at: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updated_at: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+
         res.status(200).json({ url: paymentUrl, orderId });
     } catch (error: any) {
         console.error('Create Payment URL error:', error);
@@ -73,7 +85,7 @@ export const vnpayIpn = async (req: Request, res: Response) => {
                 }
 
                 // Update Transaction status
-                t.update(txRef, { status: 'COMPLETED', updatedAt: new Date() });
+                t.update(txRef, { status: 'COMPLETED', updatedAt: new Date(), updated_at: new Date() });
                 
                 // Update User balance
                 t.set(userRef, { 
@@ -85,7 +97,7 @@ export const vnpayIpn = async (req: Request, res: Response) => {
             return res.status(200).json({ RspCode: '00', Message: 'Confirm Success' });
         } else {
             // Failed
-            await txRef.update({ status: 'FAILED', updatedAt: new Date() });
+            await txRef.update({ status: 'FAILED', updatedAt: new Date(), updated_at: new Date() });
             return res.status(200).json({ RspCode: '00', Message: 'Confirm Success (Failed Transaction)' });
         }
     } catch (error) {

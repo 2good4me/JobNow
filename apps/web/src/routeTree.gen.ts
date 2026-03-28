@@ -21,6 +21,7 @@ import { Route as JobsIndexRouteImport } from './routes/jobs/index'
 import { Route as EmployerIndexRouteImport } from './routes/employer/index'
 import { Route as CandidateIndexRouteImport } from './routes/candidate/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as JobsJobIdRouteImport } from './routes/jobs/$jobId'
 import { Route as EmployerWalletRouteImport } from './routes/employer/wallet'
 import { Route as EmployerVnpayReturnRouteImport } from './routes/employer/vnpay-return'
 import { Route as EmployerVerificationRouteImport } from './routes/employer/verification'
@@ -40,6 +41,7 @@ import { Route as CandidateProfileRouteImport } from './routes/candidate/profile
 import { Route as CandidateNotificationsRouteImport } from './routes/candidate/notifications'
 import { Route as CandidateChatRouteImport } from './routes/candidate/chat'
 import { Route as CandidateApplicationsRouteImport } from './routes/candidate/applications'
+import { Route as AdminVerificationsRouteImport } from './routes/admin/verifications'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminReportsRouteImport } from './routes/admin/reports'
@@ -50,6 +52,7 @@ import { Route as EmployerVerificationIndexRouteImport } from './routes/employer
 import { Route as EmployerProfileIndexRouteImport } from './routes/employer/profile/index'
 import { Route as CandidateVerificationIndexRouteImport } from './routes/candidate/verification/index'
 import { Route as CandidateProfileIndexRouteImport } from './routes/candidate/profile/index'
+import { Route as CandidateJobsIndexRouteImport } from './routes/candidate/jobs/index'
 import { Route as EmployerProfileReputationRouteImport } from './routes/employer/profile/reputation'
 import { Route as EmployerProfileEditRouteImport } from './routes/employer/profile/edit'
 import { Route as EmployerCandidateCandidateIdRouteImport } from './routes/employer/candidate.$candidateId'
@@ -58,6 +61,7 @@ import { Route as CandidateProfileSettingsRouteImport } from './routes/candidate
 import { Route as CandidateProfileReputationRouteImport } from './routes/candidate/profile/reputation'
 import { Route as CandidateProfileEditRouteImport } from './routes/candidate/profile/edit'
 import { Route as CandidateJobsJobIdRouteImport } from './routes/candidate/jobs/$jobId'
+import { Route as CandidateEmployersEmployerIdRouteImport } from './routes/candidate/employers/$employerId'
 import { Route as CandidateEmployerEmployerIdRouteImport } from './routes/candidate/employer/$employerId'
 import { Route as CandidateApplicationsApplicationIdRouteImport } from './routes/candidate/applications.$applicationId'
 import { Route as AdminUsersUserIdRouteImport } from './routes/admin/users.$userId'
@@ -69,6 +73,7 @@ import { Route as EmployerProfileSettingsPasswordRouteImport } from './routes/em
 import { Route as EmployerProfileSettingsDevicesRouteImport } from './routes/employer/profile/settings/devices'
 import { Route as EmployerProfileSettingsDeleteRouteImport } from './routes/employer/profile/settings/delete'
 import { Route as EmployerProfileSettingsDeactivateRouteImport } from './routes/employer/profile/settings/deactivate'
+import { Route as CandidateWalletTransactionsTransactionIdRouteImport } from './routes/candidate/wallet_.transactions.$transactionId'
 
 const SupportCenterDataRoute = SupportCenterDataRouteImport.update({
   id: '/support-center-data',
@@ -129,6 +134,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRoute,
+} as any)
+const JobsJobIdRoute = JobsJobIdRouteImport.update({
+  id: '/jobs/$jobId',
+  path: '/jobs/$jobId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const EmployerWalletRoute = EmployerWalletRouteImport.update({
   id: '/employer/wallet',
@@ -225,6 +235,11 @@ const CandidateApplicationsRoute = CandidateApplicationsRouteImport.update({
   path: '/candidate/applications',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminVerificationsRoute = AdminVerificationsRouteImport.update({
+  id: '/verifications',
+  path: '/verifications',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -277,6 +292,11 @@ const CandidateProfileIndexRoute = CandidateProfileIndexRouteImport.update({
   path: '/',
   getParentRoute: () => CandidateProfileRoute,
 } as any)
+const CandidateJobsIndexRoute = CandidateJobsIndexRouteImport.update({
+  id: '/candidate/jobs/',
+  path: '/candidate/jobs/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EmployerProfileReputationRoute =
   EmployerProfileReputationRouteImport.update({
     id: '/reputation',
@@ -321,6 +341,12 @@ const CandidateJobsJobIdRoute = CandidateJobsJobIdRouteImport.update({
   path: '/candidate/jobs/$jobId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CandidateEmployersEmployerIdRoute =
+  CandidateEmployersEmployerIdRouteImport.update({
+    id: '/candidate/employers/$employerId',
+    path: '/candidate/employers/$employerId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const CandidateEmployerEmployerIdRoute =
   CandidateEmployerEmployerIdRouteImport.update({
     id: '/candidate/employer/$employerId',
@@ -386,6 +412,12 @@ const EmployerProfileSettingsDeactivateRoute =
     path: '/settings/deactivate',
     getParentRoute: () => EmployerProfileRoute,
   } as any)
+const CandidateWalletTransactionsTransactionIdRoute =
+  CandidateWalletTransactionsTransactionIdRouteImport.update({
+    id: '/candidate/wallet_/transactions/$transactionId',
+    path: '/candidate/wallet/transactions/$transactionId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -402,6 +434,7 @@ export interface FileRoutesByFullPath {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRouteWithChildren
+  '/admin/verifications': typeof AdminVerificationsRoute
   '/candidate/applications': typeof CandidateApplicationsRouteWithChildren
   '/candidate/chat': typeof CandidateChatRoute
   '/candidate/notifications': typeof CandidateNotificationsRoute
@@ -421,6 +454,7 @@ export interface FileRoutesByFullPath {
   '/employer/verification': typeof EmployerVerificationRouteWithChildren
   '/employer/vnpay-return': typeof EmployerVnpayReturnRoute
   '/employer/wallet': typeof EmployerWalletRoute
+  '/jobs/$jobId': typeof JobsJobIdRoute
   '/admin/': typeof AdminIndexRoute
   '/candidate/': typeof CandidateIndexRoute
   '/employer/': typeof EmployerIndexRoute
@@ -428,6 +462,7 @@ export interface FileRoutesByFullPath {
   '/admin/users/$userId': typeof AdminUsersUserIdRoute
   '/candidate/applications/$applicationId': typeof CandidateApplicationsApplicationIdRoute
   '/candidate/employer/$employerId': typeof CandidateEmployerEmployerIdRoute
+  '/candidate/employers/$employerId': typeof CandidateEmployersEmployerIdRoute
   '/candidate/jobs/$jobId': typeof CandidateJobsJobIdRoute
   '/candidate/profile/edit': typeof CandidateProfileEditRoute
   '/candidate/profile/reputation': typeof CandidateProfileReputationRoute
@@ -436,10 +471,12 @@ export interface FileRoutesByFullPath {
   '/employer/candidate/$candidateId': typeof EmployerCandidateCandidateIdRoute
   '/employer/profile/edit': typeof EmployerProfileEditRoute
   '/employer/profile/reputation': typeof EmployerProfileReputationRoute
+  '/candidate/jobs/': typeof CandidateJobsIndexRoute
   '/candidate/profile/': typeof CandidateProfileIndexRoute
   '/candidate/verification/': typeof CandidateVerificationIndexRoute
   '/employer/profile/': typeof EmployerProfileIndexRoute
   '/employer/verification/': typeof EmployerVerificationIndexRoute
+  '/candidate/wallet/transactions/$transactionId': typeof CandidateWalletTransactionsTransactionIdRoute
   '/employer/profile/settings/deactivate': typeof EmployerProfileSettingsDeactivateRoute
   '/employer/profile/settings/delete': typeof EmployerProfileSettingsDeleteRoute
   '/employer/profile/settings/devices': typeof EmployerProfileSettingsDevicesRoute
@@ -463,6 +500,7 @@ export interface FileRoutesByTo {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRouteWithChildren
+  '/admin/verifications': typeof AdminVerificationsRoute
   '/candidate/applications': typeof CandidateApplicationsRouteWithChildren
   '/candidate/chat': typeof CandidateChatRoute
   '/candidate/notifications': typeof CandidateNotificationsRoute
@@ -479,6 +517,7 @@ export interface FileRoutesByTo {
   '/employer/shift-management': typeof EmployerShiftManagementRoute
   '/employer/vnpay-return': typeof EmployerVnpayReturnRoute
   '/employer/wallet': typeof EmployerWalletRoute
+  '/jobs/$jobId': typeof JobsJobIdRoute
   '/admin': typeof AdminIndexRoute
   '/candidate': typeof CandidateIndexRoute
   '/employer': typeof EmployerIndexRoute
@@ -486,6 +525,7 @@ export interface FileRoutesByTo {
   '/admin/users/$userId': typeof AdminUsersUserIdRoute
   '/candidate/applications/$applicationId': typeof CandidateApplicationsApplicationIdRoute
   '/candidate/employer/$employerId': typeof CandidateEmployerEmployerIdRoute
+  '/candidate/employers/$employerId': typeof CandidateEmployersEmployerIdRoute
   '/candidate/jobs/$jobId': typeof CandidateJobsJobIdRoute
   '/candidate/profile/edit': typeof CandidateProfileEditRoute
   '/candidate/profile/reputation': typeof CandidateProfileReputationRoute
@@ -494,10 +534,12 @@ export interface FileRoutesByTo {
   '/employer/candidate/$candidateId': typeof EmployerCandidateCandidateIdRoute
   '/employer/profile/edit': typeof EmployerProfileEditRoute
   '/employer/profile/reputation': typeof EmployerProfileReputationRoute
+  '/candidate/jobs': typeof CandidateJobsIndexRoute
   '/candidate/profile': typeof CandidateProfileIndexRoute
   '/candidate/verification': typeof CandidateVerificationIndexRoute
   '/employer/profile': typeof EmployerProfileIndexRoute
   '/employer/verification': typeof EmployerVerificationIndexRoute
+  '/candidate/wallet/transactions/$transactionId': typeof CandidateWalletTransactionsTransactionIdRoute
   '/employer/profile/settings/deactivate': typeof EmployerProfileSettingsDeactivateRoute
   '/employer/profile/settings/delete': typeof EmployerProfileSettingsDeleteRoute
   '/employer/profile/settings/devices': typeof EmployerProfileSettingsDevicesRoute
@@ -523,6 +565,7 @@ export interface FileRoutesById {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRouteWithChildren
+  '/admin/verifications': typeof AdminVerificationsRoute
   '/candidate/applications': typeof CandidateApplicationsRouteWithChildren
   '/candidate/chat': typeof CandidateChatRoute
   '/candidate/notifications': typeof CandidateNotificationsRoute
@@ -542,6 +585,7 @@ export interface FileRoutesById {
   '/employer/verification': typeof EmployerVerificationRouteWithChildren
   '/employer/vnpay-return': typeof EmployerVnpayReturnRoute
   '/employer/wallet': typeof EmployerWalletRoute
+  '/jobs/$jobId': typeof JobsJobIdRoute
   '/admin/': typeof AdminIndexRoute
   '/candidate/': typeof CandidateIndexRoute
   '/employer/': typeof EmployerIndexRoute
@@ -549,6 +593,7 @@ export interface FileRoutesById {
   '/admin/users/$userId': typeof AdminUsersUserIdRoute
   '/candidate/applications/$applicationId': typeof CandidateApplicationsApplicationIdRoute
   '/candidate/employer/$employerId': typeof CandidateEmployerEmployerIdRoute
+  '/candidate/employers/$employerId': typeof CandidateEmployersEmployerIdRoute
   '/candidate/jobs/$jobId': typeof CandidateJobsJobIdRoute
   '/candidate/profile/edit': typeof CandidateProfileEditRoute
   '/candidate/profile/reputation': typeof CandidateProfileReputationRoute
@@ -557,10 +602,12 @@ export interface FileRoutesById {
   '/employer/candidate/$candidateId': typeof EmployerCandidateCandidateIdRoute
   '/employer/profile/edit': typeof EmployerProfileEditRoute
   '/employer/profile/reputation': typeof EmployerProfileReputationRoute
+  '/candidate/jobs/': typeof CandidateJobsIndexRoute
   '/candidate/profile/': typeof CandidateProfileIndexRoute
   '/candidate/verification/': typeof CandidateVerificationIndexRoute
   '/employer/profile/': typeof EmployerProfileIndexRoute
   '/employer/verification/': typeof EmployerVerificationIndexRoute
+  '/candidate/wallet_/transactions/$transactionId': typeof CandidateWalletTransactionsTransactionIdRoute
   '/employer/profile/settings/deactivate': typeof EmployerProfileSettingsDeactivateRoute
   '/employer/profile/settings/delete': typeof EmployerProfileSettingsDeleteRoute
   '/employer/profile/settings/devices': typeof EmployerProfileSettingsDevicesRoute
@@ -587,6 +634,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/users'
+    | '/admin/verifications'
     | '/candidate/applications'
     | '/candidate/chat'
     | '/candidate/notifications'
@@ -606,6 +654,7 @@ export interface FileRouteTypes {
     | '/employer/verification'
     | '/employer/vnpay-return'
     | '/employer/wallet'
+    | '/jobs/$jobId'
     | '/admin/'
     | '/candidate/'
     | '/employer/'
@@ -613,6 +662,7 @@ export interface FileRouteTypes {
     | '/admin/users/$userId'
     | '/candidate/applications/$applicationId'
     | '/candidate/employer/$employerId'
+    | '/candidate/employers/$employerId'
     | '/candidate/jobs/$jobId'
     | '/candidate/profile/edit'
     | '/candidate/profile/reputation'
@@ -621,10 +671,12 @@ export interface FileRouteTypes {
     | '/employer/candidate/$candidateId'
     | '/employer/profile/edit'
     | '/employer/profile/reputation'
+    | '/candidate/jobs/'
     | '/candidate/profile/'
     | '/candidate/verification/'
     | '/employer/profile/'
     | '/employer/verification/'
+    | '/candidate/wallet/transactions/$transactionId'
     | '/employer/profile/settings/deactivate'
     | '/employer/profile/settings/delete'
     | '/employer/profile/settings/devices'
@@ -648,6 +700,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/users'
+    | '/admin/verifications'
     | '/candidate/applications'
     | '/candidate/chat'
     | '/candidate/notifications'
@@ -664,6 +717,7 @@ export interface FileRouteTypes {
     | '/employer/shift-management'
     | '/employer/vnpay-return'
     | '/employer/wallet'
+    | '/jobs/$jobId'
     | '/admin'
     | '/candidate'
     | '/employer'
@@ -671,6 +725,7 @@ export interface FileRouteTypes {
     | '/admin/users/$userId'
     | '/candidate/applications/$applicationId'
     | '/candidate/employer/$employerId'
+    | '/candidate/employers/$employerId'
     | '/candidate/jobs/$jobId'
     | '/candidate/profile/edit'
     | '/candidate/profile/reputation'
@@ -679,10 +734,12 @@ export interface FileRouteTypes {
     | '/employer/candidate/$candidateId'
     | '/employer/profile/edit'
     | '/employer/profile/reputation'
+    | '/candidate/jobs'
     | '/candidate/profile'
     | '/candidate/verification'
     | '/employer/profile'
     | '/employer/verification'
+    | '/candidate/wallet/transactions/$transactionId'
     | '/employer/profile/settings/deactivate'
     | '/employer/profile/settings/delete'
     | '/employer/profile/settings/devices'
@@ -707,6 +764,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/settings'
     | '/admin/users'
+    | '/admin/verifications'
     | '/candidate/applications'
     | '/candidate/chat'
     | '/candidate/notifications'
@@ -726,6 +784,7 @@ export interface FileRouteTypes {
     | '/employer/verification'
     | '/employer/vnpay-return'
     | '/employer/wallet'
+    | '/jobs/$jobId'
     | '/admin/'
     | '/candidate/'
     | '/employer/'
@@ -733,6 +792,7 @@ export interface FileRouteTypes {
     | '/admin/users/$userId'
     | '/candidate/applications/$applicationId'
     | '/candidate/employer/$employerId'
+    | '/candidate/employers/$employerId'
     | '/candidate/jobs/$jobId'
     | '/candidate/profile/edit'
     | '/candidate/profile/reputation'
@@ -741,10 +801,12 @@ export interface FileRouteTypes {
     | '/employer/candidate/$candidateId'
     | '/employer/profile/edit'
     | '/employer/profile/reputation'
+    | '/candidate/jobs/'
     | '/candidate/profile/'
     | '/candidate/verification/'
     | '/employer/profile/'
     | '/employer/verification/'
+    | '/candidate/wallet_/transactions/$transactionId'
     | '/employer/profile/settings/deactivate'
     | '/employer/profile/settings/delete'
     | '/employer/profile/settings/devices'
@@ -783,13 +845,17 @@ export interface RootRouteChildren {
   EmployerVerificationRoute: typeof EmployerVerificationRouteWithChildren
   EmployerVnpayReturnRoute: typeof EmployerVnpayReturnRoute
   EmployerWalletRoute: typeof EmployerWalletRoute
+  JobsJobIdRoute: typeof JobsJobIdRoute
   CandidateIndexRoute: typeof CandidateIndexRoute
   EmployerIndexRoute: typeof EmployerIndexRoute
   JobsIndexRoute: typeof JobsIndexRoute
   CandidateEmployerEmployerIdRoute: typeof CandidateEmployerEmployerIdRoute
+  CandidateEmployersEmployerIdRoute: typeof CandidateEmployersEmployerIdRoute
   CandidateJobsJobIdRoute: typeof CandidateJobsJobIdRoute
   EmployerCandidateCandidateIdRoute: typeof EmployerCandidateCandidateIdRoute
+  CandidateJobsIndexRoute: typeof CandidateJobsIndexRoute
   CandidateVerificationIndexRoute: typeof CandidateVerificationIndexRoute
+  CandidateWalletTransactionsTransactionIdRoute: typeof CandidateWalletTransactionsTransactionIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -877,6 +943,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/jobs/$jobId': {
+      id: '/jobs/$jobId'
+      path: '/jobs/$jobId'
+      fullPath: '/jobs/$jobId'
+      preLoaderRoute: typeof JobsJobIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/employer/wallet': {
       id: '/employer/wallet'
@@ -1011,6 +1084,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CandidateApplicationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/verifications': {
+      id: '/admin/verifications'
+      path: '/verifications'
+      fullPath: '/admin/verifications'
+      preLoaderRoute: typeof AdminVerificationsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/users': {
       id: '/admin/users'
       path: '/users'
@@ -1081,6 +1161,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CandidateProfileIndexRouteImport
       parentRoute: typeof CandidateProfileRoute
     }
+    '/candidate/jobs/': {
+      id: '/candidate/jobs/'
+      path: '/candidate/jobs'
+      fullPath: '/candidate/jobs/'
+      preLoaderRoute: typeof CandidateJobsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/employer/profile/reputation': {
       id: '/employer/profile/reputation'
       path: '/reputation'
@@ -1135,6 +1222,13 @@ declare module '@tanstack/react-router' {
       path: '/candidate/jobs/$jobId'
       fullPath: '/candidate/jobs/$jobId'
       preLoaderRoute: typeof CandidateJobsJobIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/candidate/employers/$employerId': {
+      id: '/candidate/employers/$employerId'
+      path: '/candidate/employers/$employerId'
+      fullPath: '/candidate/employers/$employerId'
+      preLoaderRoute: typeof CandidateEmployersEmployerIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/candidate/employer/$employerId': {
@@ -1214,6 +1308,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmployerProfileSettingsDeactivateRouteImport
       parentRoute: typeof EmployerProfileRoute
     }
+    '/candidate/wallet_/transactions/$transactionId': {
+      id: '/candidate/wallet_/transactions/$transactionId'
+      path: '/candidate/wallet/transactions/$transactionId'
+      fullPath: '/candidate/wallet/transactions/$transactionId'
+      preLoaderRoute: typeof CandidateWalletTransactionsTransactionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1236,6 +1337,7 @@ interface AdminRouteChildren {
   AdminReportsRoute: typeof AdminReportsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminUsersRoute: typeof AdminUsersRouteWithChildren
+  AdminVerificationsRoute: typeof AdminVerificationsRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
@@ -1246,6 +1348,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminReportsRoute: AdminReportsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminUsersRoute: AdminUsersRouteWithChildren,
+  AdminVerificationsRoute: AdminVerificationsRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 
@@ -1356,13 +1459,18 @@ const rootRouteChildren: RootRouteChildren = {
   EmployerVerificationRoute: EmployerVerificationRouteWithChildren,
   EmployerVnpayReturnRoute: EmployerVnpayReturnRoute,
   EmployerWalletRoute: EmployerWalletRoute,
+  JobsJobIdRoute: JobsJobIdRoute,
   CandidateIndexRoute: CandidateIndexRoute,
   EmployerIndexRoute: EmployerIndexRoute,
   JobsIndexRoute: JobsIndexRoute,
   CandidateEmployerEmployerIdRoute: CandidateEmployerEmployerIdRoute,
+  CandidateEmployersEmployerIdRoute: CandidateEmployersEmployerIdRoute,
   CandidateJobsJobIdRoute: CandidateJobsJobIdRoute,
   EmployerCandidateCandidateIdRoute: EmployerCandidateCandidateIdRoute,
+  CandidateJobsIndexRoute: CandidateJobsIndexRoute,
   CandidateVerificationIndexRoute: CandidateVerificationIndexRoute,
+  CandidateWalletTransactionsTransactionIdRoute:
+    CandidateWalletTransactionsTransactionIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

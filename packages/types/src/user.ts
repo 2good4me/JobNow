@@ -1,6 +1,7 @@
 export type UserRole = 'CANDIDATE' | 'EMPLOYER' | 'ADMIN';
 export type UserStatus = 'ACTIVE' | 'LOCKED' | 'BANNED';
 export type VerificationStatus = 'UNVERIFIED' | 'PENDING' | 'VERIFIED';
+import type { ReputationTier } from './reputation';
 
 export interface User {
     id: string; // The UID from Firebase Auth
@@ -10,6 +11,7 @@ export interface User {
     status: UserStatus;
     balance: number;
     reputationScore: number;
+    currentTier?: ReputationTier;
     fullName: string;
     avatarUrl?: string | null;
     bio?: string | null;

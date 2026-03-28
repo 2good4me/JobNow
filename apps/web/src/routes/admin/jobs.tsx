@@ -1,12 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Search, ChevronLeft, ChevronRight, EyeOff, Eye } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, EyeOff, Eye, Check, X } from 'lucide-react';
 import {
-    fetchAdminJobs, hideJob,
+    fetchAdminJobs, hideJob, reviewJobModeration,
     type AdminJobFilters, type PaginatedJobs,
 } from '@/features/admin/services/adminJobService';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import type { DocumentSnapshot } from 'firebase/firestore';
+import { toast } from 'sonner';
 
 export const Route = createFileRoute('/admin/jobs')({
     component: AdminJobsPage,
@@ -15,7 +16,12 @@ export const Route = createFileRoute('/admin/jobs')({
 function AdminJobsPage() {
     const { userProfile } = useAuth();
     const [data, setData] = useState<PaginatedJobs>({ jobs: [], total: 0, lastDoc: null, hasMore: false });
-    const [filters, setFilters] = useState<AdminJobFilters>({ status: 'ALL', sortBy: 'created_at', sortDir: 'desc' });
+    const [filters, setFilters] = useState<AdminJobFilters>({
+        status: 'ALL',
+        moderationStatus: 'ALL',
+        sortBy: 'created_at',
+        sortDir: 'desc',
+    });
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
@@ -67,9 +73,30 @@ function AdminJobsPage() {
         if (!reason) return;
         try {
             await hideJob(jobId, userProfile.uid, reason);
+            toast.success('Đã ẩn tin tuyển dụng');
             loadJobs(pageHistory[pageHistory.length - 1]);
         } catch (err) {
             console.error(err);
+            toast.error('Không thể ẩn tin tuyển dụng');
+        }
+    };
+
+    const handleReview = async (jobId: string, action: 'APPROVE' | 'REJECT') => {
+        const reason = action === 'REJECT'
+            ? prompt('Nhập lý do từ chối tin tuyển dụng:')
+            : undefined;
+
+        if (action === 'REJECT' && !reason?.trim()) {
+            return;
+        }
+
+        try {
+            await reviewJobModeration(jobId, action, reason?.trim());
+            toast.success(action === 'APPROVE' ? 'Đã phê duyệt tin tuyển dụng' : 'Đã từ chối tin tuyển dụng');
+            loadJobs(pageHistory[pageHistory.length - 1]);
+        } catch (err) {
+            console.error(err);
+            toast.error(action === 'APPROVE' ? 'Không thể phê duyệt tin' : 'Không thể từ chối tin');
         }
     };
 
@@ -85,6 +112,16 @@ function AdminJobsPage() {
         return <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${s.cls}`}>{s.label}</span>;
     };
 
+    const moderationBadge = (status?: string) => {
+        const map: Record<string, { cls: string; label: string }> = {
+            PENDING_REVIEW: { cls: 'bg-amber-100 text-amber-700', label: 'Chờ duyệt' },
+            APPROVED: { cls: 'bg-emerald-100 text-emerald-700', label: 'Đã duyệt' },
+            REJECTED: { cls: 'bg-rose-100 text-rose-700', label: 'Từ chối' },
+        };
+        const s = map[String(status ?? 'APPROVED').toUpperCase()] ?? { cls: 'bg-slate-100 text-slate-600', label: String(status ?? '—') };
+        return <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${s.cls}`}>{s.label}</span>;
+    };
+
     const formatSalary = (salary: number, type: string) => {
         const formatted = (salary ?? 0).toLocaleString('vi-VN');
         const unit = type === 'HOURLY' ? '/giờ' : type === 'DAILY' ? '/ngày' : '';
@@ -96,6 +133,28 @@ function AdminJobsPage() {
             <div>
                 <h1 className="text-xl font-bold text-slate-900">Quản lý việc làm</h1>
                 <p className="text-sm text-slate-500">Tổng: {data.total.toLocaleString('vi-VN')} việc làm</p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+                {[
+                    { key: 'ALL', label: 'Tất cả' },
+                    { key: 'PENDING_REVIEW', label: 'Chờ duyệt' },
+                    { key: 'APPROVED', label: 'Đã duyệt' },
+                    { key: 'REJECTED', label: 'Từ chối' },
+                ].map((tab) => (
+                    <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => setFilters((current) => ({ ...current, moderationStatus: tab.key as AdminJobFilters['moderationStatus'] }))}
+                        className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
+                            (filters.moderationStatus ?? 'ALL') === tab.key
+                                ? 'bg-indigo-600 text-white'
+                                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                    >
+                        {tab.label}
+                    </button>
+                ))}
             </div>
 
             {/* Filters */}
@@ -121,6 +180,16 @@ function AdminJobsPage() {
                         <option value="CLOSED">Đã đóng</option>
                         <option value="HIDDEN">Bị ẩn</option>
                     </select>
+                    <select
+                        value={filters.moderationStatus ?? 'ALL'}
+                        onChange={e => setFilters(f => ({ ...f, moderationStatus: e.target.value as AdminJobFilters['moderationStatus'] }))}
+                        className="border border-slate-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                    >
+                        <option value="ALL">Tất cả moderation</option>
+                        <option value="PENDING_REVIEW">Chờ duyệt</option>
+                        <option value="APPROVED">Đã duyệt</option>
+                        <option value="REJECTED">Từ chối</option>
+                    </select>
                 </div>
             </div>
 
@@ -134,6 +203,7 @@ function AdminJobsPage() {
                                 <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">NTD</th>
                                 <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Mức lương</th>
                                 <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Trạng thái</th>
+                                <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Kiểm duyệt</th>
                                 <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Ngày đăng</th>
                                 <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Hành động</th>
                             </tr>
@@ -142,11 +212,11 @@ function AdminJobsPage() {
                             {loading ? (
                                 Array.from({ length: 5 }).map((_, i) => (
                                     <tr key={i} className="animate-pulse">
-                                        {[1,2,3,4,5,6].map(j => (<td key={j} className="px-4 py-3"><div className="h-4 w-20 bg-slate-100 rounded" /></td>))}
+                                        {[1,2,3,4,5,6,7].map(j => (<td key={j} className="px-4 py-3"><div className="h-4 w-20 bg-slate-100 rounded" /></td>))}
                                     </tr>
                                 ))
                             ) : filteredJobs.length === 0 ? (
-                                <tr><td colSpan={6} className="text-center py-12 text-slate-400">Không tìm thấy việc làm nào</td></tr>
+                                <tr><td colSpan={7} className="text-center py-12 text-slate-400">Không tìm thấy việc làm nào</td></tr>
                             ) : (
                                 filteredJobs.map(job => (
                                     <tr key={job.id} className="hover:bg-slate-50/50 transition-colors">
@@ -157,9 +227,28 @@ function AdminJobsPage() {
                                         <td className="px-4 py-3 text-slate-600 text-xs">{job.employer_name || job.employer_id?.slice(0, 8)}</td>
                                         <td className="px-4 py-3 text-slate-700 font-medium text-xs">{formatSalary(job.salary, job.salary_type)}</td>
                                         <td className="px-4 py-3">{statusBadge(job.status)}</td>
+                                        <td className="px-4 py-3">{moderationBadge(job.moderation_status)}</td>
                                         <td className="px-4 py-3 text-xs text-slate-500">{job.created_at?.toLocaleDateString?.('vi-VN') ?? '—'}</td>
                                         <td className="px-4 py-3">
                                             <div className="flex items-center justify-end gap-1">
+                                                {job.moderation_status === 'PENDING_REVIEW' && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => handleReview(job.id, 'APPROVE')}
+                                                            className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                                                            title="Phê duyệt"
+                                                        >
+                                                            <Check className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleReview(job.id, 'REJECT')}
+                                                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                                                            title="Từ chối"
+                                                        >
+                                                            <X className="w-4 h-4" />
+                                                        </button>
+                                                    </>
+                                                )}
                                                 {job.status !== 'HIDDEN' && (
                                                     <button onClick={() => handleHide(job.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors" title="Ẩn">
                                                         <EyeOff className="w-4 h-4" />

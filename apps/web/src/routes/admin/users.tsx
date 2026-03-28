@@ -267,7 +267,7 @@ function AdminUsersPage() {
                                                 <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                                                     <div
                                                         className="h-full bg-indigo-500 rounded-full"
-                                                        style={{ width: `${Math.min(u.reputation_score * 20, 100)}%` }}
+                                                        style={{ width: `${Math.min((u.reputation_score / 500) * 100, 100)}%` }}
                                                     />
                                                 </div>
                                                 <span className="text-xs text-slate-500 font-medium">{u.reputation_score}</span>

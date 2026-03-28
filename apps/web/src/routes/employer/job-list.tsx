@@ -1,17 +1,129 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { Search, MapPin, Eye, Users, MoreVertical, Briefcase, Plus, Share2, Edit2, ArchiveRestore, PowerOff } from 'lucide-react';
+import { Search, MapPin, Eye, Users, MoreVertical, Briefcase, Plus, Share2, Edit2, ArchiveRestore, PowerOff, Flame, X } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth/context/AuthContext';
-import { fetchEmployerJobs, updateJob } from '@/features/jobs/services/jobService';
+import { fetchEmployerJobs, updateJob, getBoostPackages } from '@/features/jobs/services/jobService';
 import { fetchEmployerApplications } from '@/features/jobs/services/applicationService';
 import { toast } from 'sonner';
+import { useCloseJobSafely, usePurchaseBoostPackage } from '@/features/jobs/hooks/useEmployerJobs';
+import type { BoostPackage, Job } from '@jobnow/types';
 
 export const Route = createFileRoute('/employer/job-list')({
   component: JobManagementRoute,
 });
 
 type TabValue = 'active' | 'pending' | 'closed';
+
+function BoostPackageModal({
+  job,
+  onClose,
+  onConfirm,
+  isSubmitting,
+}: {
+  job: Job;
+  onClose: () => void;
+  onConfirm: (packageCode: BoostPackage['code']) => void;
+  isSubmitting: boolean;
+}) {
+  const packages = getBoostPackages();
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-md rounded-[28px] bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-amber-500">Boost / VIP</p>
+            <h3 className="text-lg font-bold text-slate-900">Chọn gói đẩy tin</h3>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-full p-2 text-slate-400 hover:bg-slate-100">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <p className="text-sm text-slate-500 mb-4">
+          Tin <span className="font-semibold text-slate-800">{job.title}</span> sẽ được ưu tiên hiển thị trên danh sách việc làm.
+        </p>
+
+        <div className="space-y-3">
+          {packages.map((pack) => (
+            <button
+              key={pack.code}
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => onConfirm(pack.code)}
+              className="w-full rounded-2xl border border-slate-200 p-4 text-left hover:border-amber-300 hover:bg-amber-50/60 transition-colors disabled:opacity-60"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h4 className="font-bold text-slate-900">{pack.name}</h4>
+                  <p className="text-sm text-slate-500 mt-1">{pack.description}</p>
+                </div>
+                <span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-bold text-amber-700">
+                  {pack.price.toLocaleString('vi-VN')}đ
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CloseJobModal({
+  title,
+  affectedCandidates,
+  latePenaltyPossible,
+  onCancel,
+  onConfirm,
+}: {
+  title: string;
+  affectedCandidates: number;
+  latePenaltyPossible: boolean;
+  onCancel: () => void;
+  onConfirm: (notifyCandidates: boolean) => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4" onClick={onCancel}>
+      <div className="w-full max-w-md rounded-[28px] bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <p className="text-xs font-bold uppercase tracking-wider text-rose-500">Đóng tin an toàn</p>
+        <h3 className="mt-1 text-lg font-bold text-slate-900">{title}</h3>
+        <p className="mt-3 text-sm text-slate-600">
+          Bạn có <span className="font-bold">{affectedCandidates}</span> ứng viên đã duyệt. Đóng tin sẽ hủy các ca liên quan.
+        </p>
+        {latePenaltyPossible && (
+          <p className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
+            Đang có ca sát giờ. Thao tác này có thể làm giảm điểm uy tín.
+          </p>
+        )}
+        <div className="mt-5 grid grid-cols-1 gap-2">
+          <button
+            type="button"
+            onClick={() => onConfirm(true)}
+            className="rounded-2xl bg-rose-600 px-4 py-3 text-sm font-bold text-white hover:bg-rose-700"
+          >
+            Đóng tin và gửi thông báo hủy
+          </button>
+          <button
+            type="button"
+            onClick={() => onConfirm(false)}
+            className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            Đóng tin, không gửi thông báo
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-2xl px-4 py-3 text-sm font-semibold text-slate-500 hover:bg-slate-50"
+          >
+            Hủy
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // --- Components ---
 
@@ -81,6 +193,10 @@ function JobManagementRoute() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [boostTargetJob, setBoostTargetJob] = useState<Job | null>(null);
+  const [closeModal, setCloseModal] = useState<{ jobId: string; title: string; affectedCandidates: number; latePenaltyPossible: boolean } | null>(null);
+  const { mutateAsync: buyBoostPackage, isPending: isBoosting } = usePurchaseBoostPackage();
+  const { mutateAsync: closeJobWithGuard } = useCloseJobSafely();
 
   const tabs = [
     { value: 'active', label: 'Đang mở' },
@@ -103,13 +219,17 @@ function JobManagementRoute() {
   const filteredJobs = useMemo(() => {
     let filtered = jobs.filter(job => {
       const status = job.status || 'OPEN';
-      if (activeTab === 'active') return status === 'OPEN' || status === 'ACTIVE';
-      if (activeTab === 'pending') return status === 'DRAFT';
+      const moderationStatus = job.moderationStatus || 'APPROVED';
+      if (activeTab === 'active') return (status === 'OPEN' || status === 'ACTIVE' || status === 'FULL') && moderationStatus === 'APPROVED';
+      if (activeTab === 'pending') return moderationStatus === 'PENDING_REVIEW' || moderationStatus === 'REJECTED' || status === 'DRAFT';
       if (activeTab === 'closed') return status === 'CLOSED';
       return true;
     });
 
     filtered.sort((a, b) => {
+      if (a.isBoosted !== b.isBoosted) {
+        return (b.isBoosted ? 1 : 0) - (a.isBoosted ? 1 : 0);
+      }
       const getTimestamp = (job: typeof jobs[0]) => {
         if (job.createdAt) {
           const time = new Date(job.createdAt).getTime();
@@ -153,10 +273,30 @@ function JobManagementRoute() {
 
   const handleToggleStatus = async (jobId: string, currentStatus: string) => {
     setOpenMenuId(null);
-    const newStatus = currentStatus === 'CLOSED' ? 'OPEN' : 'CLOSED';
+    if (currentStatus === 'CLOSED') {
+      try {
+        await updateJob(jobId, { status: 'OPEN' as any });
+        toast.success('Đã mở lại tin thành công');
+        refetch();
+      } catch (e) {
+        toast.error('Có lỗi xảy ra, vui lòng thử lại.');
+      }
+      return;
+    }
+
     try {
-      await updateJob(jobId, { status: newStatus as any });
-      toast.success(newStatus === 'CLOSED' ? 'Đã đóng tin thành công' : 'Đã mở lại tin thành công');
+      const result = await closeJobWithGuard({ jobId, confirmed: false, notifyCandidates: true });
+      if (result.requiresConfirmation) {
+        const targetJob = jobs.find((item) => item.id === jobId);
+        setCloseModal({
+          jobId,
+          title: targetJob?.title || 'Tin tuyển dụng',
+          affectedCandidates: result.affectedCandidates,
+          latePenaltyPossible: result.latePenaltyPossible,
+        });
+        return;
+      }
+      toast.success('Đã đóng tin thành công');
       refetch();
     } catch (e) {
       toast.error('Có lỗi xảy ra, vui lòng thử lại.');
@@ -180,6 +320,34 @@ function JobManagementRoute() {
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
+
+  const confirmCloseJob = async (notifyCandidates: boolean) => {
+    if (!closeModal) return;
+    try {
+      await closeJobWithGuard({
+        jobId: closeModal.jobId,
+        confirmed: true,
+        notifyCandidates,
+      });
+      toast.success('Đã đóng tin thành công');
+      setCloseModal(null);
+      refetch();
+    } catch (error) {
+      toast.error('Không thể đóng tin tuyển dụng.');
+    }
+  };
+
+  const handleBoost = async (packageCode: BoostPackage['code']) => {
+    if (!boostTargetJob) return;
+    try {
+      const result = await buyBoostPackage({ jobId: boostTargetJob.id, packageCode });
+      toast.success(`Đẩy top thành công đến ${new Date(result.expiresAt).toLocaleString('vi-VN')}`);
+      setBoostTargetJob(null);
+      refetch();
+    } catch (error: any) {
+      toast.error(error?.message || 'Không thể mua gói đẩy tin.');
+    }
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F8FAFC] pb-24 max-w-lg mx-auto w-full">
@@ -267,6 +435,7 @@ function JobManagementRoute() {
             const appCount = getJobAppCount(job.id);
             const viewCount = (job as any).viewCount || 0;
             const status = job.status || 'OPEN';
+            const moderationStatus = job.moderationStatus || 'APPROVED';
             const isClosed = status === 'CLOSED';
             const isMenuOpen = openMenuId === job.id;
 
@@ -284,14 +453,20 @@ function JobManagementRoute() {
                   <div className="flex flex-col gap-2 flex-1 pr-8">
                     <span className={`inline-flex w-fit items-center rounded-lg px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide
                       ${isClosed ? 'bg-slate-100 text-slate-600' :
-                        status === 'DRAFT' ? 'bg-amber-100 text-amber-700' :
+                        moderationStatus === 'REJECTED' ? 'bg-rose-100 text-rose-700' :
+                        moderationStatus === 'PENDING_REVIEW' || status === 'DRAFT' ? 'bg-amber-100 text-amber-700' :
                           'bg-emerald-100 text-emerald-700'
                       }`}>
-                      {isClosed ? 'Đã đóng' : status === 'DRAFT' ? 'Chủ duyệt' : 'Đang mở'}
+                      {isClosed ? 'Đã đóng' : moderationStatus === 'REJECTED' ? 'Bị từ chối' : (moderationStatus === 'PENDING_REVIEW' || status === 'DRAFT') ? 'Chờ duyệt' : 'Đang mở'}
                     </span>
                     <h3 className="text-base font-bold text-slate-900 leading-snug break-words">
                       {job.title}
                     </h3>
+                    {job.isBoosted && (
+                      <span className="inline-flex w-fit items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">
+                        <Flame className="w-3.5 h-3.5" /> Đang boost
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -316,6 +491,14 @@ function JobManagementRoute() {
                       <button onClick={(e) => { e.stopPropagation(); handleShare(job.id); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-emerald-600 transition-colors">
                         <Share2 className="w-4 h-4" /> Chia sẻ
                       </button>
+                      {moderationStatus === 'APPROVED' && !isClosed && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setBoostTargetJob(job); setOpenMenuId(null); }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-amber-600 transition-colors"
+                        >
+                          <Flame className="w-4 h-4" /> Đẩy top
+                        </button>
+                      )}
                       <div className="h-px bg-slate-100 my-1"></div>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleToggleStatus(job.id, status); }}
@@ -385,7 +568,25 @@ function JobManagementRoute() {
           Tạo tin
         </button>
       )}
+
+      {boostTargetJob && (
+        <BoostPackageModal
+          job={boostTargetJob}
+          onClose={() => setBoostTargetJob(null)}
+          onConfirm={handleBoost}
+          isSubmitting={isBoosting}
+        />
+      )}
+
+      {closeModal && (
+        <CloseJobModal
+          title={closeModal.title}
+          affectedCandidates={closeModal.affectedCandidates}
+          latePenaltyPossible={closeModal.latePenaltyPossible}
+          onCancel={() => setCloseModal(null)}
+          onConfirm={confirmCloseJob}
+        />
+      )}
     </div>
   );
 }
-

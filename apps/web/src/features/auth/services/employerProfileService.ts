@@ -32,7 +32,7 @@ export async function updateEmployerProfile(
  */
 export async function uploadCompanyLogo(uid: string, file: File): Promise<string> {
     const storageRef = ref(storage, `company-logos/${uid}/${file.name}`);
-    await uploadBytes(storageRef, file);
+    await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
     const downloadUrl = await getDownloadURL(storageRef);
     await updateUserDocument(uid, { company_logo_url: downloadUrl });
     return downloadUrl;
@@ -44,7 +44,7 @@ export async function uploadCompanyLogo(uid: string, file: File): Promise<string
  */
 export async function uploadBusinessLicense(uid: string, file: File): Promise<string> {
     const storageRef = ref(storage, `business-licenses/${uid}/${file.name}`);
-    await uploadBytes(storageRef, file);
+    await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
     const downloadUrl = await getDownloadURL(storageRef);
     await updateUserDocument(uid, {
         business_license_url: downloadUrl,

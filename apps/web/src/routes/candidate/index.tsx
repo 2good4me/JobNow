@@ -1,322 +1,359 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { useAuth } from '@/features/auth/context/AuthContext';
-import {
-  Briefcase, ChevronRight, Clock, FileText,
-  AlertCircle, Heart, Search, MapPin,
-  Zap, Star, TrendingUp, Coffee, Truck, ShoppingBag, Calendar
-} from 'lucide-react';
+import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
 import { useAllJobs } from '@/features/jobs/hooks/useAllJobs';
+import { JobCard } from '@/features/jobs/components/JobCard';
+import { JobMapView } from '@/features/jobs/components/JobMapView';
+import { useNearbyJobs } from '@/features/jobs/hooks/useNearbyJobs';
+import { mapJobDocToJob } from '@/features/jobs/services/adapters';
+import { mapNearbyApiToJobDocSafe } from '@/features/jobs/services/jobSearchService';
+import { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '@/features/auth/context/AuthContext';
 import { useMyApplicationsRealtime } from '@/features/jobs/hooks/useMyApplicationsRealtime';
 import { useWishlistJobs } from '@/features/jobs/hooks/useWishlistJobs';
-import { JobCard } from '@/features/jobs/components/JobCard';
-import { useState } from 'react';
+import { DistrictPicker } from '@/features/jobs/components/DistrictPicker';
+import { Briefcase, CalendarClock, ChevronRight, Heart, Wallet } from 'lucide-react';
 
 export const Route = createFileRoute('/candidate/')({ component: CandidateDashboard });
 
 const CATEGORIES = [
-  { label: 'Tất cả', icon: Zap, color: 'indigo' },
-  { label: 'F&B', icon: Coffee, color: 'orange' },
-  { label: 'Giao hàng', icon: Truck, color: 'sky' },
-  { label: 'Bán hàng', icon: ShoppingBag, color: 'pink' },
-  { label: 'Sự kiện', icon: Star, color: 'violet' },
+  { label: 'Tất cả' },
+  { label: 'F&B' },
+  { label: 'Giao hàng' },
+  { label: 'Văn phòng' },
+  { label: 'Lao động chân tay' },
 ];
-
-function getGreeting() {
-  const hour = new Date().getHours();
-  if (hour < 6) return 'Chào đêm khuya';
-  if (hour < 12) return 'Chào buổi sáng';
-  if (hour < 18) return 'Chào buổi chiều';
-  return 'Chào buổi tối';
-}
-
 
 function CandidateDashboard() {
   const navigate = useNavigate();
   const { userProfile } = useAuth();
-  const { data: jobs = [], isLoading, isError } = useAllJobs();
-  const [activeCategory, setActiveCategory] = useState('Tất cả');
-  const [selectedDistrict, setSelectedDistrict] = useState('Hà Đông'); // Mặc định như user nói
-  const [showLocationPicker, setShowLocationPicker] = useState(false);
-
-  const DISTRICTS = [
-    'Ba Đình', 'Hoàn Kiếm', 'Tây Hồ', 'Long Biên', 'Cầu Giấy',
-    'Đống Đa', 'Hai Bà Trưng', 'Hoàng Mai', 'Thanh Xuân',
-    'Nam Từ Liêm', 'Bắc Từ Liêm', 'Hà Đông'
-  ];
-
+  
+  // Real data hooks that were removed
   const { data: applications = [] } = useMyApplicationsRealtime({
     candidateId: userProfile?.uid,
-    limit: 100,
+    limit: 100
   });
+  const { data: wishlist = [] } = useWishlistJobs();
+  const { data: jobs = [], isLoading, isError } = useAllJobs();
 
-  const { data: wishlistJobs = [] } = useWishlistJobs(userProfile?.uid);
+  // State
+  const [activeCategory, setActiveCategory] = useState('Tất cả');
+  const [searchText, setSearchText] = useState('');
+  const [activeDistrict, setActiveDistrict] = useState('Tất cả Khu vực');
+  const [viewMode, setViewMode] = useState<'map' | 'list'>('list');
+  const [mapLocation, setMapLocation] = useState<{ lat: number; lng: number; address?: string } | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
-  const activeShiftsCount = applications.filter(
-    (app) => app.status === 'APPROVED' || app.status === 'CHECKED_IN'
-  ).length;
-  const totalAppliedCount = applications.length;
-  const totalWishlistCount = wishlistJobs.length;
+  // Derived stats
+  const activeApplications = applications.filter(app => app.status === 'PENDING' || app.status === 'APPROVED').length;
+  const activeShifts = applications.filter(app => app.status === 'APPROVED' || app.status === 'CHECKED_IN').length;
+  const wishlistCount = wishlist.length;
 
-  const greeting = getGreeting();
+  // Greeting
+  const currentHour = new Date().getHours();
+  const greeting = currentHour < 12 ? 'Chào buổi sáng' : currentHour < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
 
-  const filteredJobs = jobs.filter((job: any) => {
-    // Filter by Category
+  const matchesJobFilters = (job: any) => {
+    // Search filter
+    if (searchText) {
+      const text = `${job.title} ${job.employerName} ${job.description}`.toLowerCase();
+      if (!text.includes(searchText.toLowerCase())) return false;
+    }
+
+    // District filter
+    if (activeDistrict !== 'Tất cả Khu vực') {
+      const address = (job.location?.address || job.address || '').toLowerCase();
+      if (!address.includes(activeDistrict.toLowerCase())) return false;
+    }
+
+    // Category filter
     if (activeCategory !== 'Tất cả') {
       const text = `${job.title} ${job.description}`.toLowerCase();
       let categoryMatch = false;
-      if (activeCategory === 'F&B') categoryMatch = text.includes('phục vụ') || text.includes('pha chế') || text.includes('nhà hàng') || text.includes('f&b');
-      else if (activeCategory === 'Giao hàng') categoryMatch = text.includes('giao hàng') || text.includes('shipper');
-      else if (activeCategory === 'Bán hàng') categoryMatch = text.includes('bán hàng') || text.includes('sale') || text.includes('thu ngân');
-      else if (activeCategory === 'Sự kiện') categoryMatch = text.includes('sự kiện') || text.includes('event') || text.includes('pg');
-      
+      if (activeCategory === 'F&B') categoryMatch = text.includes('phục vụ') || text.includes('pha chế') || text.includes('nhà hàng') || text.includes('f&b') || text.includes('coffee');
+      else if (activeCategory === 'Giao hàng') categoryMatch = text.includes('giao hàng') || text.includes('shipper') || text.includes('kho vận');
+      else if (activeCategory === 'Văn phòng') categoryMatch = text.includes('văn phòng') || text.includes('cộng tác viên') || text.includes('sale') || text.includes('thu ngân');
+      else if (activeCategory === 'Lao động chân tay') categoryMatch = text.includes('lao động') || text.includes('kho') || text.includes('bốc xếp') || text.includes('sự kiện') || text.includes('event');
       if (!categoryMatch) return false;
     }
+    return true;
+  };
 
-    // Filter by District
-    const address = (job.location?.address || job.address || '').toLowerCase();
-    if (!address.includes(selectedDistrict.toLowerCase())) {
-      return false;
+  const filteredJobs = jobs.filter(matchesJobFilters);
+
+  useEffect(() => {
+    if (viewMode !== 'map' || mapLocation) return;
+
+    const fallbackJob = filteredJobs.find((job: any) => job.location?.latitude && job.location?.longitude);
+
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      if (fallbackJob) {
+        setMapLocation({
+          lat: fallbackJob.location.latitude,
+          lng: fallbackJob.location.longitude,
+          address: fallbackJob.location.address || fallbackJob.address || 'Khu vực có việc làm',
+        });
+      }
+      setLocationError('Thiết bị không hỗ trợ lấy vị trí hiện tại. Đã chuyển sang khu vực có việc làm gần nhất.');
+      return;
     }
 
-    return true;
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setMapLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          address: 'Vị trí của bạn',
+        });
+        setLocationError(null);
+        setIsLocating(false);
+      },
+      () => {
+        if (fallbackJob) {
+          setMapLocation({
+            lat: fallbackJob.location.latitude,
+            lng: fallbackJob.location.longitude,
+            address: fallbackJob.location.address || fallbackJob.address || 'Khu vực có việc làm',
+          });
+        }
+        setLocationError('Không lấy được GPS. Bạn vẫn có thể bấm trực tiếp lên bản đồ để xem việc làm quanh đó.');
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+    );
+  }, [filteredJobs, mapLocation, viewMode]);
+
+  const {
+    data: nearbyJobsRaw = [],
+    isLoading: isNearbyLoading,
+    isError: isNearbyError,
+  } = useNearbyJobs({
+    lat: mapLocation?.lat ?? 0,
+    lng: mapLocation?.lng ?? 0,
+    radius: 5000,
+    enabled: viewMode === 'map' && !!mapLocation,
   });
 
-  if (isLoading) {
+  const nearbyJobs = useMemo(
+    () =>
+      nearbyJobsRaw
+        .map((job) => mapJobDocToJob(job.id, mapNearbyApiToJobDocSafe(job)))
+        .filter(matchesJobFilters),
+    [nearbyJobsRaw, activeCategory, activeDistrict, searchText]
+  );
+
+  if (isLoading || isError) {
     return (
-      <div className="min-h-screen bg-[#F5F7FF] pb-24">
-        <div className="px-5 pt-14 pb-5 bg-white animate-pulse">
-          <div className="flex items-center justify-between mb-4">
-            <div className="space-y-2">
-              <div className="h-3 w-24 bg-slate-100 rounded-full" />
-              <div className="h-6 w-48 bg-slate-100 rounded-lg" />
-            </div>
-            <div className="w-11 h-11 bg-slate-100 rounded-full" />
-          </div>
-          <div className="h-12 bg-slate-100 rounded-2xl" />
-        </div>
-        <div className="px-5 mt-4 space-y-4 animate-pulse">
-          <div className="flex gap-3">
-            {[1,2,3].map(i => <div key={i} className="h-24 flex-1 bg-slate-100 rounded-2xl" />)}
-          </div>
-          <div className="h-4 w-32 bg-slate-100 rounded" />
-          {[1,2,3].map(i => <div key={i} className="h-24 bg-slate-100 rounded-2xl" />)}
-        </div>
+      <div className="min-h-screen bg-[#F2F4F6] flex flex-col items-center justify-center p-6 text-center">
+        {isLoading ? (
+          <div className="w-12 h-12 border-4 border-[#006399] border-t-transparent rounded-full animate-spin mb-4" />
+        ) : (
+          <span className="material-symbols-outlined text-rose-500 text-5xl mb-4">error</span>
+        )}
+        <p className="text-[#45464D] font-medium">{isLoading ? 'Đang tải trang chủ...' : 'Không thể tải dữ liệu. Vui lòng thử lại sau.'}</p>
       </div>
     );
   }
 
-  if (isError) {
-    return (
-      <div className="min-h-screen bg-[#F5F7FF] p-6 flex items-center justify-center">
-        <div className="text-center bg-white p-8 rounded-3xl border border-slate-100 max-w-sm mx-auto shadow-sm">
-          <AlertCircle className="w-10 h-10 mx-auto mb-4 text-rose-400" />
-          <p className="font-bold text-slate-800 text-lg mb-2">Không thể tải dữ liệu</p>
-          <p className="text-sm text-slate-500">Vui lòng thử lại sau.</p>
-        </div>
-      </div>
-    );
-  }
+  const userFirstName = userProfile?.full_name?.split(' ').pop() || 'Bạn';
 
   return (
-    <div className="min-h-screen bg-[#F5F7FF] pb-28">
-      {/* ── Hero Header ── */}
-      <div
-        className="relative overflow-hidden bg-gradient-to-br from-[#1e3a5f] via-[#1e40af] to-[#3b82f6] px-5 pt-14 pb-8"
-      >
-        {/* Background decoration */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
-        <div className="absolute bottom-0 left-0 w-40 h-40 bg-blue-400/10 rounded-full translate-y-1/2 -translate-x-1/4" />
-
-        <div className="relative z-10">
-          {/* Top bar */}
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <p className="text-blue-200 text-[13px] font-medium">{greeting},</p>
-              <h1 className="text-white text-xl font-bold tracking-tight mt-0.5">{userProfile?.full_name || 'Ứng viên'}</h1>
-            </div>
+    <div className="min-h-screen bg-[#F2F4F6] pb-28 font-body">
+      {/* Header with Greeting & Stats */}
+      <header className="bg-gradient-to-br from-[#1e3a5f] to-[#0f172a] pt-14 pb-6 px-6 rounded-b-[2rem] shadow-lg sticky top-0 z-40">
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <p className="text-blue-200/80 text-sm font-medium mb-1">{greeting},</p>
+            <h1 className="text-2xl font-bold text-white tracking-tight leading-tight">
+              {userFirstName} 👋
+            </h1>
           </div>
-          {/* Search Bar */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => navigate({ to: '/jobs' })}
-              className="flex-1 flex items-center gap-3 bg-white/15 backdrop-blur-sm border border-white/20 rounded-2xl px-4 py-3 text-white/70 hover:bg-white/20 transition-all active:scale-[0.98]"
-            >
-              <Search className="w-5 h-5 text-white/60 shrink-0" />
-              <span className="text-[14px] text-white/70 text-left flex-1">Tìm việc làm...</span>
-            </button>
-            <button
-              onClick={() => setShowLocationPicker(!showLocationPicker)}
-              className="bg-white/15 backdrop-blur-sm border border-white/20 rounded-2xl px-3 py-3 text-white flex items-center gap-2 hover:bg-white/20 transition-all active:scale-[0.98]"
-            >
-              <div className="bg-emerald-500 rounded-full p-1 shrink-0">
-                <MapPin className="w-3.5 h-3.5 text-white" />
+          <Link 
+            to="/candidate/profile"
+            className="w-12 h-12 rounded-full border-2 border-white/20 bg-white/10 overflow-hidden flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+          >
+            {userProfile?.avatar_url ? (
+               <img src={userProfile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+               <span className="text-white font-bold text-lg">{userFirstName.charAt(0)}</span>
+            )}
+          </Link>
+        </div>
+
+        {/* Quick Stats Cards */}
+        <div className="flex gap-3 mt-4">
+          <Link to="/candidate/wallet" className="flex-1 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-3 shadow-sm relative overflow-hidden active:scale-95 transition-transform">
+             <div className="absolute -right-4 -top-4 w-16 h-16 bg-white/10 rounded-full blur-xl pointer-events-none" />
+             <Wallet className="w-5 h-5 text-emerald-100 mb-2" />
+             <div className="text-2xl font-black text-white leading-tight">
+               {(userProfile?.wallet_balance || 0).toLocaleString()}đ
+             </div>
+             <div className="text-[10px] font-bold text-emerald-100 uppercase mt-0.5 tracking-wider">Số dư ví</div>
+          </Link>
+          <div className="flex-1 flex flex-col gap-3">
+             <Link to="/candidate/jobs" className="flex-1 bg-white/10 backdrop-blur-md rounded-2xl p-3 shadow-inner border border-white/5 active:scale-95 transition-transform flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
+                  <Briefcase className="w-4 h-4 text-blue-200" />
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-white">{activeApplications}</div>
+                  <div className="text-[10px] text-blue-200 font-medium tracking-wide">Đã ứng tuyển</div>
+                </div>
+             </Link>
+             <Link to="/candidate/jobs" className="flex-1 bg-white/10 backdrop-blur-md rounded-2xl p-3 shadow-inner border border-white/5 active:scale-95 transition-transform flex items-center gap-3">
+               <div className="w-8 h-8 rounded-full bg-rose-500/20 flex items-center justify-center shrink-0">
+                 <Heart className="w-4 h-4 text-rose-300" />
+               </div>
+               <div>
+                 <div className="text-lg font-bold text-white">{wishlistCount}</div>
+                 <div className="text-[10px] text-blue-200 font-medium tracking-wide">Việc đã lưu</div>
+               </div>
+             </Link>
+          </div>
+        </div>
+      </header>
+
+      <main className="pb-4">
+        {activeShifts > 0 && (
+          <div className="px-6 mt-6">
+            <Link to="/candidate/jobs" className="flex items-center justify-between bg-gradient-to-r from-amber-500 to-orange-500 p-4 rounded-2xl shadow-lg shadow-amber-500/20 active:scale-[0.98] transition-all">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center shrink-0 backdrop-blur-sm">
+                  <CalendarClock className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-bold text-[15px]">Bạn có {activeShifts} ca làm sắp tới</h3>
+                  <p className="text-amber-100 text-[12px] font-medium leading-tight mt-0.5">Nhấn để xem chi tiết lịch làm việc</p>
+                </div>
               </div>
-              <span className="text-[14px] font-bold whitespace-nowrap">{selectedDistrict}</span>
+              <ChevronRight className="w-5 h-5 text-white/70" />
+            </Link>
+          </div>
+        )}
+
+        {/* Search & Filter Section */}
+        <section className="px-6 pt-6 pb-2 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="flex-1 flex items-center bg-white rounded-2xl px-4 py-3 shadow-[0_4px_24px_-2px_rgba(124,131,155,0.04)] group focus-within:ring-2 focus-within:ring-[#006399]/20 transition-all">
+              <span className="material-symbols-outlined text-[#45464D] mr-3">search</span>
+              <input
+                className="bg-transparent border-none focus:ring-0 focus:outline-none w-full text-sm font-medium placeholder:text-[#76777D]"
+                placeholder="Tìm kiếm công việc..."
+                type="text"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+              />
+            </div>
+            {/* View Switcher Map/List */}
+            <button 
+              onClick={() => setViewMode(prev => prev === 'list' ? 'map' : 'list')}
+              className={`p-3.5 rounded-2xl shadow-[0_4px_24px_-2px_rgba(124,131,155,0.04)] transition-colors ${viewMode === 'map' ? 'bg-[#006399] text-white' : 'bg-white text-[#191C1E] hover:bg-[#E6E8EA]'}`}
+            >
+              <span className="material-symbols-outlined">{viewMode === 'map' ? 'list' : 'map'}</span>
             </button>
           </div>
 
-          {/* Location Picker Dropdown */}
-          {showLocationPicker && (
-            <div className="absolute left-5 right-5 mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 p-4 animate-in fade-in slide-in-from-top-2 duration-200">
-              <h3 className="text-slate-800 font-bold text-sm mb-3">Chọn khu vực tìm kiếm</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {DISTRICTS.map(district => (
-                  <button
-                    key={district}
-                    onClick={() => {
-                      setSelectedDistrict(district);
-                      setShowLocationPicker(false);
-                    }}
-                    className={`px-3 py-2 rounded-xl text-[12px] font-bold transition-all text-center ${
-                      selectedDistrict === district
-                        ? 'bg-blue-600 text-white shadow-md shadow-blue-100'
-                        : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-transparent'
-                    }`}
-                  >
-                    {district}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+          <DistrictPicker 
+            activeDistrict={activeDistrict} 
+            onChange={setActiveDistrict} 
+          />
+        </section>
 
-      {/* ── Quick Stats Cards ── */}
-      <div className="px-5 -mt-4 relative z-10">
-        <div className="grid grid-cols-3 gap-3">
-          <Link
-            to="/candidate/shifts"
-            className="bg-white rounded-2xl p-4 shadow-sm border border-white flex flex-col gap-2 active:scale-[0.97] transition-transform"
-          >
-            <div className="w-9 h-9 bg-indigo-50 rounded-xl flex items-center justify-center">
-              <Clock className="w-4.5 h-4.5 text-indigo-600 w-[18px] h-[18px]" />
-            </div>
-            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Lịch làm</p>
-            <p className="text-slate-900 text-2xl font-black leading-none">{activeShiftsCount}</p>
-          </Link>
-
-          <Link
-            to="/candidate/applications"
-            className="bg-white rounded-2xl p-4 shadow-sm border border-white flex flex-col gap-2 active:scale-[0.97] transition-transform"
-          >
-            <div className="w-9 h-9 bg-emerald-50 rounded-xl flex items-center justify-center">
-              <FileText className="w-[18px] h-[18px] text-emerald-600" />
-            </div>
-            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Ứng tuyển</p>
-            <p className="text-slate-900 text-2xl font-black leading-none">{totalAppliedCount}</p>
-          </Link>
-
-          <Link
-            to="/candidate/wishlist"
-            className="bg-white rounded-2xl p-4 shadow-sm border border-white flex flex-col gap-2 active:scale-[0.97] transition-transform"
-          >
-            <div className="w-9 h-9 bg-rose-50 rounded-xl flex items-center justify-center">
-              <Heart className="w-[18px] h-[18px] text-rose-500" />
-            </div>
-            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Đã lưu</p>
-            <p className="text-slate-900 text-2xl font-black leading-none">{totalWishlistCount}</p>
-          </Link>
-        </div>
-      </div>
-
-      {/* ── Earnings Teaser Banner ── */}
-      <div className="px-5 mt-4">
-        <Link
-          to="/candidate/wallet"
-          className="flex items-center gap-4 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-4 shadow-md shadow-emerald-200 active:scale-[0.98] transition-transform"
-        >
-          <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
-            <TrendingUp className="w-6 h-6 text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-white font-bold text-[15px]">Ví thu nhập</p>
-            <p className="text-emerald-100 text-[12px]">Xem số dư và lịch sử thanh toán</p>
-          </div>
-          <ChevronRight className="w-5 h-5 text-white/80 shrink-0" />
-        </Link>
-      </div>
-
-      {/* ── Job Recommendations ── */}
-      <div className="mt-6 px-5">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-black text-slate-900 text-[17px]">Việc làm gợi ý</h2>
-          <Link
-            to="/jobs"
-            className="text-[13px] font-bold text-indigo-600 flex items-center gap-0.5 bg-indigo-50 px-3 py-1.5 rounded-xl"
-          >
-            Xem tất cả <ChevronRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-
-        {/* Category Pills */}
-        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-3 -mx-5 px-5">
-          {CATEGORIES.map(({ label, icon: Icon }) => (
+        {/* Category Horizontal Scroll */}
+        <section className="overflow-x-auto no-scrollbar hide-scrollbar flex items-center gap-3 px-6 pb-4">
+          {CATEGORIES.map(({ label }) => (
             <button
               key={label}
               onClick={() => setActiveCategory(label)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-bold whitespace-nowrap transition-all shrink-0 ${
+              className={`whitespace-nowrap px-6 py-2.5 rounded-full font-semibold text-sm transition-colors ${
                 activeCategory === label
-                  ? 'bg-[#1e3a5f] text-white shadow-md'
-                  : 'bg-white text-slate-600 border border-slate-200'
+                  ? 'bg-[#131B2E] text-white'
+                  : 'bg-white text-[#45464D] shadow-[0_4px_24px_-2px_rgba(124,131,155,0.04)] hover:bg-[#E6E8EA]'
               }`}
             >
-              <Icon className="w-3.5 h-3.5" />
               {label}
             </button>
           ))}
-        </div>
+        </section>
 
-        {/* Job Cards */}
-        <div className="mt-2 space-y-3">
-          {filteredJobs.length === 0 ? (
-            <div className="bg-white rounded-3xl p-10 text-center border border-slate-100 shadow-sm mt-2">
-              <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                <Briefcase className="w-7 h-7 text-slate-300" />
+        {/* Job List / Map */}
+        <section className="px-6 space-y-4 mt-2">
+          {viewMode === 'map' ? (
+            <div className="space-y-4">
+              <div className="rounded-3xl bg-white p-4 shadow-[0_4px_24px_-2px_rgba(124,131,155,0.04)]">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#76777D]">Việc làm quanh đây</p>
+                    <h3 className="mt-1 text-lg font-headline font-bold text-[#191C1E]">
+                      Bấm lên bản đồ để xem công việc gần khu vực bạn chọn
+                    </h3>
+                    <p className="mt-1 text-sm text-[#45464D]">
+                      {mapLocation?.address || 'Mở bản đồ để lấy vị trí hiện tại hoặc chọn một điểm khác.'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMapLocation(null)}
+                    className="rounded-full bg-[#E6E8EA] px-3 py-2 text-xs font-semibold text-[#191C1E] transition-colors hover:bg-[#D9DDE1]"
+                  >
+                    Định vị lại
+                  </button>
+                </div>
+                {isLocating && (
+                  <p className="mt-3 text-sm font-medium text-[#006399]">Đang lấy vị trí hiện tại...</p>
+                )}
+                {locationError && (
+                  <p className="mt-3 text-sm text-[#B26A00]">{locationError}</p>
+                )}
+                {isNearbyError && (
+                  <p className="mt-3 text-sm text-rose-600">Không tải được việc làm gần đây. Bạn hãy bấm lại một vị trí khác trên bản đồ.</p>
+                )}
               </div>
-              <h3 className="font-bold text-slate-800 text-base mb-1">Chưa có việc làm mới</h3>
-              <p className="text-slate-400 text-sm">Hệ thống sẽ cập nhật sớm nhất cho bạn.</p>
+
+              <JobMapView
+                jobs={nearbyJobs}
+                selectedLocation={mapLocation}
+                onSelectLocation={(location) => {
+                  setMapLocation(location);
+                  setLocationError(null);
+                }}
+                detailVariant="candidate"
+              />
+
+              <div className="rounded-3xl bg-white p-4 shadow-[0_4px_24px_-2px_rgba(124,131,155,0.04)]">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-bold text-[#191C1E]">Công việc gần điểm đã chọn</h3>
+                    <p className="mt-1 text-sm text-[#45464D]">
+                      {isNearbyLoading ? 'Đang tìm việc làm trong bán kính 5km...' : `${nearbyJobs.length} công việc phù hợp trong bán kính 5km.`}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : filteredJobs.length === 0 ? (
+            <div className="bg-white rounded-xl p-10 text-center shadow-[0_4px_24px_-2px_rgba(124,131,155,0.04)]">
+              <span className="material-symbols-outlined text-5xl text-[#C6C6CD] mb-4 block">search_off</span>
+              <h3 className="text-lg font-headline font-bold text-[#191C1E] mb-1">Không tìm thấy việc làm</h3>
+              <p className="text-sm text-[#45464D]">Thử thay đổi bộ lọc hoặc từ khóa để mở rộng danh sách.</p>
             </div>
           ) : (
-            filteredJobs.slice(0, 10).map((job: any) => (
+            filteredJobs.slice(0, 15).map((job: any) => (
               <JobCard
                 key={job.id}
                 id={job.id}
                 companyName={job.employerName || 'Nhà tuyển dụng'}
                 title={job.title}
-                wage={job.salary ? `${job.salary.toLocaleString()}đ/${job.salaryType === 'PER_SHIFT' ? 'ca' : 'giờ'}` : 'Thỏa thuận'}
-                distance={job.location?.address?.split(',')[0] || job.address?.split(',')[0] || 'Toàn quốc'}
+                wage={job.salary ? `${(job.salary / 1000).toLocaleString()}K/${job.salaryType === 'PER_SHIFT' ? 'ca' : 'giờ'}` : 'Thỏa thuận'}
+                distance={job.location?.address?.split(',')[0] || job.address?.split(',')[0] || 'Khu vực'}
                 shift={job.shiftTime || (job.employmentType === 'PART_TIME' ? 'Bán thời gian' : 'Toàn thời gian')}
-                logoUrl={job.images?.[0] || `https://api.dicebear.com/7.x/initials/svg?seed=${job.title}&backgroundColor=3b82f6`}
-                hasVerifiedBadge={job.isPremium || false}
+                logoUrl={job.images?.[0] || `https://api.dicebear.com/7.x/initials/svg?seed=${job.employerName}&backgroundColor=3b82f6`}
+                hasVerifiedBadge={job.employerVerificationStatus === 'VERIFIED' || false}
               />
             ))
           )}
-        </div>
-      </div>
-
-      {/* ── Quick Apply Banner ── */}
-      <div className="px-5 mt-6 mb-4">
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
-            <Calendar className="w-6 h-6 text-blue-600" />
-          </div>
-          <div className="flex-1">
-            <p className="font-bold text-slate-800 text-[14px] mb-0.5">Ca làm hôm nay</p>
-            <p className="text-slate-500 text-[12px]">
-              {activeShiftsCount > 0
-                ? `Bạn có ${activeShiftsCount} ca đang hoạt động`
-                : 'Chưa có ca làm nào được nhận'}
-            </p>
-          </div>
-          <Link
-            to="/candidate/shifts"
-            className="bg-slate-900 text-white text-[12px] font-bold px-3 py-2 rounded-xl shrink-0"
-          >
-            Xem
-          </Link>
-        </div>
-      </div>
+        </section>
+      </main>
     </div>
   );
 }

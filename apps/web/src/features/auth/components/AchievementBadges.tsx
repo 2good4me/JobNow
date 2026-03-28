@@ -115,7 +115,7 @@ export const PREDEFINED_ACHIEVEMENTS: Achievement[] = [
   {
     id: 'top-employer',
     name: '👑 Nhà Tuyển Dụng Hàng Đầu',
-    description: 'Hạng Diamond với 150+ điểm uy tín',
+    description: 'Hạng Diamond với trên 200 điểm uy tín',
     icon: Trophy,
     color: 'purple',
     unlocked: false,
@@ -166,7 +166,7 @@ export const CANDIDATE_ACHIEVEMENTS: Achievement[] = [
   {
     id: 'reliable-partner',
     name: '🤝 Đối Tác Tin Cậy',
-    description: 'Không bao giờ bỏ ca hoặc đi muộn',
+    description: 'Duy trì lịch sử làm việc ổn định và không bỏ ca',
     icon: Check,
     color: 'emerald',
     unlocked: false,

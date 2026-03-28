@@ -7,10 +7,9 @@ import {
     orderBy,
     query,
     where,
-    serverTimestamp,
-    runTransaction,
 } from 'firebase/firestore';
-import { db } from '@/config/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '@/config/firebase';
 import type { RatingInput, RatingResult } from '@jobnow/types';
 
 export interface RatingEligibility {
@@ -28,76 +27,11 @@ export interface RatingRecord {
     createdAt?: Date;
 }
 
-/**
- * Submits a rating using a Firestore Transaction to ensure consistency.
- * 1. Creates a review record.
- * 2. Updates the reviewee's average_rating and total_ratings.
- * 3. Creates a notification for the reviewee.
- */
 export async function submitRating(input: RatingInput): Promise<RatingResult> {
-    const revieweeRef = doc(db, 'users', input.revieweeId);
-    const reviewsRef = collection(db, 'reviews');
-    const notificationsRef = collection(db, 'notifications');
-
     try {
-        const result = await runTransaction(db, async (transaction) => {
-            // 1. Get reviewee profile for aggregation
-            const revieweeSnap = await transaction.get(revieweeRef);
-            const revieweeData = revieweeSnap.exists() ? revieweeSnap.data() : {};
-            
-            const currentTotal = Number(revieweeData.total_ratings || 0);
-            const currentAvg = Number(revieweeData.average_rating || 0);
-            
-            const newTotal = currentTotal + 1;
-            const newAvg = Number(((currentAvg * currentTotal + input.rating) / newTotal).toFixed(1));
-
-            // 2. Add Review Document (using generated doc for ID)
-            const newReviewRef = doc(reviewsRef);
-            transaction.set(newReviewRef, {
-                application_id: input.applicationId,
-                reviewer_id: input.reviewerId,
-                reviewee_id: input.revieweeId,
-                rating: input.rating,
-                comment: input.comment || '',
-                created_at: serverTimestamp(),
-            });
-
-            // 3. Add Notification
-            const newNotifRef = doc(notificationsRef);
-            transaction.set(newNotifRef, {
-                userId: input.revieweeId,
-                user_id: input.revieweeId,
-                type: 'NEW_REVIEW',
-                category: 'SYSTEM',
-                title: 'Đánh giá mới',
-                body: `Bạn vừa nhận được đánh giá ${input.rating} sao từ đối tác.`,
-                data: {
-                    applicationId: input.applicationId,
-                    reviewerId: input.reviewerId,
-                    rating: input.rating,
-                },
-                isRead: false,
-                is_read: false,
-                created_at: serverTimestamp(),
-                createdAt: serverTimestamp(),
-            });
-
-            const newReputation = Math.round(newAvg * 20);
-
-            // 4. Update Reviewee Profile using set(merge) for robustness
-            transaction.set(revieweeRef, {
-                average_rating: newAvg,
-                total_ratings: newTotal,
-                reputation_score: newReputation,
-                updated_at: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-            }, { merge: true });
-
-            console.log(`Review submitted: reviewId=${newReviewRef.id}, app=${input.applicationId}, reviewee=${input.revieweeId}, newScore=${newReputation}`);
-            return { reviewId: newReviewRef.id, updatedReputationScore: newReputation };
-        });
-
-        return result;
+        const callable = httpsCallable<RatingInput, RatingResult>(functions, 'submitRating');
+        const { data } = await callable(input);
+        return data;
     } catch (error: any) {
         console.error('Error in submitRating:', error);
         throw new Error(error.message || 'Không thể gửi đánh giá. Vui lòng thử lại sau.');

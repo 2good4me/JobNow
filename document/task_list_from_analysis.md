@@ -7,6 +7,7 @@
 ## 🔥 SPRINT 1 – VÁ BẢO MẬT NGAY LẬP TỨC (1-2 ngày)
 
 ### TASK 1: Siết Firestore Rules cho `applications`
+- [x] Done
 - **Mức độ:** 🔴 Critical
 - **File:** `firestore.rules` dòng 83-89
 - **Vấn đề hiện tại:**
@@ -42,6 +43,7 @@
 ---
 
 ### TASK 2: Siết Firestore Rules cho `jobs` update
+- [x] Done
 - **Mức độ:** 🔴 Critical
 - **File:** `firestore.rules` dòng 76
 - **Vấn đề hiện tại:**
@@ -61,6 +63,7 @@
 ---
 
 ### TASK 3: Xóa simulation rule cho `transactions`
+- [x] Done
 - **Mức độ:** 🟠 High
 - **File:** `firestore.rules` dòng 138
 - **Vấn đề hiện tại:**
@@ -77,6 +80,7 @@
 ---
 
 ### TASK 4: Thay `alert()` bằng `toast` (10 chỗ)
+- [x] Done
 - **Mức độ:** 🟡 Medium
 - **Vấn đề:** 10 chỗ dùng `alert()` mang trải nghiệm UX rất kém, chặn luồng UI.
 - **Danh sách file cần sửa:**
@@ -101,6 +105,7 @@
 ## ⚡ SPRINT 2 – HOÀN THIỆN LUỒNG CỐT LÕI (1-2 tuần)
 
 ### TASK 5: Xây dựng Admin eKYC Review
+- [x] Done
 - **Mức độ:** 🔴 Critical
 - **Vấn đề:** Candidate gửi hồ sơ xác thực → trạng thái PENDING → **không ai duyệt**. Admin panel hoàn toàn không có UI xem/duyệt hồ sơ eKYC.
 - **Cần tạo mới:**
@@ -122,6 +127,7 @@
 ---
 
 ### TASK 6: Thêm kiểm tra Conflict Time trong `applyJob`
+- [x] Done
 - **Mức độ:** 🔴 Critical
 - **File:** `apps/functions/src/index.ts` – hàm `applyJob` (dòng 162-261)
 - **Vấn đề:** Candidate có thể ứng tuyển nhiều ca trùng giờ nhau → employer bị kèo rớt.
@@ -166,6 +172,7 @@
 ---
 
 ### TASK 7: Xây dựng Payment Flow (Employer → Candidate)
+- [x] Done
 - **Mức độ:** 🔴 Critical
 - **Vấn đề:** Trường `payment_status: 'UNPAID'` trong application được set khi tạo nhưng **không bao giờ chuyển thành PAID**. Không có cơ chế thanh toán lương.
 - **Cần tạo:**
@@ -196,6 +203,7 @@
 ---
 
 ### TASK 8: Fix filter Ca làm & Thời gian trên `/jobs`
+- [x] Done
 - **Mức độ:** 🟠 High
 - **File:** `apps/web/src/routes/jobs/index.tsx`
 - **Vấn đề:** Bộ lọc "Thời gian" (Hôm nay/Ngày mai) và "Ca làm" (Sáng/Chiều/Tối) có UI chọn được nhưng **không ảnh hưởng kết quả** – biến `selectedTime` và `selectedShifts` không được sử dụng trong `filteredJobs` useMemo.
@@ -230,6 +238,7 @@
 ---
 
 ### TASK 9: Tích hợp Google Maps cho Map View trên trang tìm việc
+- [x] Done
 - **Mức độ:** 🟠 High
 - **File:** `apps/web/src/routes/jobs/index.tsx`
 - **Vấn đề:** Nút toggle Map/List có nhưng chế độ Map **không render bản đồ**. Đây là core feature – "Uber/Grab cho việc làm".
@@ -244,6 +253,7 @@
 ---
 
 ### TASK 10: Admin Job Moderation – Kiểm duyệt tin trước khi công khai
+- [x] Done
 - **Mức độ:** 🟠 High
 - **Vấn đề:** Yêu cầu Admin 2.3: "Duyệt tin tuyển dụng trước khi hiển thị". Hiện tại tin vào Firestore = hiển thị ngay.
 - **Cần sửa:**
@@ -261,6 +271,7 @@
 ## 🧹 SPRINT 3 – NÂNG CẤP & TỐI ƯU (2-4 tuần)
 
 ### TASK 11: Tách `shifts` thành subcollection
+- [x] Done
 - **Mức độ:** 🟡 Medium
 - **Vấn đề:** Shifts hiện là mảng con `jobs.shifts[]`. Firestore **không thể query tối ưu** vào phần tử mảng → chặn tính năng tìm ca trống theo thời gian.
 - **Migration plan:**
@@ -274,6 +285,7 @@
 ---
 
 ### TASK 12: Implement Tier/Anti-spam
+- [x] Done
 - **Mức độ:** 🟡 Medium
 - **Vấn đề:** Không có giới hạn tin đăng. Tài khoản chưa verify đăng được vô hạn. Hacker có thể spam.
 - **Cần làm:**
@@ -286,6 +298,7 @@
 ---
 
 ### TASK 13: Guest Mode – Xem việc không cần đăng nhập
+- [x] Done
 - **Mức độ:** 🟡 Medium
 - **Vấn đề:** App bắt buộc login trước khi truy cập bất kỳ trang nào. Yêu cầu cho guest xem bản đồ/danh sách.
 - **Cần làm:**
@@ -298,6 +311,7 @@
 ---
 
 ### TASK 14: FCM Push Notification thực
+- [x] Done
 - **Mức độ:** 🟡 Medium
 - **Vấn đề:** Toggle setting trong UI chỉ lưu state, không đăng ký FCM token.
 - **Cần làm:**
@@ -310,6 +324,7 @@
 ---
 
 ### TASK 15: Nhắc việc – Scheduled Cloud Function
+- [x] Done
 - **Mức độ:** 🟡 Medium
 - **Vấn đề:** Candidate không được nhắc khi sắp đến giờ làm.
 - **Cần tạo:**
@@ -321,6 +336,7 @@
 ---
 
 ### TASK 16: Admin khóa/mở khóa user
+- [x] Done
 - **Mức độ:** 🟡 Medium
 - **File:** `routes/admin/users.tsx`, `routes/admin/users.$userId.tsx`
 - **Vấn đề:** Liệt kê users được nhưng **không có nút khóa/mở khóa** tài khoản vi phạm.
@@ -333,6 +349,7 @@
 ---
 
 ### TASK 17: Follow → Push Notification khi employer đăng tin mới
+- [x] Done
 - **Mức độ:** 🟢 Low
 - **Vấn đề:** Use case 5.2 yêu cầu: Candidate follow employer → nhận push khi employer đăng tin mới. Hiện chỉ có follow/unfollow UI, không có trigger.
 - **Cần tạo:**
@@ -343,6 +360,7 @@
 ---
 
 ### TASK 18: Boost/VIP Package
+- [x] Done
 - **Mức độ:** 🟢 Low
 - **Vấn đề:** Use case 5.1 yêu cầu hệ thống mua gói đẩy top. Hoàn toàn chưa có code.
 - **Cần tạo:**
@@ -354,6 +372,7 @@
 ---
 
 ### TASK 19: Đóng tin an toàn – Cảnh báo ứng viên đã duyệt
+- [x] Done
 - **Mức độ:** 🟢 Low
 - **File:** `routes/employer/job-detail.tsx` hoặc `job-list.tsx`
 - **Vấn đề:** Use case 3.2 yêu cầu: khi đóng tin có ứng viên đã duyệt → cảnh báo + gửi notification hủy.

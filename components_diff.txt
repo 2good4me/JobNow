@@ -1,0 +1,160 @@
+﻿diff --git a/apps/web/src/components/ui/ApplicantCard.tsx b/apps/web/src/components/ui/ApplicantCard.tsx
+index 47a37d0..445c85b 100644
+--- a/apps/web/src/components/ui/ApplicantCard.tsx
++++ b/apps/web/src/components/ui/ApplicantCard.tsx
+@@ -6,11 +6,13 @@ import { useState, useCallback, useEffect } from 'react';
+ import { useNavigate } from '@tanstack/react-router';
+ import { ReviewModal } from '@/features/jobs/components/ReviewModal';
+ import { useAuth } from '@/features/auth/context/AuthContext';
++import { toast } from 'sonner';
+ 
+ type ApplicantCardProps = {
+   applicationId: string;
+   candidateId: string;
+   status: Application['status'];
++  paymentStatus?: Application['paymentStatus'];
+   jobTitle?: string;
+   shiftTime?: string;
+   appliedAt?: Date;
+@@ -83,6 +85,7 @@ export function ApplicantCard({
+   applicationId,
+   candidateId,
+   status,
++  paymentStatus = 'UNPAID',
+   jobTitle,
+   shiftTime,
+   appliedAt,
+@@ -152,7 +155,7 @@ export function ApplicantCard({
+         },
+         onError: (err) => {
+           setShowConfetti(false);
+-          alert(`KhĂ´ng thá»ƒ duyá»‡t: ${err.message}`);
++          toast.error(`KhĂ´ng thá»ƒ duyá»‡t: ${err.message}`);
+         }
+       }
+     );
+@@ -164,7 +167,7 @@ export function ApplicantCard({
+     updateStatus(
+       { id: applicationId, status: 'REJECTED' },
+       {
+-        onError: (err) => alert(`KhĂ´ng thá»ƒ tá»« chá»‘i: ${err.message}`)
++        onError: (err) => toast.error(`KhĂ´ng thá»ƒ tá»« chá»‘i: ${err.message}`)
+       }
+     );
+   }, [applicationId, updateStatus]);
+@@ -190,13 +193,13 @@ export function ApplicantCard({
+ 
+   const canApprove = ['NEW', 'PENDING'].includes(status);
+   const canReject = ['NEW', 'PENDING'].includes(status);
+-  const canPay = status === 'WORK_FINISHED';
+-  const canReview = status === 'COMPLETED';
++  const canPay = (status === 'COMPLETED' || status === 'WORK_FINISHED') && paymentStatus === 'UNPAID';
++  const canReview = status === 'COMPLETED' && paymentStatus === 'PAID';
+   const canForceEnd = status === 'CHECKED_IN';
+ 
+   const handlePay = (method: 'APP' | 'CASH') => {
+     if (!user?.uid) {
+-      alert('KhĂ´ng tĂ¬m tháº¥y thĂ´ng tin nhĂ  tuyá»ƒn dá»¥ng. Vui lĂ²ng thá»­ láº¡i.');
++      toast.error('KhĂ´ng tĂ¬m tháº¥y thĂ´ng tin nhĂ  tuyá»ƒn dá»¥ng. Vui lĂ²ng thá»­ láº¡i.');
+       return;
+     }
+ 
+@@ -208,7 +211,7 @@ export function ApplicantCard({
+           setShowConfetti(true);
+           setTimeout(() => setShowConfetti(false), 2000);
+         },
+-        onError: (err) => alert(`Thanh toĂ¡n tháº¥t báº¡i: ${err.message}`)
++        onError: (err) => toast.error(`Thanh toĂ¡n tháº¥t báº¡i: ${err.message}`)
+       }
+     );
+   };
+diff --git a/apps/web/src/components/ui/CandidateBottomNav.tsx b/apps/web/src/components/ui/CandidateBottomNav.tsx
+index e87eed4..e7bc3f7 100644
+--- a/apps/web/src/components/ui/CandidateBottomNav.tsx
++++ b/apps/web/src/components/ui/CandidateBottomNav.tsx
+@@ -1,63 +1,50 @@
+ import { Link, useLocation } from '@tanstack/react-router';
+-import { LayoutDashboard, Search, CalendarDays, MessageCircle, UserCircle } from 'lucide-react';
+-import { useAuth } from '@/features/auth/context/AuthContext';
+-import { useChatUnreadCount } from '@/features/chat/hooks/useChatUnreadCount';
+ 
+ const navItems = [
+-    { to: '/candidate', icon: LayoutDashboard, label: 'Tá»•ng quan' },
+-    { to: '/jobs', icon: Search, label: 'TĂ¬m kiáº¿m' },
+-    { to: '/candidate/shifts', icon: CalendarDays, label: 'Ca cá»§a tĂ´i' },
+-    { to: '/candidate/chat', icon: MessageCircle, label: 'Chat', badgeType: 'chat' as const },
+-    { to: '/candidate/profile', icon: UserCircle, label: 'TĂ i khoáº£n' },
++    { to: '/candidate', icon: 'home', label: 'Trang chá»§' },
++    { to: '/candidate/jobs', icon: 'work', label: 'Viá»‡c cá»§a tĂ´i' },
++    { to: '/candidate/shifts', icon: 'schedule', label: 'Ca lĂ m' },
++    { to: '/candidate/wallet', icon: 'wallet', label: 'VĂ­ tiá»n' },
++    { to: '/candidate/profile', icon: 'person', label: 'Há»“ sÆ¡' },
+ ] as const;
+ 
+ export function CandidateBottomNav() {
+     const location = useLocation();
+-    const { userProfile } = useAuth();
+-    const chatUnreadCount = useChatUnreadCount(userProfile?.uid, 'CANDIDATE');
+ 
+     return (
+-        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/85 dark:bg-slate-900/85 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-700/50 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] animate-slide-in-bottom">
+-            <div className="flex items-center justify-around max-w-lg mx-auto h-[72px] px-2 relative">
+-                {navItems.map(({ to, icon: Icon, label, ...rest }) => {
+-                    const badgeType = 'badgeType' in rest ? rest.badgeType : undefined;
+-                    const badgeValue = badgeType === 'chat' ? chatUnreadCount : 0;
+-                    const hasBadge = Boolean(badgeType);
+-
++        <nav className="fixed bottom-0 left-0 w-full z-50 bg-white border-t border-slate-100 shadow-[0_-1px_3px_rgba(0,0,0,0.05)] pb-safe">
++            <div className="flex items-center justify-around max-w-lg mx-auto h-[64px] px-2 w-full">
++                {navItems.map((item) => {
++                    const { to, icon, label } = item;
++                    const search = 'search' in item ? item.search : undefined;
+                     const isActive =
+                         to === '/candidate'
+                             ? location.pathname === '/candidate' || location.pathname === '/candidate/'
+                             : to === '/candidate/profile'
+                                 ? location.pathname.startsWith(to) || location.pathname.startsWith('/support-center')
++                                // Wallet handling in case it doesn't exist yet but design has it
+                                 : location.pathname.startsWith(to);
+ 
+                     return (
+                         <Link
+                             key={to}
+-                            to={to}
+-                            className={`
+-                                flex-1 flex flex-col items-center justify-center gap-1 group relative h-full transition-colors
+-                            `}
++                            to={to as any} // Cast to any to avoid TS errors if route doesn't exist yet
++                            {...(search ? { search: search as any } : {})}
++                            className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
++                                isActive ? 'text-[#0284c7]' : 'text-[#94a3b8] hover:text-[#475569]'
++                            }`}
+                         >
+-                            <div className={`flex h-7 items-center justify-center transition-all duration-200 ${isActive ? 'text-primary-600 drop-shadow-[0_0_8px_rgba(36,99,235,0.4)]' : 'text-slate-400 group-hover:text-primary-500'}`}>
+-                                <Icon className={`w-[26px] h-[26px] transition-transform duration-200 ${isActive ? 'scale-110' : ''}`} strokeWidth={isActive ? 2.5 : 2} />
+-                            </div>
+-
+-                            {hasBadge && badgeValue > 0 && (
+-                                <span className="absolute top-2 right-[20%] min-w-[16px] h-4 flex items-center justify-center bg-red-500 text-white text-[9px] font-bold rounded-full border border-white px-1 z-10">
+-                                    {badgeValue > 99 ? '99+' : badgeValue}
+-                                </span>
+-                            )}
+-
+-                            <span className={`text-[10px] font-medium leading-none tracking-tight transition-colors ${isActive ? 'text-primary-600' : 'text-slate-500 group-hover:text-primary-500'}`}>
+-                                {label}
++                            <span 
++                                className="material-symbols-outlined text-[24px]"
++                                style={isActive ? { fontVariationSettings: "'FILL' 1" } : undefined}
++                            >
++                                {icon}
+                             </span>
++                            <span className="text-[10px] font-medium mt-1 font-['Inter']">{label}</span>
+                         </Link>
+                     );
+                 })}
+             </div>
+-            {/* Safe area spacer for iOS */}
+-            <div className="h-[env(safe-area-bottom,0px)]" />
+         </nav>
+     );
+ }

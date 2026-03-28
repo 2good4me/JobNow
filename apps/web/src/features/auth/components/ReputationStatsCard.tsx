@@ -60,7 +60,7 @@ export function ReputationStatsCard({
           <p className="text-[10px] text-slate-400 mt-1">
             {progress.pointsNeeded > 0
               ? `${progress.pointsNeeded} đến ${progress.nextTier?.labelVi}`
-              : 'Tối đa'}
+              : 'Tối đa /500'}
           </p>
         </div>
 

@@ -21,11 +21,14 @@ export interface JobData {
     address: string;
     location: { latitude: number; longitude: number };
     is_gps_required: boolean;
-    status: 'OPEN' | 'ACTIVE' | 'FULL' | 'CLOSED' | 'HIDDEN';
+    status: 'OPEN' | 'ACTIVE' | 'FULL' | 'CLOSED' | 'HIDDEN' | 'DRAFT';
     shifts: ShiftData[];
     geohash?: string;
     created_at?: admin.firestore.FieldValue;
     updated_at?: admin.firestore.FieldValue;
+    moderation_status?: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
+    is_boosted?: boolean;
+    boost_expires_at?: admin.firestore.Timestamp | null;
 }
 
 export interface NearbySearchOptions {
@@ -132,8 +135,12 @@ export class JobService {
 
         const jobPayload = {
             ...data,
+            status: 'DRAFT',
+            moderation_status: 'PENDING_REVIEW',
             shifts: shiftsWithIds,
             geohash,
+            is_boosted: false,
+            boost_expires_at: null,
             created_at: admin.firestore.FieldValue.serverTimestamp(),
             updated_at: admin.firestore.FieldValue.serverTimestamp(),
         };
@@ -193,6 +200,8 @@ export class JobService {
 
                 const status = normalizeStatus(raw.status);
                 if (status !== 'OPEN') continue;
+                const moderationStatus = String(raw.moderation_status ?? 'APPROVED').toUpperCase();
+                if (moderationStatus !== 'APPROVED' && moderationStatus !== '') continue;
 
                 const salary = Number(raw.salary ?? 0);
                 if (salaryMin !== undefined && salary < salaryMin) continue;
@@ -212,6 +221,8 @@ export class JobService {
         }
 
         const sorted = Array.from(deduped.values()).sort((a, b) => {
+            const boostDiff = Number(Boolean(b.is_boosted ?? false)) - Number(Boolean(a.is_boosted ?? false));
+            if (boostDiff !== 0) return boostDiff;
             const distanceDiff = Number(a.distance ?? 0) - Number(b.distance ?? 0);
             if (distanceDiff !== 0) return distanceDiff;
             return getTimestampMillis(b.created_at) - getTimestampMillis(a.created_at);

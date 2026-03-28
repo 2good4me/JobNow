@@ -1,0 +1,3544 @@
+﻿diff --git a/apps/web/src/features/admin/components/AdminSidebar.tsx b/apps/web/src/features/admin/components/AdminSidebar.tsx
+index 39bb506..7f4858a 100644
+--- a/apps/web/src/features/admin/components/AdminSidebar.tsx
++++ b/apps/web/src/features/admin/components/AdminSidebar.tsx
+@@ -7,6 +7,7 @@ import {
+ const navItems = [
+     { to: '/admin', icon: LayoutDashboard, label: 'Tá»•ng quan', exact: true },
+     { to: '/admin/users', icon: Users, label: 'NgÆ°á»i dĂ¹ng' },
++    { to: '/admin/verifications', icon: Shield, label: 'eKYC' },
+     { to: '/admin/jobs', icon: Briefcase, label: 'Viá»‡c lĂ m' },
+     { to: '/admin/reports', icon: AlertTriangle, label: 'BĂ¡o cĂ¡o' },
+     { to: '/admin/categories', icon: FolderTree, label: 'Danh má»¥c' },
+diff --git a/apps/web/src/features/admin/hooks/useVerifications.ts b/apps/web/src/features/admin/hooks/useVerifications.ts
+new file mode 100644
+index 0000000..de1a80c
+--- /dev/null
++++ b/apps/web/src/features/admin/hooks/useVerifications.ts
+@@ -0,0 +1,32 @@
++import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
++import {
++    fetchPendingVerifications,
++    reviewVerificationRequest,
++    type AdminVerificationItem,
++} from '../services/verificationService';
++
++const VERIFICATION_QUERY_KEY = ['admin', 'verifications', 'pending'];
++
++export function useVerifications() {
++    return useQuery<AdminVerificationItem[]>({
++        queryKey: VERIFICATION_QUERY_KEY,
++        queryFn: fetchPendingVerifications,
++        staleTime: 30_000,
++    });
++}
++
++export function useReviewVerificationRequest() {
++    const queryClient = useQueryClient();
++
++    return useMutation<
++        void,
++        Error,
++        { userId: string; requestId: string; action: 'APPROVE' | 'REJECT'; rejectionReason?: string }
++    >({
++        mutationFn: ({ userId, requestId, action, rejectionReason }) =>
++            reviewVerificationRequest(userId, requestId, action, rejectionReason),
++        onSuccess: () => {
++            queryClient.invalidateQueries({ queryKey: VERIFICATION_QUERY_KEY });
++        },
++    });
++}
+diff --git a/apps/web/src/features/admin/services/adminJobService.ts b/apps/web/src/features/admin/services/adminJobService.ts
+index f23e181..e279fcb 100644
+--- a/apps/web/src/features/admin/services/adminJobService.ts
++++ b/apps/web/src/features/admin/services/adminJobService.ts
+@@ -5,6 +5,7 @@ import {
+     type QueryConstraint, type DocumentSnapshot,
+ } from 'firebase/firestore';
+ import { db } from '@/config/firebase';
++import { reviewJobModeration as reviewJobModerationCallable } from '@/features/jobs/services/jobService';
+ 
+ /* â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+ 
+@@ -22,11 +23,15 @@ export interface AdminJob {
+     updated_at: Date;
+     applicant_count?: number;
+     report_count?: number;
++    moderation_status?: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
++    moderation_reason?: string;
++    is_boosted?: boolean;
+ }
+ 
+ export interface AdminJobFilters {
+     search?: string;
+     status?: 'ALL' | 'OPEN' | 'ACTIVE' | 'FULL' | 'CLOSED' | 'HIDDEN';
++    moderationStatus?: 'ALL' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
+     category?: string;
+     hasReports?: boolean;
+     sortBy?: 'created_at' | 'salary';
+@@ -54,6 +59,10 @@ export async function fetchAdminJobs(
+         constraints.push(where('status', '==', filters.status));
+     }
+ 
++    if (filters.moderationStatus && filters.moderationStatus !== 'ALL') {
++        constraints.push(where('moderation_status', '==', filters.moderationStatus));
++    }
++
+     const sortField = filters.sortBy ?? 'created_at';
+     const sortDirection = filters.sortDir ?? 'desc';
+     constraints.push(orderBy(sortField, sortDirection));
+@@ -75,6 +84,9 @@ export async function fetchAdminJobs(
+         if (filters.status && filters.status !== 'ALL') {
+             countConstraints.push(where('status', '==', filters.status));
+         }
++        if (filters.moderationStatus && filters.moderationStatus !== 'ALL') {
++            countConstraints.push(where('moderation_status', '==', filters.moderationStatus));
++        }
+         const countQ = query(jobsRef, ...countConstraints);
+         const countSnap = await getCountFromServer(countQ);
+         total = countSnap.data().count;
+@@ -91,6 +103,9 @@ export async function fetchAdminJobs(
+             salary: data.salary ?? 0,
+             salary_type: data.salary_type ?? data.salaryType ?? 'JOB',
+             status: data.status ?? 'OPEN',
++            moderation_status: data.moderation_status ?? 'APPROVED',
++            moderation_reason: data.moderation_reason ?? '',
++            is_boosted: Boolean(data.is_boosted ?? false),
+             address: data.address ?? '',
+             created_at: data.created_at?.toDate?.() ?? new Date(),
+             updated_at: data.updated_at?.toDate?.() ?? new Date(),
+@@ -129,3 +144,7 @@ export async function hideJob(jobId: string, adminId: string, reason: string): P
+         });
+     }
+ }
++
++export async function reviewJobModeration(jobId: string, action: 'APPROVE' | 'REJECT', reason?: string): Promise<void> {
++    await reviewJobModerationCallable(jobId, action, reason);
++}
+diff --git a/apps/web/src/features/admin/services/adminUserService.ts b/apps/web/src/features/admin/services/adminUserService.ts
+index df0704f..60783b0 100644
+--- a/apps/web/src/features/admin/services/adminUserService.ts
++++ b/apps/web/src/features/admin/services/adminUserService.ts
+@@ -1,10 +1,10 @@
+ import {
+     collection, query, where, orderBy, limit, getDocs,
+-    doc, updateDoc, getDoc, startAfter, getCountFromServer,
+-    serverTimestamp, addDoc,
++    doc, getDoc, startAfter, getCountFromServer,
+     type QueryConstraint, type DocumentSnapshot,
+ } from 'firebase/firestore';
+-import { db } from '@/config/firebase';
++import { httpsCallable } from 'firebase/functions';
++import { db, functions } from '@/config/firebase';
+ import type { UserProfile } from '@/features/auth/types/user';
+ 
+ /* â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+@@ -139,36 +139,24 @@ export async function fetchUserById(userId: string): Promise<UserProfile | null>
+ export async function updateUserStatus(
+     userId: string,
+     newStatus: 'ACTIVE' | 'LOCKED' | 'BANNED',
+-    adminId: string,
++    _adminId: string,
+     reason: string,
+ ): Promise<void> {
+-    const userRef = doc(db, 'users', userId);
+-    await updateDoc(userRef, {
+-        status: newStatus,
+-        updated_at: serverTimestamp(),
+-    });
+-
+-    // Audit log
+-    await addDoc(collection(db, 'admin_logs'), {
+-        admin_id: adminId,
+-        action: newStatus === 'ACTIVE' ? 'UNLOCK_USER' : newStatus === 'LOCKED' ? 'LOCK_USER' : 'BAN_USER',
+-        target_type: 'USER',
+-        target_id: userId,
+-        reason,
+-        created_at: serverTimestamp(),
+-    });
+-
+-    // Notify user
+-    await addDoc(collection(db, 'notifications'), {
++    const action =
++        newStatus === 'ACTIVE'
++            ? 'UNLOCK'
++            : newStatus === 'LOCKED'
++              ? 'LOCK'
++              : 'BAN';
++
++    const callable = httpsCallable<
++        { userId: string; action: 'LOCK' | 'UNLOCK' | 'BAN'; reason?: string },
++        { success: boolean; status: string }
++    >(functions, 'adminSetUserStatus');
++
++    await callable({
+         userId,
+-        user_id: userId,
+-        type: 'SYSTEM',
+-        category: 'SYSTEM',
+-        title: newStatus === 'BANNED' ? 'TĂ i khoáº£n bá»‹ cáº¥m' : newStatus === 'LOCKED' ? 'TĂ i khoáº£n bá»‹ khĂ³a' : 'TĂ i khoáº£n Ä‘Æ°á»£c má»Ÿ khĂ³a',
+-        body: reason,
+-        isRead: false,
+-        is_read: false,
+-        created_at: serverTimestamp(),
+-        createdAt: serverTimestamp(),
++        action,
++        reason,
+     });
+ }
+diff --git a/apps/web/src/features/admin/services/verificationService.ts b/apps/web/src/features/admin/services/verificationService.ts
+new file mode 100644
+index 0000000..360080d
+--- /dev/null
++++ b/apps/web/src/features/admin/services/verificationService.ts
+@@ -0,0 +1,106 @@
++import {
++    collectionGroup,
++    doc,
++    getDoc,
++    getDocs,
++    orderBy,
++    query,
++    where,
++} from 'firebase/firestore';
++import { httpsCallable } from 'firebase/functions';
++import { db, functions } from '@/config/firebase';
++
++export interface AdminVerificationItem {
++    id: string;
++    userId: string;
++    status: 'PENDING' | 'APPROVED' | 'REJECTED';
++    frontImageUrl: string;
++    submittedAt: Date | null;
++    updatedAt: Date | null;
++    candidateName: string;
++    candidateEmail: string;
++    candidatePhone: string;
++    verificationStatus: string;
++    ocrData?: {
++        cccd_number?: string | null;
++        full_name?: string | null;
++        dob?: string | null;
++    };
++    rejectionReason?: string | null;
++}
++
++function toDate(value: unknown): Date | null {
++    if (!value) return null;
++    if (typeof value === 'object' && value && 'toDate' in value && typeof (value as { toDate?: unknown }).toDate === 'function') {
++        try {
++            return (value as { toDate: () => Date }).toDate();
++        } catch {
++            return null;
++        }
++    }
++
++    const parsed = new Date(value as string | number | Date);
++    return Number.isNaN(parsed.getTime()) ? null : parsed;
++}
++
++export async function fetchPendingVerifications(): Promise<AdminVerificationItem[]> {
++    const verificationQuery = query(
++        collectionGroup(db, 'verification_requests'),
++        where('status', '==', 'PENDING'),
++        orderBy('created_at', 'desc'),
++    );
++
++    const snapshot = await getDocs(verificationQuery);
++    const items = await Promise.all(snapshot.docs.map(async (docSnap) => {
++        const data = docSnap.data();
++        const userId =
++            String(data.user_id ?? '') ||
++            docSnap.ref.parent.parent?.id ||
++            '';
++
++        const userSnap = userId ? await getDoc(doc(db, 'users', userId)) : null;
++        const userData = userSnap?.data() ?? {};
++
++        return {
++            id: docSnap.id,
++            userId,
++            status: (data.status ?? 'PENDING') as AdminVerificationItem['status'],
++            frontImageUrl: String(data.front_image_url ?? data.document_url ?? ''),
++            submittedAt: toDate(data.submitted_at ?? data.created_at),
++            updatedAt: toDate(data.updated_at),
++            candidateName: String(userData.full_name ?? userData.fullName ?? data.ocr_data?.full_name ?? 'ChÆ°a cĂ³ tĂªn'),
++            candidateEmail: String(userData.email ?? ''),
++            candidatePhone: String(userData.phone_number ?? userData.phoneNumber ?? ''),
++            verificationStatus: String(userData.verification_status ?? 'UNVERIFIED'),
++            ocrData: data.ocr_data
++                ? {
++                    cccd_number: data.ocr_data.cccd_number ?? null,
++                    full_name: data.ocr_data.full_name ?? null,
++                    dob: data.ocr_data.dob ?? null,
++                }
++                : undefined,
++            rejectionReason: typeof data.rejection_reason === 'string' ? data.rejection_reason : null,
++        } satisfies AdminVerificationItem;
++    }));
++
++    return items;
++}
++
++export async function reviewVerificationRequest(
++    userId: string,
++    requestId: string,
++    action: 'APPROVE' | 'REJECT',
++    rejectionReason?: string,
++): Promise<void> {
++    const callable = httpsCallable<
++        { userId: string; requestId: string; action: 'APPROVE' | 'REJECT'; rejectionReason?: string },
++        { success: boolean }
++    >(functions, 'reviewVerificationRequest');
++
++    await callable({
++        userId,
++        requestId,
++        action,
++        rejectionReason,
++    });
++}
+diff --git a/apps/web/src/features/auth/components/AchievementBadges.tsx b/apps/web/src/features/auth/components/AchievementBadges.tsx
+index 8db2a51..1eb7d27 100644
+--- a/apps/web/src/features/auth/components/AchievementBadges.tsx
++++ b/apps/web/src/features/auth/components/AchievementBadges.tsx
+@@ -115,7 +115,7 @@ export const PREDEFINED_ACHIEVEMENTS: Achievement[] = [
+   {
+     id: 'top-employer',
+     name: 'đŸ‘‘ NhĂ  Tuyá»ƒn Dá»¥ng HĂ ng Äáº§u',
+-    description: 'Háº¡ng Diamond vá»›i 150+ Ä‘iá»ƒm uy tĂ­n',
++    description: 'Háº¡ng Diamond vá»›i trĂªn 200 Ä‘iá»ƒm uy tĂ­n',
+     icon: Trophy,
+     color: 'purple',
+     unlocked: false,
+@@ -166,7 +166,7 @@ export const CANDIDATE_ACHIEVEMENTS: Achievement[] = [
+   {
+     id: 'reliable-partner',
+     name: 'đŸ¤ Äá»‘i TĂ¡c Tin Cáº­y',
+-    description: 'KhĂ´ng bao giá» bá» ca hoáº·c Ä‘i muá»™n',
++    description: 'Duy trĂ¬ lá»‹ch sá»­ lĂ m viá»‡c á»•n Ä‘á»‹nh vĂ  khĂ´ng bá» ca',
+     icon: Check,
+     color: 'emerald',
+     unlocked: false,
+diff --git a/apps/web/src/features/auth/components/ReputationBadge.tsx b/apps/web/src/features/auth/components/ReputationBadge.tsx
+index 0a2f613..9a91de1 100644
+--- a/apps/web/src/features/auth/components/ReputationBadge.tsx
++++ b/apps/web/src/features/auth/components/ReputationBadge.tsx
+@@ -1,4 +1,5 @@
+ import {
++  Ban,
+   Lock,
+   AlertTriangle,
+   ShieldCheck,
+@@ -24,6 +25,7 @@ export function ReputationBadge({
+ 
+   // Map icon string to component
+   const IconMap = {
++    Ban,
+     Lock,
+     AlertTriangle,
+     ShieldCheck,
+diff --git a/apps/web/src/features/auth/components/ReputationDetailView.tsx b/apps/web/src/features/auth/components/ReputationDetailView.tsx
+new file mode 100644
+index 0000000..7502f91
+--- /dev/null
++++ b/apps/web/src/features/auth/components/ReputationDetailView.tsx
+@@ -0,0 +1,267 @@
++import { useEffect, useMemo, useState } from 'react';
++import { useNavigate } from '@tanstack/react-router';
++import { toast } from 'sonner';
++import { ArrowLeft, Copy, TrendingDown, TrendingUp } from 'lucide-react';
++import { useAuth } from '@/features/auth/context/AuthContext';
++import type { ReputationActorRole, ReputationHistoryEntry } from '@jobnow/types';
++import {
++  getProgressToNextTier,
++  getReputationRulesByRole,
++  getReputationTier,
++} from '../helpers/reputationHelper';
++import { subscribeMyReputationHistory, submitReputationAppeal } from '../services/reputationService';
++import { ReputationBadge } from './ReputationBadge';
++
++interface ReputationDetailViewProps {
++  role: ReputationActorRole;
++  backTo: '/candidate/profile' | '/employer/profile';
++}
++
++function toDate(value: unknown): Date | null {
++  if (!value) return null;
++  if (typeof value === 'object' && value && 'toDate' in value && typeof (value as { toDate?: unknown }).toDate === 'function') {
++    return (value as { toDate: () => Date }).toDate();
++  }
++
++  const parsed = new Date(value as string | number | Date);
++  return Number.isNaN(parsed.getTime()) ? null : parsed;
++}
++
++export function ReputationDetailView({ role, backTo }: ReputationDetailViewProps) {
++  const { userProfile } = useAuth();
++  const navigate = useNavigate();
++  const [history, setHistory] = useState<ReputationHistoryEntry[]>([]);
++  const [appealingId, setAppealingId] = useState<string | null>(null);
++
++  useEffect(() => {
++    if (!userProfile?.uid) return undefined;
++    return subscribeMyReputationHistory(userProfile.uid, setHistory);
++  }, [userProfile?.uid]);
++
++  if (!userProfile) {
++    return <div>Loading...</div>;
++  }
++
++  const reputationScore = userProfile.reputation_score || 0;
++  const tierInfo = getReputationTier(reputationScore);
++  const progress = getProgressToNextTier(reputationScore);
++  const rules = getReputationRulesByRole(role);
++
++  const statsText = useMemo(() => {
++    return `Háº¡ng uy tĂ­n: ${tierInfo.labelVi}\nÄiá»ƒm: ${reputationScore}/500\nMĂ´ táº£: ${tierInfo.descriptionVi}`;
++  }, [reputationScore, tierInfo.descriptionVi, tierInfo.labelVi]);
++
++  const handleCopyInfo = async () => {
++    await navigator.clipboard.writeText(statsText);
++    toast.success('ÄĂ£ sao chĂ©p thĂ´ng tin uy tĂ­n');
++  };
++
++  const handleAppeal = async (entry: ReputationHistoryEntry) => {
++    const deadline = toDate(entry.appeal_deadline_at);
++    if (!deadline || deadline.getTime() < Date.now()) {
++      toast.error('ÄĂ£ háº¿t thá»i háº¡n 24 giá» Ä‘á»ƒ khiáº¿u náº¡i');
++      return;
++    }
++
++    const reason = window.prompt('Nháº­p lĂ½ do khiáº¿u náº¡i (tá»‘i thiá»ƒu 10 kĂ½ tá»±)');
++    if (!reason || reason.trim().length < 10) {
++      return;
++    }
++
++    try {
++      setAppealingId(entry.id);
++      await submitReputationAppeal(entry.id, reason.trim());
++      toast.success('ÄĂ£ gá»­i khiáº¿u náº¡i Ä‘á»ƒ admin xem xĂ©t');
++    } catch (error: any) {
++      toast.error(error?.message || 'KhĂ´ng thá»ƒ gá»­i khiáº¿u náº¡i');
++    } finally {
++      setAppealingId(null);
++    }
++  };
++
++  return (
++    <div className="pb-24 bg-slate-50 min-h-[100dvh]">
++      <div className={`${tierInfo.bgColor} py-4 px-5 border-b ${tierInfo.borderColor}`}>
++        <div className="flex items-center gap-3 mb-4">
++          <button
++            onClick={() => navigate({ to: backTo })}
++            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/60 transition-colors"
++          >
++            <ArrowLeft className="w-5 h-5" />
++          </button>
++          <h1 className="text-xl font-bold text-slate-800">Chi Tiáº¿t Uy TĂ­n</h1>
++        </div>
++
++        <div className="flex items-center justify-between">
++          <ReputationBadge score={reputationScore} size="lg" />
++          <div className="text-right">
++            <p className="text-sm text-slate-600 font-medium">Äiá»ƒm hiá»‡n táº¡i</p>
++            <p className="text-3xl font-black text-slate-800 tracking-tight">{reputationScore}</p>
++            <p className="text-xs text-slate-500">/500</p>
++          </div>
++        </div>
++      </div>
++
++      <div className="px-5 py-6 space-y-6">
++        {progress.nextTier && (
++          <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100">
++            <h2 className="text-[13px] font-bold text-slate-400 uppercase tracking-wider mb-4">
++              Tiáº¿n Ä‘á»™ Ä‘áº¿n háº¡ng {progress.nextTier.labelVi}
++            </h2>
++            <div className="space-y-3">
++              <div className="flex items-center justify-between">
++                <span className="text-sm font-bold text-slate-700">
++                  {reputationScore} / {progress.nextTierScore}
++                </span>
++                <span className="text-sm font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">
++                  {progress.progressPercent}%
++                </span>
++              </div>
++              <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
++                <div
++                  className={`h-full ${progress.nextTier.textColor.replace('text-', 'bg-')} transition-all duration-500 rounded-full`}
++                  style={{ width: `${progress.progressPercent}%` }}
++                />
++              </div>
++              <p className="text-xs text-slate-500">
++                Cáº§n thĂªm <span className="font-bold text-blue-600">{progress.pointsNeeded} Ä‘iá»ƒm</span> Ä‘á»ƒ lĂªn háº¡ng{' '}
++                <span className="font-bold text-slate-800">{progress.nextTier.labelVi}</span>.
++              </p>
++            </div>
++          </div>
++        )}
++
++        <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100">
++          <h2 className="text-[13px] font-bold text-slate-400 uppercase tracking-wider mb-4">
++            Lá»‹ch sá»­ uy tĂ­n realtime
++          </h2>
++
++          {history.length === 0 ? (
++            <div className="py-12 text-center">
++              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
++                <TrendingUp className="w-8 h-8 text-slate-200" />
++              </div>
++              <p className="text-sm text-slate-400 font-medium">ChÆ°a cĂ³ biáº¿n Ä‘á»™ng Ä‘iá»ƒm nĂ o.</p>
++            </div>
++          ) : (
++            <div className="space-y-3">
++              {history.map((entry) => {
++                const createdAt = toDate(entry.created_at);
++                const isReward = entry.score_change >= 0;
++                const canAppeal =
++                  entry.score_change < 0 &&
++                  !!entry.appeal_deadline_at &&
++                  toDate(entry.appeal_deadline_at)?.getTime()! > Date.now() &&
++                  !(entry.metadata as Record<string, unknown> | undefined)?.appeal_status;
++
++                return (
++                  <div
++                    key={entry.id}
++                    className="p-4 bg-slate-50/80 rounded-2xl border border-slate-100"
++                  >
++                    <div className="flex items-start justify-between gap-3">
++                      <div className="flex items-start gap-3">
++                        <div
++                          className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
++                            isReward
++                              ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
++                              : 'bg-rose-50 text-rose-600 border border-rose-100'
++                          }`}
++                        >
++                          {isReward ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
++                        </div>
++                        <div>
++                          <p className="text-sm font-bold text-slate-800">
++                            {entry.action_label_vi || entry.action_code}
++                          </p>
++                          <p className="text-[11px] text-slate-400 mt-1">
++                            {createdAt?.toLocaleString('vi-VN') ?? 'Äang cáº­p nháº­t'}
++                          </p>
++                          <p className="text-xs text-slate-500 mt-2">Sá»‘ dÆ° sau biáº¿n Ä‘á»™ng: {entry.balance_after}</p>
++                        </div>
++                      </div>
++                      <div className="text-right">
++                        <p className={`text-base font-black ${isReward ? 'text-emerald-600' : 'text-rose-600'}`}>
++                          {isReward ? '+' : ''}
++                          {entry.score_change}
++                        </p>
++                        {canAppeal && (
++                          <button
++                            onClick={() => handleAppeal(entry)}
++                            disabled={appealingId === entry.id}
++                            className="mt-2 text-[11px] font-bold text-blue-600 hover:text-blue-700 disabled:opacity-50"
++                          >
++                            {appealingId === entry.id ? 'Äang gá»­i...' : 'Khiáº¿u náº¡i'}
++                          </button>
++                        )}
++                      </div>
++                    </div>
++                  </div>
++                );
++              })}
++            </div>
++          )}
++        </div>
++
++        <div className="bg-[#1e3a5f] rounded-3xl p-6 shadow-xl relative overflow-hidden text-white">
++          <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-400/10 rounded-full blur-2xl" />
++          <h2 className="text-[13px] font-bold text-blue-200 uppercase tracking-widest mb-4">
++            Quyá»n lá»£i vĂ  lÆ°u Ă½ cá»§a háº¡ng {tierInfo.labelVi}
++          </h2>
++          <div className="space-y-4">
++            {tierInfo.benefits.map((benefit) => (
++              <p key={benefit} className="text-sm font-bold text-blue-50 leading-relaxed">
++                {benefit}
++              </p>
++            ))}
++            {tierInfo.restrictions.map((restriction) => (
++              <p key={restriction} className="text-sm font-medium text-blue-100/80 leading-relaxed">
++                {restriction}
++              </p>
++            ))}
++          </div>
++        </div>
++
++        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
++          <h2 className="text-[13px] font-bold text-slate-400 uppercase tracking-wider mb-5">
++            Quy táº¯c theo vai trĂ²
++          </h2>
++
++          <div className="space-y-6">
++            <div>
++              <h3 className="text-xs font-black text-emerald-600 mb-3 uppercase">Cá»™ng Ä‘iá»ƒm</h3>
++              <div className="space-y-2">
++                {rules.rewards.map((rule) => (
++                  <div key={rule.code} className="flex justify-between items-center p-3 bg-emerald-50/30 rounded-2xl border border-emerald-50">
++                    <span className="text-xs font-bold text-slate-700">{rule.actionVi}</span>
++                    <span className="text-xs font-black text-emerald-600">+{rule.points}</span>
++                  </div>
++                ))}
++              </div>
++            </div>
++
++            <div>
++              <h3 className="text-xs font-black text-rose-600 mb-3 uppercase">Trá»« Ä‘iá»ƒm</h3>
++              <div className="space-y-2">
++                {rules.penalties.map((rule) => (
++                  <div key={rule.code} className="flex justify-between items-center p-3 bg-rose-50/30 rounded-2xl border border-rose-50">
++                    <span className="text-xs font-bold text-slate-700">{rule.actionVi}</span>
++                    <span className="text-xs font-black text-rose-600">{rule.points}</span>
++                  </div>
++                ))}
++              </div>
++            </div>
++          </div>
++        </div>
++
++        <button
++          onClick={handleCopyInfo}
++          className="w-full bg-slate-900 hover:bg-black text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-3 active:scale-95"
++        >
++          <Copy className="w-5 h-5" />
++          Sao chĂ©p thĂ´ng tin uy tĂ­n
++        </button>
++      </div>
++    </div>
++  );
++}
+diff --git a/apps/web/src/features/auth/components/ReputationStatsCard.tsx b/apps/web/src/features/auth/components/ReputationStatsCard.tsx
+index 38f0bb7..a3cb591 100644
+--- a/apps/web/src/features/auth/components/ReputationStatsCard.tsx
++++ b/apps/web/src/features/auth/components/ReputationStatsCard.tsx
+@@ -60,7 +60,7 @@ export function ReputationStatsCard({
+           <p className="text-[10px] text-slate-400 mt-1">
+             {progress.pointsNeeded > 0
+               ? `${progress.pointsNeeded} Ä‘áº¿n ${progress.nextTier?.labelVi}`
+-              : 'Tá»‘i Ä‘a'}
++              : 'Tá»‘i Ä‘a /500'}
+           </p>
+         </div>
+ 
+diff --git a/apps/web/src/features/auth/helpers/reputationHelper.ts b/apps/web/src/features/auth/helpers/reputationHelper.ts
+index 17710f4..6068bde 100644
+--- a/apps/web/src/features/auth/helpers/reputationHelper.ts
++++ b/apps/web/src/features/auth/helpers/reputationHelper.ts
+@@ -1,29 +1,23 @@
+-/**
+- * Reputation System Helper Functions
+- * Handles Tier calculations, progress tracking, and reputation rules
+- */
+-
+-export enum ReputationTier {
+-  RESTRICTED = 'RESTRICTED',
+-  RISK = 'RISK',
+-  STANDARD = 'STANDARD',
+-  GOLD = 'GOLD',
+-  DIAMOND = 'DIAMOND',
+-}
+-
+-export type TierColor = 'red' | 'amber' | 'blue' | 'purple';
++import {
++  DEFAULT_REPUTATION_SCORE,
++  MAX_REPUTATION_SCORE,
++  MIN_REPUTATION_SCORE,
++  REPUTATION_ACTIONS,
++  getReputationTier as getTierKey,
++  type ReputationActionDefinition,
++  type ReputationActorRole,
++  type ReputationTier,
++} from '@jobnow/types';
+ 
+ export interface TierInfo {
+   tier: ReputationTier;
+   label: string;
+   labelVi: string;
+-  color: TierColor;
+   bgColor: string;
+   textColor: string;
+   borderColor: string;
+-  icon: 'Lock' | 'AlertTriangle' | 'ShieldCheck' | 'Star' | 'Crown';
++  icon: 'Ban' | 'Lock' | 'AlertTriangle' | 'ShieldCheck' | 'Star' | 'Crown';
+   iconColor: string;
+-  description: string;
+   descriptionVi: string;
+   minScore: number;
+   maxScore: number;
+@@ -40,253 +34,160 @@ export interface TierProgress {
+   pointsNeeded: number;
+ }
+ 
+-/**
+- * Get reputation tier information based on score
+- * @param score - User's reputation score
+- * @returns TierInfo object with all tier details
+- */
+-export function getReputationTier(score: number): TierInfo {
+-  if (score >= 150) {
+-    return {
+-      tier: ReputationTier.DIAMOND,
+-      label: 'Diamond',
+-      labelVi: 'Kim CÆ°Æ¡ng',
+-      color: 'purple',
+-      bgColor: 'bg-purple-50',
+-      textColor: 'text-purple-600',
+-      borderColor: 'border-purple-200',
+-      icon: 'Crown',
+-      iconColor: 'text-purple-600',
+-      description: 'Highest reputation, prioritized in all features',
+-      descriptionVi: 'Uy tĂ­n cao nháº¥t, Ä‘Æ°á»£c Æ°u tiĂªn trong má»i tĂ­nh nÄƒng',
+-      minScore: 150,
+-      maxScore: 999,
+-      restrictions: [],
+-      benefits: [
+-        'Unlimited job postings',
+-        'Candidate sees your listings first',
+-        'Marked as "Verified" on listings',
+-        'Access to premium features',
+-      ],
+-    };
+-  }
+-
+-  if (score >= 120) {
+-    return {
+-      tier: ReputationTier.GOLD,
+-      label: 'Gold',
+-      labelVi: 'VĂ ng',
+-      color: 'amber',
+-      bgColor: 'bg-amber-50',
+-      textColor: 'text-amber-600',
+-      borderColor: 'border-amber-200',
+-      icon: 'Star',
+-      iconColor: 'text-amber-500',
+-      description: 'Trustworthy, unlocked premium features',
+-      descriptionVi: 'Tin cáº­y, má»Ÿ khĂ³a nhiá»u tĂ­nh nÄƒng Æ°u tiĂªn',
+-      minScore: 120,
+-      maxScore: 149,
+-      restrictions: [],
+-      benefits: [
+-        'Unlimited active listings',
+-        'Priority job notifications',
+-        'Access to premium analytics',
+-      ],
+-    };
+-  }
+-
+-  if (score >= 80) {
+-    return {
+-      tier: ReputationTier.STANDARD,
+-      label: 'Standard',
+-      labelVi: 'TiĂªu Chuáº©n',
+-      color: 'blue',
+-      bgColor: 'bg-blue-50',
+-      textColor: 'text-blue-600',
+-      borderColor: 'border-blue-200',
+-      icon: 'ShieldCheck',
+-      iconColor: 'text-blue-600',
+-      description: 'Standard reputation, normal operations',
+-      descriptionVi: 'TiĂªu chuáº©n, hoáº¡t Ä‘á»™ng bĂ¬nh thÆ°á»ng',
+-      minScore: 80,
+-      maxScore: 119,
+-      restrictions: [],
+-      benefits: [
+-        'Visible on map',
+-        'Can receive applicants',
+-        'Standard features available',
+-      ],
+-    };
+-  }
+-
+-  if (score >= 50) {
+-    return {
+-      tier: ReputationTier.RISK,
+-      label: 'Risk',
+-      labelVi: 'Rá»§i Ro',
+-      color: 'amber',
+-      bgColor: 'bg-amber-50',
+-      textColor: 'text-amber-600',
+-      borderColor: 'border-amber-200',
+-      icon: 'AlertTriangle',
+-      iconColor: 'text-amber-600',
+-      description: 'At risk, improve your behavior',
+-      descriptionVi: 'Rá»§i ro, cáº§n cáº£i thiá»‡n hĂ nh vi',
+-      minScore: 50,
+-      maxScore: 79,
+-      restrictions: [
+-        'Maximum 1 active job listing (Tier 1)',
+-        'Limited feature access',
+-        'Cannot use premium features',
+-      ],
+-      benefits: [
+-        'Still able to operate normally',
+-        'Can improve score through good behavior',
+-      ],
+-    };
+-  }
++export interface ReputationRuleItem {
++  code: string;
++  actionVi: string;
++  points: number;
++}
+ 
+-  // < 50: RESTRICTED
+-  return {
+-    tier: ReputationTier.RESTRICTED,
+-    label: 'Restricted',
+-    labelVi: 'Bá»‹ Háº¡n Cháº¿',
+-    color: 'red',
+-    bgColor: 'bg-red-50',
+-    textColor: 'text-red-600',
+-    borderColor: 'border-red-200',
+-    icon: 'Lock',
+-    iconColor: 'text-red-600',
+-    description: 'Restricted account, cannot post jobs',
+-    descriptionVi: 'TĂ i khoáº£n bá»‹ háº¡n cháº¿, khĂ´ng thá»ƒ Ä‘Äƒng tin',
++const TIER_DETAILS: Record<ReputationTier, TierInfo> = {
++  BANNED: {
++    tier: 'BANNED',
++    label: 'Banned',
++    labelVi: 'Cáº¥m',
++    bgColor: 'bg-rose-50',
++    textColor: 'text-rose-700',
++    borderColor: 'border-rose-200',
++    icon: 'Ban',
++    iconColor: 'text-rose-600',
++    descriptionVi: 'TĂ i khoáº£n xuá»‘ng dÆ°á»›i 30 Ä‘iá»ƒm vĂ  bá»‹ cáº¥m tham gia há»‡ thá»‘ng.',
+     minScore: 0,
+-    maxScore: 49,
+-    restrictions: [
+-      'Cannot be seen on map (7 days)',
+-      'Cannot post job listings',
+-      'Candidates cannot see your listings (Shadow Ban)',
+-      'Limited to read-only access',
+-    ],
++    maxScore: 29,
++    restrictions: ['KhĂ´ng thá»ƒ á»©ng tuyá»ƒn hoáº·c Ä‘Äƒng tin', 'Cáº§n khiáº¿u náº¡i hoáº·c Ä‘Æ°á»£c admin má»Ÿ láº¡i'],
+     benefits: [],
+-  };
+-}
++  },
++  RESTRICTED: {
++    tier: 'RESTRICTED',
++    label: 'Restricted',
++    labelVi: 'Háº¡n Cháº¿',
++    bgColor: 'bg-orange-50',
++    textColor: 'text-orange-700',
++    borderColor: 'border-orange-200',
++    icon: 'Lock',
++    iconColor: 'text-orange-600',
++    descriptionVi: 'TĂ i khoáº£n bá»‹ háº¡n cháº¿ máº¡nh vĂ  cáº§n phá»¥c há»“i uy tĂ­n trÆ°á»›c khi hoáº¡t Ä‘á»™ng bĂ¬nh thÆ°á»ng.',
++    minScore: 30,
++    maxScore: 59,
++    restrictions: ['Bá»‹ cáº£nh bĂ¡o ná»•i báº­t trĂªn há»“ sÆ¡', 'Æ¯u tiĂªn hiá»ƒn thá»‹ tháº¥p', 'Nguy cÆ¡ bá»‹ khĂ³a náº¿u tiáº¿p tá»¥c vi pháº¡m'],
++    benefits: ['Váº«n cĂ³ thá»ƒ phá»¥c há»“i Ä‘iá»ƒm báº±ng chuá»—i hĂ nh vi tá»‘t'],
++  },
++  RISK: {
++    tier: 'RISK',
++    label: 'Risk',
++    labelVi: 'Rá»§i Ro',
++    bgColor: 'bg-amber-50',
++    textColor: 'text-amber-700',
++    borderColor: 'border-amber-200',
++    icon: 'AlertTriangle',
++    iconColor: 'text-amber-600',
++    descriptionVi: 'TĂ i khoáº£n cĂ³ rá»§i ro, cáº§n cáº£i thiá»‡n hĂ nh vi Ä‘á»ƒ trá»Ÿ vá» má»©c tiĂªu chuáº©n.',
++    minScore: 60,
++    maxScore: 99,
++    restrictions: ['Äiá»ƒm uy tĂ­n tháº¥p hÆ¡n máº·t báº±ng chung', 'Cáº§n háº¡n cháº¿ há»§y ca hoáº·c cháº­m thanh toĂ¡n'],
++    benefits: ['Váº«n Ä‘Æ°á»£c hoáº¡t Ä‘á»™ng trĂªn há»‡ thá»‘ng', 'CĂ³ thá»ƒ há»“i Ä‘iá»ƒm báº±ng chuá»—i hĂ nh vi tá»‘t'],
++  },
++  STANDARD: {
++    tier: 'STANDARD',
++    label: 'Standard',
++    labelVi: 'TiĂªu Chuáº©n',
++    bgColor: 'bg-sky-50',
++    textColor: 'text-sky-700',
++    borderColor: 'border-sky-200',
++    icon: 'ShieldCheck',
++    iconColor: 'text-sky-600',
++    descriptionVi: 'Má»©c máº·c Ä‘á»‹nh cá»§a há»‡ thá»‘ng. Hoáº¡t Ä‘á»™ng bĂ¬nh thÆ°á»ng vá»›i Ä‘áº§y Ä‘á»§ quyá»n cÆ¡ báº£n.',
++    minScore: 100,
++    maxScore: 149,
++    restrictions: [],
++    benefits: ['Äiá»ƒm khá»Ÿi táº¡o máº·c Ä‘á»‹nh cá»§a tĂ i khoáº£n má»›i', 'ÄÆ°á»£c tham gia Ä‘áº§y Ä‘á»§ cĂ¡c luá»“ng chĂ­nh'],
++  },
++  GOLD: {
++    tier: 'GOLD',
++    label: 'Gold',
++    labelVi: 'VĂ ng',
++    bgColor: 'bg-yellow-50',
++    textColor: 'text-yellow-700',
++    borderColor: 'border-yellow-200',
++    icon: 'Star',
++    iconColor: 'text-yellow-600',
++    descriptionVi: 'TĂ i khoáº£n uy tĂ­n cao, cĂ³ lá»‹ch sá»­ giao dá»‹ch vĂ  pháº£n há»“i tá»‘t.',
++    minScore: 150,
++    maxScore: 200,
++    restrictions: [],
++    benefits: ['ÄÆ°á»£c nhĂ¬n nháº­n lĂ  Ä‘á»‘i tĂ¡c Ä‘Ă¡ng tin cáº­y', 'TÄƒng Ä‘á»™ tin cáº­y khi hiá»ƒn thá»‹ há»“ sÆ¡'],
++  },
++  DIAMOND: {
++    tier: 'DIAMOND',
++    label: 'Diamond',
++    labelVi: 'Kim CÆ°Æ¡ng',
++    bgColor: 'bg-violet-50',
++    textColor: 'text-violet-700',
++    borderColor: 'border-violet-200',
++    icon: 'Crown',
++    iconColor: 'text-violet-600',
++    descriptionVi: 'Má»©c uy tĂ­n cao nháº¥t, dĂ nh cho tĂ i khoáº£n duy trĂ¬ hĂ nh vi ráº¥t á»•n Ä‘á»‹nh.',
++    minScore: 201,
++    maxScore: 500,
++    restrictions: [],
++    benefits: ['Má»‘c uy tĂ­n cao nháº¥t cá»§a há»‡ thá»‘ng', 'Thá»ƒ hiá»‡n há»“ sÆ¡ cá»±c ká»³ Ä‘Ă¡ng tin cáº­y'],
++  },
++};
+ 
+-/**
+- * Get progress to next tier
+- * @param score - User's current reputation score
+- * @returns Progress information with percentages
+- */
+-export function getProgressToNextTier(score: number): TierProgress {
+-  const currentTier = getReputationTier(score);
++const NEXT_TIER_THRESHOLDS = [30, 60, 100, 150, 201];
+ 
+-  // Define tier thresholds
+-  const tierThresholds = [50, 80, 120, 150];
++export function clampReputationScore(score: number): number {
++  return Math.max(MIN_REPUTATION_SCORE, Math.min(MAX_REPUTATION_SCORE, Math.round(score)));
++}
+ 
+-  // Find current position
+-  let currentIndex = tierThresholds.findIndex((t) => score < t);
+-  if (currentIndex === -1) {
+-    // Score >= max tier
+-    currentIndex = tierThresholds.length;
+-  }
++export function getReputationTier(score: number): TierInfo {
++  return TIER_DETAILS[getTierKey(score)];
++}
+ 
+-  const nextThreshold = tierThresholds[currentIndex] ?? null;
++export function getProgressToNextTier(score: number): TierProgress {
++  const safeScore = clampReputationScore(Number.isFinite(score) ? score : DEFAULT_REPUTATION_SCORE);
++  const currentTier = getReputationTier(safeScore);
++  const nextThreshold = NEXT_TIER_THRESHOLDS.find((threshold) => safeScore < threshold) ?? null;
+ 
+   if (!nextThreshold) {
+-    // Already at Diamond (max tier)
+     return {
+       currentTier,
+       nextTier: null,
+-      currentScore: score,
+-      nextTierScore: 150,
++      currentScore: safeScore,
++      nextTierScore: currentTier.maxScore,
+       progressPercent: 100,
+       pointsNeeded: 0,
+     };
+   }
+ 
+-  const previousThreshold = currentIndex > 0 ? tierThresholds[currentIndex - 1] : 0;
+-  const pointsInRange = nextThreshold - previousThreshold;
+-  const pointsInCurrent = Math.max(0, score - previousThreshold);
+-  const progressPercent = Math.floor((pointsInCurrent / pointsInRange) * 100);
++  const previousThreshold = NEXT_TIER_THRESHOLDS.filter((threshold) => threshold < nextThreshold).at(-1) ?? 0;
++  const progressPercent = Math.floor(((safeScore - previousThreshold) / (nextThreshold - previousThreshold)) * 100);
+ 
+   return {
+     currentTier,
+     nextTier: getReputationTier(nextThreshold),
+-    currentScore: score,
++    currentScore: safeScore,
+     nextTierScore: nextThreshold,
+-    progressPercent: Math.min(progressPercent, 100),
+-    pointsNeeded: Math.max(0, nextThreshold - score),
++    progressPercent: Math.max(0, Math.min(progressPercent, 100)),
++    pointsNeeded: nextThreshold - safeScore,
+   };
+ }
+ 
+-/**
+- * Penalty and reward rules
+- */
+-export const REPUTATION_RULES = {
+-  rewards: [
+-    {
+-      action: 'Complete shift successfully',
+-      actionVi: 'HoĂ n thĂ nh ca lĂ m viá»‡c',
+-      points: 10,
+-      color: 'emerald',
+-    },
+-    {
+-      action: 'Receive 5â­ rating',
+-      actionVi: 'ÄÆ°á»£c Ä‘Ă¡nh giĂ¡ 5â­',
+-      points: 5,
+-      color: 'emerald',
+-    },
+-    {
+-      action: 'Quick response (< 1 hour)',
+-      actionVi: 'Pháº£n há»“i nhanh (< 1h)',
+-      points: 3,
+-      color: 'emerald',
+-    },
+-  ],
+-  penalties: [
+-    {
+-      action: 'Cancel shift last minute (< 2h)',
+-      actionVi: 'Há»§y ca sĂ¡t giá» (< 2h)',
+-      points: -30,
+-      color: 'red',
+-    },
+-    {
+-      action: 'No-show (over 30 min late)',
+-      actionVi: 'No-show (quĂ¡ 30 phĂºt)',
+-      points: -50,
+-      color: 'red',
+-    },
+-    {
+-      action: 'Reported for fraud/abuse',
+-      actionVi: 'ÄÆ°á»£c bĂ¡o cĂ¡o gian láº­n',
+-      points: -100,
+-      color: 'red',
+-    },
+-    {
+-      action: 'Employer cancels shift last minute',
+-      actionVi: 'Employer há»§y ca sĂ¡t giá»',
+-      points: -30,
+-      color: 'red',
+-    },
+-  ],
+-};
+-
+-/**
+- * Get reputation damage/reward summary
+- */
+-export function getReputationImpact(actionKey: string): { points: number; label: string } | null {
+-  // Check rewards
+-  for (const reward of REPUTATION_RULES.rewards) {
+-    if (reward.actionVi.toLowerCase().includes(actionKey.toLowerCase())) {
+-      return { points: reward.points, label: reward.actionVi };
+-    }
+-  }
++function toRuleItem(rule: ReputationActionDefinition): ReputationRuleItem {
++  return {
++    code: rule.code,
++    actionVi: rule.labelVi,
++    points: rule.points,
++  };
++}
+ 
+-  // Check penalties
+-  for (const penalty of REPUTATION_RULES.penalties) {
+-    if (penalty.actionVi.toLowerCase().includes(actionKey.toLowerCase())) {
+-      return { points: penalty.points, label: penalty.actionVi };
+-    }
+-  }
++export function getReputationRulesByRole(role: ReputationActorRole) {
++  const entries = Object.values(REPUTATION_ACTIONS).filter((item) => item.role === role);
++  return {
++    rewards: entries.filter((item) => item.points > 0).map(toRuleItem),
++    penalties: entries.filter((item) => item.points < 0).map(toRuleItem),
++  };
++}
+ 
+-  return null;
++export function getReputationActionLabel(actionCode: string): string {
++  return REPUTATION_ACTIONS[actionCode as keyof typeof REPUTATION_ACTIONS]?.labelVi ?? actionCode;
+ }
+diff --git a/apps/web/src/features/auth/services/employerProfileService.ts b/apps/web/src/features/auth/services/employerProfileService.ts
+index 540db9c..2d0efa4 100644
+--- a/apps/web/src/features/auth/services/employerProfileService.ts
++++ b/apps/web/src/features/auth/services/employerProfileService.ts
+@@ -32,7 +32,7 @@ export async function updateEmployerProfile(
+  */
+ export async function uploadCompanyLogo(uid: string, file: File): Promise<string> {
+     const storageRef = ref(storage, `company-logos/${uid}/${file.name}`);
+-    await uploadBytes(storageRef, file);
++    await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
+     const downloadUrl = await getDownloadURL(storageRef);
+     await updateUserDocument(uid, { company_logo_url: downloadUrl });
+     return downloadUrl;
+@@ -44,7 +44,7 @@ export async function uploadCompanyLogo(uid: string, file: File): Promise<string
+  */
+ export async function uploadBusinessLicense(uid: string, file: File): Promise<string> {
+     const storageRef = ref(storage, `business-licenses/${uid}/${file.name}`);
+-    await uploadBytes(storageRef, file);
++    await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
+     const downloadUrl = await getDownloadURL(storageRef);
+     await updateUserDocument(uid, {
+         business_license_url: downloadUrl,
+diff --git a/apps/web/src/features/auth/services/reputationService.ts b/apps/web/src/features/auth/services/reputationService.ts
+new file mode 100644
+index 0000000..8cf47ac
+--- /dev/null
++++ b/apps/web/src/features/auth/services/reputationService.ts
+@@ -0,0 +1,64 @@
++import {
++  collection,
++  onSnapshot,
++  orderBy,
++  query,
++  where,
++  type Unsubscribe,
++} from 'firebase/firestore';
++import { httpsCallable } from 'firebase/functions';
++import { db, functions } from '@/config/firebase';
++import type { ReputationAppeal, ReputationHistoryEntry } from '@jobnow/types';
++import { getReputationActionLabel } from '../helpers/reputationHelper';
++
++export function subscribeMyReputationHistory(
++  userId: string,
++  onUpdate: (items: ReputationHistoryEntry[]) => void
++): Unsubscribe {
++  const historyQuery = query(
++    collection(db, 'reputation_history'),
++    where('user_id', '==', userId),
++    orderBy('created_at', 'desc')
++  );
++
++  return onSnapshot(historyQuery, (snapshot) => {
++    const items = snapshot.docs.map((docSnap) => {
++      const data = docSnap.data();
++      return {
++        id: docSnap.id,
++        user_id: String(data.user_id ?? userId),
++        user_role: data.user_role,
++        action_code: String(data.action_code ?? ''),
++        action_label: String(data.action_label ?? ''),
++        action_label_vi: String(data.action_label_vi ?? getReputationActionLabel(String(data.action_code ?? ''))),
++        score_change: Number(data.score_change ?? 0),
++        balance_after: Number(data.balance_after ?? 0),
++        status: data.status ?? 'APPLIED',
++        related_job_id: (data.related_job_id as string | null | undefined) ?? null,
++        related_application_id: (data.related_application_id as string | null | undefined) ?? null,
++        related_shift_id: (data.related_shift_id as string | null | undefined) ?? null,
++        actor_id: (data.actor_id as string | null | undefined) ?? null,
++        appeal_deadline_at: data.appeal_deadline_at,
++        created_at: data.created_at,
++        updated_at: data.updated_at,
++        metadata: {
++          ...(data.metadata ?? {}),
++          appeal_status: data.appeal_status ?? null,
++        },
++      } as ReputationHistoryEntry;
++    });
++
++    onUpdate(items);
++  });
++}
++
++export async function submitReputationAppeal(historyId: string, reason: string): Promise<{ success: boolean }> {
++  const callable = httpsCallable<{ historyId: string; reason: string }, { success: boolean }>(
++    functions,
++    'submitReputationAppeal'
++  );
++  const { data } = await callable({ historyId, reason });
++  return data;
++}
++
++export type ReputationAppealView = ReputationAppeal;
+diff --git a/apps/web/src/features/auth/types/user.ts b/apps/web/src/features/auth/types/user.ts
+index 1f6cff2..5b5b64d 100644
+--- a/apps/web/src/features/auth/types/user.ts
++++ b/apps/web/src/features/auth/types/user.ts
+@@ -1,5 +1,6 @@
+ export type UserRole = 'CANDIDATE' | 'EMPLOYER' | 'ADMIN';
+ export type VerificationStatus = 'UNVERIFIED' | 'PENDING' | 'VERIFIED';
++import type { ReputationTier } from '@jobnow/types';
+ 
+ export interface UserProfile {
+     uid: string;
+@@ -13,6 +14,7 @@ export interface UserProfile {
+     status: 'ACTIVE' | 'LOCKED' | 'BANNED';
+     balance: number;
+     reputation_score: number;
++    current_tier?: ReputationTier;
+     average_rating?: number;          // Average rating tá»« evaluations
+     total_ratings?: number;           // Sá»‘ lÆ°á»£t Ä‘Ă¡nh giĂ¡
+     skills: string[];
+diff --git a/apps/web/src/features/candidate/verification/hooks/useVerification.ts b/apps/web/src/features/candidate/verification/hooks/useVerification.ts
+index 2e2b74b..b18e268 100644
+--- a/apps/web/src/features/candidate/verification/hooks/useVerification.ts
++++ b/apps/web/src/features/candidate/verification/hooks/useVerification.ts
+@@ -1,7 +1,6 @@
+ import { useMutation, useQueryClient } from '@tanstack/react-query';
+-// import { uploadCandidateID, submitCandidateVerification } from '../services/verificationService';
+ import { useAuth } from '@/features/auth/context/AuthContext';
+-import { updateUserDocument } from '@/lib/firestore';
++import { submitCandidateVerification, type CandidateVerificationOcrData } from '../services/verificationService';
+ import { toast } from 'sonner';
+ 
+ export const useSubmitCandidateVerification = () => {
+@@ -13,40 +12,33 @@ export const useSubmitCandidateVerification = () => {
+             if (!userProfile?.uid) throw new Error('ChÆ°a Ä‘Äƒng nháº­p');
+ 
+             const candidateId = userProfile.uid;
+-
+-            // Gá»i API báº±ng fetch
+-            const formData = new FormData();
+-            formData.append('file', _file);
+-
+-            console.log('Sending CCCD to OCR service...');
+-            const response = await fetch('http://localhost:8000/api/verify-cccd', {
+-                method: 'POST',
+-                body: formData,
+-            });
+-
+-            if (!response.ok) {
+-                throw new Error('KhĂ´ng thá»ƒ káº¿t ná»‘i vá»›i dá»‹ch vá»¥ OCR');
++            let extracted: CandidateVerificationOcrData | undefined;
++
++            // OCR is best-effort only. The admin review flow is the source of truth.
++            try {
++                const formData = new FormData();
++                formData.append('file', _file);
++
++                const response = await fetch('http://localhost:8000/api/verify-cccd', {
++                    method: 'POST',
++                    body: formData,
++                });
++
++                if (response.ok) {
++                    const result = await response.json();
++                    if (result?.success && result?.data) {
++                        extracted = {
++                            cccd_number: result.data.cccd_number || null,
++                            full_name: result.data.full_name || null,
++                            dob: result.data.dob || null,
++                        };
++                    }
++                }
++            } catch (error) {
++                console.warn('OCR service unavailable. Submitting verification request without OCR data.', error);
+             }
+ 
+-            const result = await response.json();
+-            
+-            if (!result.success || !result.data) {
+-                throw new Error(result.error || 'Lá»—i xá»­ lĂ½ hĂ¬nh áº£nh');
+-            }
+-
+-            const extracted = result.data;
+-            const isSuccess = !!(extracted.cccd_number && extracted.full_name);
+-
+-            console.log('Update firestore for candidate:', candidateId, extracted);
+-            
+-            await updateUserDocument(candidateId, {
+-                verification_status: isSuccess ? 'VERIFIED' : 'PENDING',
+-                cccd_number: extracted.cccd_number || null,
+-                cccd_full_name: extracted.full_name || null,
+-                cccd_dob: extracted.dob || null,
+-            });
+-
+-            return result;
++            return submitCandidateVerification(candidateId, _file, extracted);
+         },
+         onSuccess: async () => {
+             await refreshProfile();
+diff --git a/apps/web/src/features/candidate/verification/services/verificationService.ts b/apps/web/src/features/candidate/verification/services/verificationService.ts
+index ddc7598..2d8a691 100644
+--- a/apps/web/src/features/candidate/verification/services/verificationService.ts
++++ b/apps/web/src/features/candidate/verification/services/verificationService.ts
+@@ -1,38 +1,78 @@
+-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+-import { doc, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
+-import { storage, db } from '@/config/firebase';
+-
+-export interface CandidateVerificationData {
+-    candidateId: string;
+-    frontImageUrl: string;
+-    status: 'PENDING' | 'VERIFIED' | 'REJECTED';
++import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
++import { doc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
++import { db, storage } from '@/config/firebase';
++
++export interface CandidateVerificationOcrData {
++    cccd_number?: string | null;
++    full_name?: string | null;
++    dob?: string | null;
++}
++
++export interface CandidateVerificationRequest {
++    id: string;
++    user_id: string;
++    status: 'PENDING' | 'APPROVED' | 'REJECTED';
++    front_image_url: string;
++    document_type: 'ID_CARD_FRONT';
++    ocr_data?: CandidateVerificationOcrData;
++    submitted_at: unknown;
++    created_at: unknown;
++    updated_at: unknown;
++}
++
++function buildRequestId(candidateId: string): string {
++    return `${candidateId}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+ }
+ 
+-export const uploadCandidateID = async (file: File, candidateId: string): Promise<string> => {
+-    const fileExt = file.name.split('.').pop();
+-    const fileName = `id_front_${Date.now()}.${fileExt}`;
+-    const storageRef = ref(storage, `verification_documents/${candidateId}/${fileName}`);
++export const uploadCandidateID = async (
++    file: File,
++    candidateId: string,
++    requestId: string
++): Promise<string> => {
++    const fileExt = file.name.split('.').pop() || 'jpg';
++    const fileName = `id_front_${requestId}.${fileExt}`;
++    const storageRef = ref(storage, `users_private/${candidateId}/verification_requests/${fileName}`);
+ 
+-    const snapshot = await uploadBytes(storageRef, file);
+-    return await getDownloadURL(snapshot.ref);
++    const snapshot = await uploadBytes(storageRef, file, {
++        contentType: file.type,
++        customMetadata: {
++            candidate_id: candidateId,
++            request_id: requestId,
++        },
++    });
++    return getDownloadURL(snapshot.ref);
+ };
+ 
+-export const submitCandidateVerification = async (candidateId: string, frontImageUrl: string): Promise<void> => {
+-    // 1. Create a verification request record
+-    const requestRef = doc(db, `users/${candidateId}/verification_requests`, 'current');
+-    const requestData = {
+-        candidateId,
+-        frontImageUrl,
++export const submitCandidateVerification = async (
++    candidateId: string,
++    file: File,
++    ocrData?: CandidateVerificationOcrData
++): Promise<CandidateVerificationRequest> => {
++    const requestId = buildRequestId(candidateId);
++    const frontImageUrl = await uploadCandidateID(file, candidateId, requestId);
++
++    const requestRef = doc(db, 'users_private', candidateId, 'verification_requests', requestId);
++    const requestData: CandidateVerificationRequest = {
++        id: requestId,
++        user_id: candidateId,
+         status: 'PENDING',
+-        submittedAt: serverTimestamp(),
++        front_image_url: frontImageUrl,
++        document_type: 'ID_CARD_FRONT',
++        ...(ocrData ? { ocr_data: ocrData } : {}),
++        submitted_at: serverTimestamp(),
++        created_at: serverTimestamp(),
++        updated_at: serverTimestamp(),
+     };
+ 
+     await setDoc(requestRef, requestData);
+ 
+-    // 2. Update the user's profile status to PENDING
+-    const userRef = doc(db, 'users', candidateId);
+-    await updateDoc(userRef, {
++    await updateDoc(doc(db, 'users', candidateId), {
+         verification_status: 'PENDING',
++        ...(ocrData?.cccd_number ? { cccd_number: ocrData.cccd_number } : {}),
++        ...(ocrData?.full_name ? { cccd_full_name: ocrData.full_name } : {}),
++        ...(ocrData?.dob ? { cccd_dob: ocrData.dob } : {}),
+         updated_at: serverTimestamp(),
+     });
++
++    return requestData;
+ };
+diff --git a/apps/web/src/features/chat/components/ChatRoom.tsx b/apps/web/src/features/chat/components/ChatRoom.tsx
+index 90446af..10d5630 100644
+--- a/apps/web/src/features/chat/components/ChatRoom.tsx
++++ b/apps/web/src/features/chat/components/ChatRoom.tsx
+@@ -9,6 +9,7 @@ import { useUserProfile } from '../hooks/useUserProfile';
+ import { useNavigate } from '@tanstack/react-router';
+ import { formatDistanceToNow } from 'date-fns';
+ import { vi } from 'date-fns/locale';
++import { toast } from 'sonner';
+ 
+ interface ChatRoomProps {
+     conversation: Conversation;
+@@ -75,7 +76,7 @@ export function ChatRoom({ conversation, currentUserId, onBack }: ChatRoomProps)
+             {
+                 onError: (err: any) => {
+                     setInputText(messageText); // Restore on error
+-                    alert(err.message || 'Gá»­i tin nháº¯n tháº¥t báº¡i. Vui lĂ²ng thá»­ láº¡i.');
++                    toast.error(err.message || 'Gá»­i tin nháº¯n tháº¥t báº¡i. Vui lĂ²ng thá»­ láº¡i.');
+                 }
+             }
+         );
+diff --git a/apps/web/src/features/employer/services/verificationService.ts b/apps/web/src/features/employer/services/verificationService.ts
+index a696fe1..4637f60 100644
+--- a/apps/web/src/features/employer/services/verificationService.ts
++++ b/apps/web/src/features/employer/services/verificationService.ts
+@@ -15,7 +15,7 @@ export const uploadVerificationDocument = async (file: File, employerId: string)
+     const fileName = `id_front_${Date.now()}.${fileExt}`;
+     const storageRef = ref(storage, `verification_documents/${employerId}/${fileName}`);
+ 
+-    const snapshot = await uploadBytes(storageRef, file);
++    const snapshot = await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
+     return await getDownloadURL(snapshot.ref);
+ };
+ 
+diff --git a/apps/web/src/features/jobs/components/ApplicationCard.tsx b/apps/web/src/features/jobs/components/ApplicationCard.tsx
+new file mode 100644
+index 0000000..6cf68db
+--- /dev/null
++++ b/apps/web/src/features/jobs/components/ApplicationCard.tsx
+@@ -0,0 +1,155 @@
++import { Link } from '@tanstack/react-router';
++import { useUpdateApplicationStatus } from '@/features/jobs/hooks/useManageApplicants';
++import { toast } from 'sonner';
++import type { Application } from '@jobnow/types';
++
++interface ApplicationCardProps {
++  application: Application;
++}
++
++export function ApplicationCard({ application: app }: ApplicationCardProps) {
++  const updateStatusMutation = useUpdateApplicationStatus();
++  
++  const getStatusTheme = (status: string) => {
++    switch (status) {
++      case 'APPROVED': 
++        return { bg: 'bg-[#E6F4EA]', text: 'text-[#137333]', label: 'ÄĂƒ NHáº¬N' };
++      case 'REJECTED': 
++        return { bg: 'bg-[#FCE8E6]', text: 'text-[#C5221F]', label: 'Tá»ª CHá»I' };
++      case 'NEW':
++      case 'PENDING': 
++        return { bg: 'bg-[#FEF7E0]', text: 'text-[#E37400]', label: 'CHá»œ DUYá»†T' };
++      case 'CHECKED_IN': 
++        return { bg: 'bg-[#E8F0FE]', text: 'text-[#1967D2]', label: 'ÄANG LĂ€M' };
++      case 'COMPLETED': 
++        return { bg: 'bg-[#F2F4F6]', text: 'text-[#45464D]', label: 'HOĂ€N THĂ€NH' };
++      case 'CANCELLED': 
++        return { bg: 'bg-[#F2F4F6]', text: 'text-[#7C839B]', label: 'ÄĂƒ Há»¦Y' };
++      default: 
++        return { bg: 'bg-slate-100', text: 'text-slate-600', label: status };
++    }
++  };
++
++  const handleCancelApplication = async (e: React.MouseEvent) => {
++    e.preventDefault();
++    e.stopPropagation();
++    toast('RĂºt Ä‘Æ¡n á»©ng tuyá»ƒn?', {
++      description: 'Báº¡n cĂ³ cháº¯c cháº¯n muá»‘n há»§y Ä‘Æ¡n á»©ng tuyá»ƒn nĂ y khĂ´ng?',
++      action: {
++        label: 'Há»§y Ä‘Æ¡n',
++        onClick: async () => {
++          try {
++            await updateStatusMutation.mutateAsync({ id: app.id, status: 'CANCELLED' });
++            toast.success('ÄĂ£ rĂºt Ä‘Æ¡n á»©ng tuyá»ƒn thĂ nh cĂ´ng');
++          } catch {
++            toast.error('KhĂ´ng thá»ƒ há»§y Ä‘Æ¡n, vui lĂ²ng thá»­ láº¡i');
++          }
++        }
++      }
++    });
++  };
++
++  const theme = getStatusTheme(app.status);
++  const canCancel = app.status === 'NEW' || app.status === 'PENDING';
++
++  // Format salary
++  const wage = app.salary
++    ? `${app.salary.toLocaleString('vi-VN')}Ä‘/${(app as any).salaryType === 'PER_HOUR' ? 'h' : 'ca'}`
++    : 'Thá»a thuáº­n';
++
++  // Format shift time with date
++  const shiftDisplay = app.shiftTime || 'ChÆ°a xĂ¡c Ä‘á»‹nh';
++  const shiftDate = app.createdAt?.toDate?.()
++    ? new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(app.createdAt.toDate())
++    : '';
++
++  // Time ago display
++  const timeAgo = (() => {
++    if (!app.createdAt?.toDate?.()) return 'á»¨ng tuyá»ƒn gáº§n Ä‘Ă¢y';
++    const diffMs = Date.now() - app.createdAt.toDate().getTime();
++    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
++    if (diffHours < 1) return 'á»¨ng tuyá»ƒn vá»«a xong';
++    if (diffHours < 24) return `á»¨ng tuyá»ƒn ${diffHours} giá» trÆ°á»›c`;
++    const diffDays = Math.floor(diffHours / 24);
++    return `á»¨ng tuyá»ƒn ${diffDays} ngĂ y trÆ°á»›c`;
++  })();
++
++  return (
++    <Link
++      to="/candidate/applications/$applicationId"
++      params={{ applicationId: app.id }}
++      className="block bg-white rounded-3xl overflow-hidden shadow-[0_4px_24px_-2px_rgba(124,131,155,0.06)] hover:shadow-md transition-shadow border border-[#E2E2E9]/60"
++    >
++      {/* Top: Title + Company + Status Badge */}
++      <div className="p-4 pb-0">
++        <div className="flex justify-between items-start">
++          <div className="flex-1 pr-3">
++            <h3 className="font-bold text-[17px] text-[#191C1E] leading-snug mb-0.5 line-clamp-2">
++              {app.jobTitle || 'CĂ´ng viá»‡c'}
++            </h3>
++            <p className="text-[14px] text-[#45464D] font-medium">{app.employerName || 'NhĂ  tuyá»ƒn dá»¥ng'}</p>
++          </div>
++          <div className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold tracking-wide whitespace-nowrap ${theme.bg} ${theme.text}`}>
++            {theme.label}
++          </div>
++        </div>
++      </div>
++
++      {/* Middle: Job Details (Salary, Shift, Time) */}
++      <div className="px-4 pt-3 pb-4 space-y-2">
++        <div className="flex items-center gap-2 text-[13px] text-[#45464D]">
++          <span className="material-symbols-outlined text-[18px] text-[#7C839B]">payments</span>
++          <span className="font-medium">{wage}</span>
++        </div>
++        <div className="flex items-center gap-2 text-[13px] text-[#45464D]">
++          <span className="material-symbols-outlined text-[18px] text-[#7C839B]">schedule</span>
++          <span className="font-medium">
++            Ca {shiftDisplay}{shiftDate ? `, ${shiftDate}` : ''}
++          </span>
++        </div>
++        <div className="flex items-center gap-2 text-[13px] text-[#7C839B]">
++          <span className="material-symbols-outlined text-[18px]">history</span>
++          <span>{timeAgo}</span>
++        </div>
++      </div>
++
++      {/* Bottom: Action Buttons â€” separated by a thin divider */}
++      {(canCancel || app.status === 'APPROVED') && (
++        <div className="px-4 pb-4">
++          <div className="border-t border-[#F2F4F6] pt-4 flex items-center gap-3">
++            {canCancel && (
++              <button
++                onClick={handleCancelApplication}
++                className="w-full flex-1 border border-[#E2E2E9] text-[#191C1E] bg-white hover:bg-[#F2F4F6] py-2.5 rounded-2xl text-[14px] font-bold transition-colors"
++              >
++                RĂºt Ä‘Æ¡n
++              </button>
++            )}
++            {app.status === 'APPROVED' && (
++              <>
++                <button
++                  onClick={(e) => {
++                    e.preventDefault();
++                    // Navigate to shift info
++                  }}
++                  className="flex-1 bg-[#006399] text-white py-2.5 rounded-2xl text-[14px] font-bold hover:bg-[#004e7a] transition-colors text-center"
++                >
++                  Xem ca lĂ m
++                </button>
++                <button
++                  onClick={(e) => {
++                    e.preventDefault();
++                    // Navigate to chat
++                  }}
++                  className="flex-1 border border-[#E2E2E9] text-[#191C1E] bg-white hover:bg-[#F2F4F6] py-2.5 rounded-2xl text-[14px] font-bold transition-colors text-center"
++                >
++                  Chat
++                </button>
++              </>
++            )}
++          </div>
++        </div>
++      )}
++    </Link>
++  );
++}
+diff --git a/apps/web/src/features/jobs/components/AppliedJobsView.tsx b/apps/web/src/features/jobs/components/AppliedJobsView.tsx
+new file mode 100644
+index 0000000..84b9b11
+--- /dev/null
++++ b/apps/web/src/features/jobs/components/AppliedJobsView.tsx
+@@ -0,0 +1,89 @@
++import { useState } from 'react';
++import { useAuth } from '@/features/auth/context/AuthContext';
++import { useMyApplicationsRealtime } from '@/features/jobs/hooks/useMyApplicationsRealtime';
++import { Link } from '@tanstack/react-router';
++import { ApplicationCard } from './ApplicationCard';
++
++type FilterStatus = 'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED';
++
++export function AppliedJobsView() {
++  const { userProfile } = useAuth();
++  const [activeFilter, setActiveFilter] = useState<FilterStatus>('ALL');
++
++  const { data: applications = [], isLoading } = useMyApplicationsRealtime({
++    candidateId: userProfile?.uid,
++    limit: 100,
++  });
++
++  const filteredApplications = applications.filter(app => {
++    if (activeFilter === 'PENDING' && app.status !== 'NEW' && app.status !== 'PENDING') return false;
++    if (activeFilter === 'APPROVED' && app.status !== 'APPROVED') return false;
++    if (activeFilter === 'REJECTED' && app.status !== 'REJECTED') return false;
++    return true;
++  });
++
++  const pendingCount = applications.filter(a => a.status === 'NEW' || a.status === 'PENDING').length;
++  const approvedCount = applications.filter(a => a.status === 'APPROVED').length;
++
++  const filters: { label: string; value: FilterStatus }[] = [
++    { label: `Táº¥t cáº£ (${applications.length})`, value: 'ALL' },
++    { label: `Chá» duyá»‡t (${pendingCount})`, value: 'PENDING' },
++    { label: `ÄĂ£ nháº­n (${approvedCount})`, value: 'APPROVED' },
++  ];
++
++  return (
++    <div className="space-y-4">
++      {/* Filter Chips â€” Stitch pill style */}
++      <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4 sticky top-[152px] bg-[#F2F4F6] z-30 pt-3">
++        {filters.map((f) => {
++          const isActive = activeFilter === f.value;
++          return (
++            <button
++              key={f.value}
++              onClick={() => setActiveFilter(f.value)}
++              className={`px-4 py-2 rounded-full text-[14px] font-bold transition-colors whitespace-nowrap flex-shrink-0 ${
++                isActive
++                  ? 'bg-[#191C1E] text-white shadow-sm'
++                  : 'bg-white border text-[#45464D] border-[#E2E2E9] hover:bg-[#F2F4F6]'
++              }`}
++            >
++              {f.label}
++            </button>
++          );
++        })}
++      </div>
++
++      {/* Application List */}
++      <div className="space-y-3 pt-1">
++        {isLoading ? (
++          <div className="flex flex-col items-center justify-center py-16">
++            <div className="w-8 h-8 border-4 border-[#006399] border-t-transparent rounded-full animate-spin mb-3" />
++            <p className="text-sm font-medium text-[#7C839B]">Äang táº£i danh sĂ¡ch...</p>
++          </div>
++        ) : filteredApplications.length === 0 ? (
++          <div className="text-center py-16 px-4 bg-white rounded-3xl border border-[#E2E2E9] shadow-sm">
++            <div className="w-16 h-16 bg-[#006399]/10 text-[#006399] rounded-2xl flex items-center justify-center mx-auto mb-4">
++              <span className="material-symbols-outlined text-[32px]">work_history</span>
++            </div>
++            <h2 className="text-lg font-bold text-[#191C1E] mb-2">ChÆ°a cĂ³ Ä‘Æ¡n nĂ o</h2>
++            <p className="text-[14px] text-[#45464D] mb-6 font-medium">
++              {activeFilter === 'ALL'
++                ? 'Báº¡n chÆ°a á»©ng tuyá»ƒn cĂ´ng viá»‡c nĂ o.'
++                : 'KhĂ´ng cĂ³ Ä‘Æ¡n á»Ÿ tráº¡ng thĂ¡i nĂ y.'}
++            </p>
++            <Link
++              to="/candidate"
++              className="bg-[#006399] text-white font-bold px-6 py-3 rounded-full shadow-md"
++            >
++              KhĂ¡m phĂ¡ viá»‡c lĂ m
++            </Link>
++          </div>
++        ) : (
++          filteredApplications.map((app) => (
++            <ApplicationCard key={app.id} application={app} />
++          ))
++        )}
++      </div>
++    </div>
++  );
++}
+diff --git a/apps/web/src/features/jobs/components/JobCard.tsx b/apps/web/src/features/jobs/components/JobCard.tsx
+index 6c9a02a..d868539 100644
+--- a/apps/web/src/features/jobs/components/JobCard.tsx
++++ b/apps/web/src/features/jobs/components/JobCard.tsx
+@@ -1,8 +1,8 @@
+ import { useNavigate } from '@tanstack/react-router';
+-import { Heart } from 'lucide-react';
+ import { useAuth } from '@/features/auth/context/AuthContext';
+ import { useIsJobWishlisted, useToggleWishlist } from '@/features/jobs/hooks/useWishlistJobs';
+ import { MouseEvent } from 'react';
++import { toast } from 'sonner';
+ 
+ export interface JobCardProps {
+     id: string;
+@@ -13,6 +13,7 @@ export interface JobCardProps {
+     shift: string;
+     logoUrl: string;
+     hasVerifiedBadge?: boolean;
++    detailVariant?: 'candidate' | 'public';
+ }
+ 
+ export function JobCard({
+@@ -23,7 +24,8 @@ export function JobCard({
+     distance,
+     shift,
+     logoUrl,
+-    hasVerifiedBadge
++    hasVerifiedBadge,
++    detailVariant = 'candidate',
+ }: JobCardProps) {
+     const navigate = useNavigate();
+     const { userProfile } = useAuth();
+@@ -34,7 +36,8 @@ export function JobCard({
+     const handleToggleWishlist = async (e: MouseEvent) => {
+         e.stopPropagation();
+         if (!userProfile?.uid) {
+-            // Optional: Redirect to login or show toast
++            toast.error('Vui lĂ²ng Ä‘Äƒng nháº­p Ä‘á»ƒ lÆ°u viá»‡c lĂ m');
++            navigate({ to: '/login' });
+             return;
+         }
+ 
+@@ -52,47 +55,61 @@ export function JobCard({
+     return (
+         <div
+             onClick={() => {
+-                navigate({ to: '/candidate/jobs/$jobId', params: { jobId: id } });
++                navigate({
++                    to: detailVariant === 'public' ? '/jobs/$jobId' : '/candidate/jobs/$jobId',
++                    params: { jobId: id },
++                } as any);
+             }}
+-            className="bg-white rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:bg-slate-50 transition-colors shadow-sm border border-slate-100"
++            className="bg-white rounded-xl p-5 flex flex-col gap-4 relative overflow-hidden group hover:translate-y-[-2px] transition-transform cursor-pointer shadow-[0_4px_24px_-2px_rgba(124,131,155,0.04)]"
+         >
+-            <div className="relative">
+-                <div className="w-[60px] h-[60px] rounded-full overflow-hidden shrink-0 border border-slate-200">
+-                    <img src={logoUrl} alt={companyName} className="w-full h-full object-cover bg-slate-50" />
++            {/* Top Section: Logo + Title + Company + Badge */}
++            <div className="flex items-start justify-between">
++                <div className="flex gap-4">
++                    <div className="w-14 h-14 rounded-2xl bg-[#ECEEF0] overflow-hidden flex-shrink-0">
++                        <img src={logoUrl} alt={companyName} className="w-full h-full object-cover" />
++                    </div>
++                    <div>
++                        <h3 className="font-headline font-bold text-lg text-[#191C1E] leading-tight">{title}</h3>
++                        <p className="text-[#45464D] text-sm mt-1 font-medium flex items-center gap-1">
++                            {companyName}
++                            {hasVerifiedBadge && (
++                                <span className="text-amber-500 flex items-center">
++                                    <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
++                                    4.8
++                                </span>
++                            )}
++                        </p>
++                    </div>
+                 </div>
+-                {hasVerifiedBadge && (
+-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full"></div>
+-                )}
+             </div>
+ 
+-            <div className="flex-1 min-w-0 py-1">
+-                <div className="flex justify-between items-start mb-0.5">
+-                    <h3 className="font-bold text-[16px] text-slate-900 truncate pr-2">{title}</h3>
+-                    <button
+-                        type="button"
+-                        onClick={handleToggleWishlist}
+-                        disabled={toggleWishlistMutation.isPending}
+-                        className={`transition-colors shrink-0 p-1.5 rounded-full ${isWishlisted
+-                                ? 'bg-red-50 text-red-500 hover:bg-red-100'
+-                                : 'bg-slate-50 text-slate-400 hover:text-red-500 hover:bg-slate-100'
+-                            }`}
+-                    >
+-                        <Heart className={`w-4 h-4 ${isWishlisted ? 'fill-current' : ''}`} />
+-                    </button>
+-                </div>
+-
+-                <p className="text-[13px] text-slate-500 mb-2 truncate">
+-                    {companyName} <span className="text-slate-300">â€¢</span> {distance}
+-                </p>
+-
+-                <div className="flex flex-wrap items-center gap-2">
+-                    <div className="bg-blue-50 border border-blue-100 text-blue-600 text-[12px] px-2.5 py-1 rounded-md font-medium">
+-                        {shift}
+-                    </div>
+-                    <div className="bg-emerald-50 border border-emerald-100 text-emerald-600 text-[12px] px-2.5 py-1 rounded-md font-medium">
+-                        {wage}
++            {/* Bottom Section: Salary + Meta + Bookmark */}
++            <div className="flex items-center justify-between border-t border-[#F2F4F6] pt-4">
++                <div className="flex flex-col">
++                    <span className="text-[#006399] font-bold text-lg">{wage}</span>
++                    <div className="flex items-center gap-2 mt-1 flex-wrap">
++                        <span className="text-[#45464D] text-xs">{distance}</span>
++                        <span className="w-1 h-1 rounded-full bg-[#C6C6CD]" />
++                        <span className="text-[#45464D] text-xs">{shift}</span>
+                     </div>
+                 </div>
++                <button
++                    type="button"
++                    onClick={handleToggleWishlist}
++                    disabled={toggleWishlistMutation.isPending}
++                    className={`p-2.5 rounded-full transition-colors ${
++                        isWishlisted
++                            ? 'bg-[#006399]/20 text-[#006399]'
++                            : 'bg-[#006399]/10 text-[#006399] hover:bg-[#006399]/20'
++                    }`}
++                >
++                    <span
++                        className="material-symbols-outlined"
++                        style={{ fontVariationSettings: isWishlisted ? "'FILL' 1" : "'FILL' 0" }}
++                    >
++                        bookmark
++                    </span>
++                </button>
+             </div>
+         </div>
+     );
+diff --git a/apps/web/src/features/jobs/components/JobMapView.tsx b/apps/web/src/features/jobs/components/JobMapView.tsx
+new file mode 100644
+index 0000000..8997b6e
+--- /dev/null
++++ b/apps/web/src/features/jobs/components/JobMapView.tsx
+@@ -0,0 +1,124 @@
++import { useEffect, useMemo } from 'react';
++import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet';
++import L from 'leaflet';
++import 'leaflet/dist/leaflet.css';
++import { Link } from '@tanstack/react-router';
++import type { Job } from '@jobnow/types';
++import icon from 'leaflet/dist/images/marker-icon.png';
++import iconShadow from 'leaflet/dist/images/marker-shadow.png';
++
++const markerIcon = L.icon({
++    iconUrl: icon,
++    shadowUrl: iconShadow,
++    iconSize: [25, 41],
++    iconAnchor: [12, 41],
++});
++
++type JobMapViewProps = {
++    jobs: Job[];
++    selectedLocation?: { lat: number; lng: number } | null;
++    onSelectLocation?: (location: { lat: number; lng: number }) => void;
++    detailVariant?: 'candidate' | 'public';
++};
++
++function MapViewport({ center }: { center: [number, number] }) {
++    const map = useMap();
++
++    useEffect(() => {
++        map.flyTo(center, map.getZoom(), { animate: true });
++    }, [center, map]);
++
++    return null;
++}
++
++function MapClickHandler({
++    onSelectLocation,
++}: {
++    onSelectLocation?: (location: { lat: number; lng: number }) => void;
++}) {
++    useMapEvents({
++        click(event) {
++            onSelectLocation?.({
++                lat: event.latlng.lat,
++                lng: event.latlng.lng,
++            });
++        },
++    });
++
++    return null;
++}
++
++export function JobMapView({
++    jobs,
++    selectedLocation,
++    onSelectLocation,
++    detailVariant = 'public',
++}: JobMapViewProps) {
++    const center = useMemo<[number, number]>(() => {
++        if (selectedLocation) {
++            return [selectedLocation.lat, selectedLocation.lng];
++        }
++
++        const firstWithLocation = jobs.find((job) => job.location?.latitude && job.location?.longitude);
++        if (firstWithLocation) {
++            return [firstWithLocation.location.latitude, firstWithLocation.location.longitude];
++        }
++
++        return [21.0285, 105.8542];
++    }, [jobs, selectedLocation]);
++
++    return (
++        <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
++            <div className="h-[68vh] min-h-[420px] w-full">
++                <MapContainer center={center} zoom={13} scrollWheelZoom className="h-full w-full">
++                    <TileLayer
++                        attribution='&copy; OpenStreetMap contributors'
++                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
++                    />
++                    <MapViewport center={center} />
++                    <MapClickHandler onSelectLocation={onSelectLocation} />
++                    {jobs
++                        .filter((job) => job.location?.latitude && job.location?.longitude)
++                        .map((job) => (
++                            <Marker
++                                key={job.id}
++                                icon={markerIcon}
++                                position={[job.location.latitude, job.location.longitude]}
++                            >
++                                <Popup minWidth={220}>
++                                    <div className="space-y-2">
++                                        <div>
++                                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
++                                                {job.employerName || 'NhĂ  tuyá»ƒn dá»¥ng'}
++                                            </p>
++                                            <h3 className="text-sm font-bold text-slate-900">{job.title}</h3>
++                                        </div>
++                                        <p className="text-xs text-slate-500">
++                                            {(job.location.address || 'ChÆ°a cáº­p nháº­t Ä‘á»‹a chá»‰').slice(0, 90)}
++                                        </p>
++                                        <div className="flex items-center justify-between text-xs">
++                                            <span className="rounded-full bg-emerald-50 px-2 py-1 font-semibold text-emerald-700">
++                                                {job.salary.toLocaleString('vi-VN')}Ä‘
++                                            </span>
++                                            {job.isBoosted && (
++                                                <span className="rounded-full bg-amber-50 px-2 py-1 font-semibold text-amber-700">
++                                                    Boost
++                                                </span>
++                                            )}
++                                        </div>
++                                        <Link
++                                            to={detailVariant === 'candidate' ? '/candidate/jobs/$jobId' : '/jobs/$jobId'}
++                                            params={{ jobId: job.id }}
++                                            className="block rounded-xl bg-blue-600 px-3 py-2 text-center text-xs font-bold text-white"
++                                        >
++                                            Xem chi tiáº¿t
++                                        </Link>
++                                    </div>
++                                </Popup>
++                            </Marker>
++                        ))}
++                </MapContainer>
++            </div>
++        </div>
++    );
++}
+diff --git a/apps/web/src/features/jobs/components/MapPicker.tsx b/apps/web/src/features/jobs/components/MapPicker.tsx
+index 0f1baab..88e1e7b 100644
+--- a/apps/web/src/features/jobs/components/MapPicker.tsx
++++ b/apps/web/src/features/jobs/components/MapPicker.tsx
+@@ -7,6 +7,7 @@ import 'leaflet/dist/leaflet.css';
+ import icon from 'leaflet/dist/images/marker-icon.png';
+ import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+ import { ArrowLeft, Check, Loader2, MapPin, Search, LocateFixed } from 'lucide-react';
++import { toast } from 'sonner';
+ 
+ let DefaultIcon = L.icon({
+   iconUrl: icon,
+@@ -141,13 +142,13 @@ export function MapPicker({ onSelect, onClose, initialLocation }: MapPickerProps
+         },
+         (err) => {
+           console.error("Lá»—i láº¥y vá»‹ trĂ­:", err);
+-          alert("KhĂ´ng thá»ƒ láº¥y vá»‹ trĂ­ cá»§a báº¡n Ä‘á»ƒ Ä‘á»‹nh vá»‹.");
++          toast.error("KhĂ´ng thá»ƒ láº¥y vá»‹ trĂ­ cá»§a báº¡n Ä‘á»ƒ Ä‘á»‹nh vá»‹.");
+           setIsLocating(false);
+         },
+         { enableHighAccuracy: true }
+       );
+     } else {
+-      alert("TrĂ¬nh duyá»‡t cá»§a báº¡n khĂ´ng há»— trá»£ Ä‘á»‹nh vá»‹.");
++      toast.error("TrĂ¬nh duyá»‡t cá»§a báº¡n khĂ´ng há»— trá»£ Ä‘á»‹nh vá»‹.");
+     }
+   };
+ 
+diff --git a/apps/web/src/features/jobs/components/SavedJobCard.tsx b/apps/web/src/features/jobs/components/SavedJobCard.tsx
+new file mode 100644
+index 0000000..13e17ca
+--- /dev/null
++++ b/apps/web/src/features/jobs/components/SavedJobCard.tsx
+@@ -0,0 +1,92 @@
++import { Link } from '@tanstack/react-router';
++import { useAuth } from '@/features/auth/context/AuthContext';
++import { useToggleWishlist } from '@/features/jobs/hooks/useWishlistJobs';
++import { MouseEvent } from 'react';
++import { toast } from 'sonner';
++
++interface SavedJobCardProps {
++  job: any;
++}
++
++export function SavedJobCard({ job }: SavedJobCardProps) {
++  const { userProfile } = useAuth();
++  const toggleWishlistMutation = useToggleWishlist();
++
++  const handleToggleWishlist = async (e: MouseEvent) => {
++    e.preventDefault();
++    e.stopPropagation();
++    if (!userProfile?.uid) {
++      toast.error('Vui lĂ²ng Ä‘Äƒng nháº­p Ä‘á»ƒ lÆ°u viá»‡c lĂ m');
++      return;
++    }
++
++    try {
++      await toggleWishlistMutation.mutateAsync({
++        userId: userProfile.uid,
++        jobId: job.id,
++        isCurrentlyWishlisted: true,
++      });
++      toast.success('ÄĂ£ bá» lÆ°u viá»‡c lĂ m');
++    } catch (error) {
++      toast.error('KhĂ´ng thá»ƒ thao tĂ¡c, vui lĂ²ng thá»­ láº¡i');
++    }
++  };
++
++  const companyName = job.employerName || 'NhĂ  tuyá»ƒn dá»¥ng';
++  const logoUrl = job.images?.[0] || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(companyName)}&backgroundColor=006399`;
++  const wage = job.salary ? `${job.salary.toLocaleString()}Ä‘/${job.salaryType === 'PER_SHIFT' ? 'ca' : 'thĂ¡ng'}` : 'Thá»a thuáº­n';
++  const distance = job.location?.address?.split(',')[0] || job.address?.split(',')[0] || 'ToĂ n quá»‘c';
++
++  return (
++    <Link
++      to="/candidate/jobs/$jobId"
++      params={{ jobId: job.id }}
++      className="block bg-white rounded-3xl p-4 shadow-[0_4px_24px_-2px_rgba(124,131,155,0.04)] hover:shadow-md transition-shadow relative group"
++    >
++      <div className="flex items-start justify-between">
++        <div className="flex gap-4">
++          <div className="w-16 h-16 rounded-2xl bg-[#ECEEF0] overflow-hidden flex-shrink-0">
++            <img src={logoUrl} alt={companyName} className="w-full h-full object-cover" />
++          </div>
++          <div className="flex flex-col">
++            <h3 className="font-headline font-bold text-lg text-[#191C1E] leading-tight mb-1 line-clamp-2 pr-8">
++              {job.title || 'CĂ´ng viá»‡c'}
++            </h3>
++            <p className="text-[13px] text-[#45464D] mb-2 font-medium flex items-center gap-1">
++              {companyName}
++              <span className="material-symbols-outlined text-[14px] text-[#006399]" style={{ fontVariationSettings: "'FILL' 1" }}>
++                verified
++              </span>
++            </p>
++            <div className="flex gap-1.5 flex-wrap mb-3">
++              <span className="bg-[#E6F4EA] text-[#137333] px-2 py-0.5 rounded text-[10px] font-black tracking-wide">
++                ÄANG TUYá»‚N
++              </span>
++              <span className="bg-[#F2F4F6] text-[#45464D] px-2 py-0.5 rounded text-[10px] font-black tracking-wide">
++                {job.employmentType === 'PART_TIME' ? 'CA SĂNG' : 'TOĂ€N THá»œI GIAN'}
++              </span>
++            </div>
++            
++            <div className="flex items-center gap-2 mt-auto">
++              <span className="text-[#006399] font-bold text-[15px]">{wage}</span>
++              <span className="w-1 h-1 rounded-full bg-[#C6C6CD]" />
++              <span className="text-[#45464D] text-[13px] flex items-center gap-0.5">
++                <span className="material-symbols-outlined text-[14px]">location_on</span>
++                {distance}
++              </span>
++            </div>
++          </div>
++        </div>
++      </div>
++
++      <button
++        onClick={handleToggleWishlist}
++        className="absolute top-4 right-4 text-[#BA1A1A] hover:bg-[#BA1A1A]/10 p-1.5 rounded-full transition-colors"
++      >
++        <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
++          favorite
++        </span>
++      </button>
++    </Link>
++  );
++}
+diff --git a/apps/web/src/features/jobs/components/SavedJobsView.tsx b/apps/web/src/features/jobs/components/SavedJobsView.tsx
+new file mode 100644
+index 0000000..107c3ac
+--- /dev/null
++++ b/apps/web/src/features/jobs/components/SavedJobsView.tsx
+@@ -0,0 +1,77 @@
++import { useAuth } from '@/features/auth/context/AuthContext';
++import { useWishlistJobs } from '@/features/jobs/hooks/useWishlistJobs';
++import { Link, useNavigate } from '@tanstack/react-router';
++import { SavedJobCard } from './SavedJobCard';
++
++export function SavedJobsView() {
++  const { userProfile } = useAuth();
++  const { data: wishlistJobs = [], isLoading, isError } = useWishlistJobs(userProfile?.uid);
++
++  const filters = [
++    { label: `Táº¥t cáº£ (${wishlistJobs.length})`, active: true },
++    { label: 'Äang tuyá»ƒn', active: false },
++    { label: 'Viá»‡c lĂ m bĂ¡n thá»i gian', active: false },
++  ];
++
++  return (
++    <div className="space-y-4">
++      {/* Filters */}
++      <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4 sticky top-[108px] bg-[#F2F4F6] z-30 pt-4">
++        {filters.map((f, i) => (
++          <button
++            key={i}
++            className={`px-4 py-2 rounded-2xl text-[14px] font-bold transition-colors whitespace-nowrap flex-shrink-0 ${
++              f.active
++                ? 'bg-[#191C1E] text-white shadow-sm'
++                : 'bg-white border text-[#45464D] border-[#E2E2E9] hover:bg-[#F2F4F6]'
++            }`}
++          >
++            {f.label}
++          </button>
++        ))}
++      </div>
++
++      {/* Content */}
++      <div className="pt-2 pb-6 space-y-3">
++        {isLoading ? (
++          <div className="flex flex-col items-center justify-center py-10">
++            <div className="w-8 h-8 border-4 border-[#006399] border-t-transparent rounded-full animate-spin mb-4"></div>
++            <p className="text-sm font-medium text-[#7C839B]">Äang táº£i danh sĂ¡ch...</p>
++          </div>
++        ) : isError ? (
++          <div className="bg-[#BA1A1A]/10 text-[#BA1A1A] p-4 rounded-2xl text-center border border-[#BA1A1A]/20">
++            CĂ³ lá»—i xáº£y ra khi táº£i danh sĂ¡ch. Vui lĂ²ng thá»­ láº¡i sau.
++          </div>
++        ) : wishlistJobs.length === 0 ? (
++          <div className="text-center py-16 px-4">
++            <div className="w-24 h-24 bg-[#E2E2E9] rounded-full flex items-center justify-center mx-auto mb-6">
++              <span className="material-symbols-outlined text-[48px] text-[#A0A2A4]">heart_broken</span>
++            </div>
++            <h3 className="font-headline font-bold text-[#191C1E] text-lg mb-2">ChÆ°a cĂ³ viá»‡c lĂ m nĂ o Ä‘Æ°á»£c lÆ°u</h3>
++            <p className="text-[#45464D] text-[14px] mb-8 max-w-[250px] mx-auto leading-relaxed">
++              Báº¥m <span className="text-[#BA1A1A]">â¤</span> trĂªn cĂ¡c tin tuyá»ƒn dá»¥ng Ä‘á»ƒ lÆ°u láº¡i cĂ¡c cĂ´ng viá»‡c báº¡n yĂªu thĂ­ch
++            </p>
++            <Link
++              to="/candidate"
++              className="bg-[#006399] hover:bg-[#004e7a] text-white font-bold py-3.5 px-8 rounded-full shadow-md transition-all active:scale-[0.98]"
++            >
++              KhĂ¡m phĂ¡ viá»‡c lĂ m
++            </Link>
++          </div>
++        ) : (
++          <div className="space-y-3">
++            {wishlistJobs.map((job: any) => (
++              <SavedJobCard
++                key={job.id}
++                job={job}
++              />
++            ))}
++            
++            {/* Show empty state illustration at the bottom if jobs exist, matching the Stitch mockup? 
++                Actually, the mockup shows an empty state at the end. We will assume the design means "if empty show this". */}
++          </div>
++        )}
++      </div>
++    </div>
++  );
++}
+diff --git a/apps/web/src/features/jobs/hooks/useEmployerJobs.ts b/apps/web/src/features/jobs/hooks/useEmployerJobs.ts
+index 2dcd41d..68b90cc 100644
+--- a/apps/web/src/features/jobs/hooks/useEmployerJobs.ts
++++ b/apps/web/src/features/jobs/hooks/useEmployerJobs.ts
+@@ -1,6 +1,15 @@
+ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+-import { Job } from '@jobnow/types';
+-import { fetchEmployerJobs, fetchJobById, createJob, updateJob, deleteJob } from '../services/jobService';
++import { BoostPackage, Job, JobPostingQuota } from '@jobnow/types';
++import {
++    fetchEmployerJobs,
++    fetchJobById,
++    createJob,
++    updateJob,
++    deleteJob,
++    fetchMyJobPostingQuota,
++    purchaseBoostPackage,
++    closeJobSafely,
++} from '../services/jobService';
+ 
+ /**
+  * Hook to fetch all jobs created by a specific employer.
+@@ -98,3 +107,41 @@ export function useGetCategories() {
+         staleTime: 60 * 60 * 1000, // 1 hour
+     });
+ }
++
++export function useJobPostingQuota(enabled = true) {
++    return useQuery<JobPostingQuota, Error>({
++        queryKey: ['jobs', 'quota'],
++        queryFn: fetchMyJobPostingQuota,
++        enabled,
++        staleTime: 30_000,
++    });
++}
++
++export function usePurchaseBoostPackage() {
++    const queryClient = useQueryClient();
++
++    return useMutation<{ expiresAt: string; price: number }, Error, { jobId: string; packageCode: BoostPackage['code'] }>({
++        mutationFn: ({ jobId, packageCode }) => purchaseBoostPackage(jobId, packageCode),
++        onSuccess: () => {
++            queryClient.invalidateQueries({ queryKey: ['jobs'] });
++            queryClient.invalidateQueries({ queryKey: ['transactions'] });
++            queryClient.invalidateQueries({ queryKey: ['wallet'] });
++        },
++    });
++}
++
++export function useCloseJobSafely() {
++    const queryClient = useQueryClient();
++
++    return useMutation<
++        { requiresConfirmation: boolean; affectedCandidates: number; latePenaltyPossible: boolean; success?: boolean },
++        Error,
++        { jobId: string; confirmed?: boolean; notifyCandidates?: boolean }
++    >({
++        mutationFn: ({ jobId, confirmed, notifyCandidates }) => closeJobSafely(jobId, confirmed, notifyCandidates),
++        onSuccess: () => {
++            queryClient.invalidateQueries({ queryKey: ['jobs'] });
++            queryClient.invalidateQueries({ queryKey: ['applications'] });
++        },
++    });
++}
+diff --git a/apps/web/src/features/jobs/services/adapters.ts b/apps/web/src/features/jobs/services/adapters.ts
+index d456736..fdf638a 100644
+--- a/apps/web/src/features/jobs/services/adapters.ts
++++ b/apps/web/src/features/jobs/services/adapters.ts
+@@ -38,6 +38,11 @@ export function mapNearbyApiToJobDoc(data: Record<string, unknown>): JobDoc {
+         age_range: getValue(data, ['age_range', 'ageRange']),
+         start_date: getValue<string>(data, ['start_date', 'startDate']),
+         is_premium: getValue<boolean>(data, ['is_premium', 'isPremium']),
++        moderation_status: getValue(data, ['moderation_status', 'moderationStatus']),
++        moderation_reason: getValue(data, ['moderation_reason', 'moderationReason']),
++        is_boosted: getValue<boolean>(data, ['is_boosted', 'isBoosted']),
++        boost_expires_at: getValue(data, ['boost_expires_at', 'boostExpiresAt']),
++        boost_package_code: getValue(data, ['boost_package_code', 'boostPackageCode']),
+         created_at: getValue(data, ['created_at', 'createdAt']),
+         updated_at: getValue(data, ['updated_at', 'updatedAt']),
+     };
+@@ -80,6 +85,11 @@ export function mapJobDocToJob(id: string, data: Partial<JobDoc>): Job {
+         ageRange: data.age_range,
+         startDate: data.start_date ?? '',
+         isPremium: data.is_premium ?? false,
++        moderationStatus: data.moderation_status,
++        moderationReason: data.moderation_reason,
++        isBoosted: data.is_boosted ?? false,
++        boostExpiresAt: data.boost_expires_at,
++        boostPackageCode: data.boost_package_code,
+         totalAppliedCount: data.shift_capacity && Object.keys(data.shift_capacity).length > 0
+             ? Object.values(data.shift_capacity).reduce((sum, shift) => sum + (shift.applied_count || 0), 0)
+             : undefined,
+diff --git a/apps/web/src/features/jobs/services/applicationFlowService.ts b/apps/web/src/features/jobs/services/applicationFlowService.ts
+index 3009e7f..00e15a7 100644
+--- a/apps/web/src/features/jobs/services/applicationFlowService.ts
++++ b/apps/web/src/features/jobs/services/applicationFlowService.ts
+@@ -8,8 +8,6 @@ import {
+     orderBy,
+     query,
+     where,
+-    runTransaction,
+-    serverTimestamp,
+     type QueryDocumentSnapshot,
+     type Unsubscribe,
+ } from 'firebase/firestore';
+@@ -117,142 +115,10 @@ export async function precheckApply(input: ApplyJobInput): Promise<ApplyPrecheck
+     };
+ }
+ 
+-function normalizeApplicationId(candidateId: string, jobId: string, shiftId: string): string {
+-    return `${candidateId}_${jobId}_${shiftId}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+-}
+-
+ export async function applyJob(input: ApplyJobInput): Promise<ApplyJobResult> {
+-    const applicationId = normalizeApplicationId(input.candidateId, input.jobId, input.shiftId);
+-    const applicationRef = doc(db, 'applications', applicationId);
+-    const jobRef = doc(db, 'jobs', input.jobId);
+-
+-    return await runTransaction(db, async (tx) => {
+-        const candidateRef = doc(db, 'users', input.candidateId);
+-        const [jobSnap, appSnap, candidateSnap] = await Promise.all([
+-            tx.get(jobRef),
+-            tx.get(applicationRef),
+-            tx.get(candidateRef),
+-        ]);
+-
+-        if (!jobSnap.exists()) {
+-            throw new Error('CĂ´ng viá»‡c khĂ´ng tá»“n táº¡i.');
+-        }
+-
+-        if (appSnap.exists()) {
+-            const appData = appSnap.data() || {};
+-            return {
+-                applicationId: appSnap.id,
+-                status: String(appData.status ?? 'NEW') as any,
+-                remainingSlots: undefined,
+-            };
+-        }
+-
+-        const jobData = jobSnap.data() || {};
+-        const status = String(jobData.status ?? 'OPEN').toUpperCase();
+-        if (status !== 'OPEN' && status !== 'ACTIVE') {
+-            throw new Error('CĂ´ng viá»‡c Ä‘Ă£ Ä‘Ă³ng tuyá»ƒn.');
+-        }
+-
+-        const targetShift = Array.isArray(jobData.shifts) 
+-            ? jobData.shifts.find((item: any) => String(item.id) === input.shiftId) 
+-            : null;
+-        const shiftTime = targetShift ? `${targetShift.start_time || ''} - ${targetShift.end_time || ''}` : '';
+-        const jobTitle = String(jobData.title || '');
+-
+-        const shiftCapacity = (jobData.shift_capacity ?? {}) as Record<string, any>;
+-        let capacity = shiftCapacity[input.shiftId];
+-
+-        if (!capacity) {
+-            const shifts = Array.isArray(jobData.shifts) ? jobData.shifts : [];
+-            const targetShift = shifts.find((item: any) => String(item.id) === input.shiftId);
+-            const quantity = Number(targetShift?.quantity ?? 0);
+-            capacity = {
+-                total_slots: quantity,
+-                remaining_slots: quantity,
+-                applied_count: 0,
+-            };
+-        }
+-
+-        if (capacity.remaining_slots <= 0) {
+-            throw new Error('Ca lĂ m Ä‘Ă£ Ä‘á»§ sá»‘ lÆ°á»£ng.');
+-        }
+-
+-        const employerId = String(jobData.employer_id ?? jobData.employerId ?? '');
+-        const employerName = String(jobData.employer_name ?? jobData.employerName ?? '');
+-
+-        // Denormalize candidate snapshot
+-        const candidateData = candidateSnap.exists() ? (candidateSnap.data() || {}) : {};
+-        const candidateName = String(candidateData.full_name ?? candidateData.fullName ?? candidateData.display_name ?? candidateData.displayName ?? '');
+-        const candidateAvatar = String(candidateData.avatar_url ?? candidateData.avatarUrl ?? candidateData.photo_url ?? candidateData.photoURL ?? '');
+-        const candidateSkills = (candidateData.skills as string[]) ?? [];
+-        const candidateRating = Number(candidateData.reputation_score ?? candidateData.reputationScore ?? 0);
+-        const candidateVerified = (candidateData.verification_status ?? candidateData.verificationStatus) === 'VERIFIED';
+-
+-        tx.set(applicationRef, {
+-            job_id: input.jobId,
+-            shift_id: input.shiftId,
+-            employer_id: employerId,
+-            employerId: employerId, // Standardize duplicate field for robust triggers
+-            candidate_id: input.candidateId,
+-            status: 'NEW',
+-            payment_status: 'UNPAID',
+-            cover_letter: input.coverLetter ?? '',
+-            idempotency_key: input.idempotencyKey,
+-            applied_at: serverTimestamp(),
+-            created_at: serverTimestamp(),
+-            updated_at: serverTimestamp(),
+-            // Denormalized candidate snapshot
+-            candidate_name: candidateName,
+-            candidate_avatar: candidateAvatar,
+-            candidate_skills: candidateSkills,
+-            candidate_rating: candidateRating,
+-            candidate_verified: candidateVerified,
+-            // Denormalized job/shift info
+-            job_title: jobTitle,
+-            shift_time: shiftTime,
+-            employer_name: employerName,
+-            employerName: employerName,
+-        });
+-
+-        const nextRemaining = Math.max(Number(capacity.remaining_slots) - 1, 0);
+-        tx.set(jobRef, {
+-            shift_capacity: {
+-                ...(jobData.shift_capacity ?? {}),
+-                [input.shiftId]: {
+-                    total_slots: Number(capacity.total_slots),
+-                    remaining_slots: nextRemaining,
+-                    applied_count: Number(capacity.applied_count) + 1,
+-                },
+-            },
+-            updated_at: serverTimestamp(),
+-        }, { merge: true });
+-
+-        // Create Notification for Employer
+-        const notificationRef = doc(collection(db, 'notifications'));
+-        tx.set(notificationRef, {
+-            userId: employerId,
+-            user_id: employerId,
+-            type: 'NEW_APPLICATION',
+-            category: 'APPLICATION',
+-            title: 'ÄÆ¡n á»©ng tuyá»ƒn má»›i',
+-            body: `Báº¡n cĂ³ Ä‘Æ¡n á»©ng tuyá»ƒn má»›i tá»« ${candidateName} cho cĂ´ng viá»‡c: ${jobTitle}`,
+-            data: {
+-                applicationId,
+-                jobId: input.jobId,
+-                candidateId: input.candidateId,
+-            },
+-            isRead: false,
+-            is_read: false,
+-            created_at: serverTimestamp(),
+-            createdAt: serverTimestamp(),
+-        });
+-
+-        return {
+-            applicationId,
+-            status: 'NEW',
+-            remainingSlots: nextRemaining,
+-        };
+-    });
++    const callable = httpsCallable<ApplyJobInput, ApplyJobResult>(functions, 'applyJob');
++    const { data } = await callable(input);
++    return data;
+ }
+ 
+ export async function withdrawApplication(input: WithdrawApplicationInput): Promise<{ success: boolean }> {
+diff --git a/apps/web/src/features/jobs/services/applicationService.ts b/apps/web/src/features/jobs/services/applicationService.ts
+index 7de1f5c..87598c2 100644
+--- a/apps/web/src/features/jobs/services/applicationService.ts
++++ b/apps/web/src/features/jobs/services/applicationService.ts
+@@ -1,8 +1,8 @@
+-import { collection, getDocs, query, where, limit, doc, getDoc, updateDoc, addDoc, serverTimestamp, onSnapshot, type Unsubscribe } from 'firebase/firestore';
+-import { db } from '@/config/firebase';
++import { collection, getDocs, query, where, limit, doc, getDoc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
++import { httpsCallable } from 'firebase/functions';
++import { db, functions } from '@/config/firebase';
+ import type { Application, ApplicationStatus } from '@jobnow/types';
+ import { mapApplicationDocToApplication } from './adapters';
+-import { processAppPayment } from '@/features/wallet/services/walletService';
+ 
+ function dedupeById(items: Application[]): Application[] {
+     const map = new Map<string, Application>();
+@@ -216,59 +216,12 @@ export async function updateApplicationStatus(
+     status: ApplicationStatus
+ ): Promise<Application> {
+     try {
+-        const applicationRef = doc(db, 'applications', applicationId);
+-        const appSnap = await getDoc(applicationRef);
+-        
+-        if (!appSnap.exists()) {
+-            throw new Error('ÄÆ¡n á»©ng tuyá»ƒn khĂ´ng tá»“n táº¡i.');
+-        }
+-
+-        const appData = appSnap.data() as Record<string, unknown>;
+-        
+-        await updateDoc(applicationRef, {
+-            status: status,
+-            updated_at: serverTimestamp()
+-        });
+-
+-        const updatedData = { ...appData, status };
+-
+-        if (status === 'APPROVED' || status === 'REJECTED') {
+-            const candidateId = String(appData.candidate_id || appData.candidateId || '');
+-            const jobId = String(appData.job_id || appData.jobId || '');
+-            
+-            let jobTitle = 'CĂ´ng viá»‡c';
+-            if (jobId) {
+-                const jobRef = doc(db, 'jobs', jobId);
+-                const jobSnap = await getDoc(jobRef);
+-                if (jobSnap.exists()) {
+-                     jobTitle = String(jobSnap.data()?.title || 'CĂ´ng viá»‡c');
+-                }
+-            }
+-
+-            const title = status === 'APPROVED' ? 'á»¨ng tuyá»ƒn thĂ nh cĂ´ng' : 'Káº¿t quáº£ á»©ng tuyá»ƒn';
+-            const body = status === 'APPROVED' 
+-                ? `ÄÆ¡n á»©ng tuyá»ƒn cá»§a báº¡n cho cĂ´ng viá»‡c "${jobTitle}" Ä‘Ă£ Ä‘Æ°á»£c duyá»‡t.`
+-                : `Ráº¥t tiáº¿c, Ä‘Æ¡n á»©ng tuyá»ƒn cá»§a báº¡n cho cĂ´ng viá»‡c "${jobTitle}" khĂ´ng Ä‘Æ°á»£c duyá»‡t láº§n nĂ y.`;
+-
+-            await addDoc(collection(db, 'notifications'), {
+-                userId: candidateId,
+-                user_id: candidateId,
+-                type: `APPLICATION_${status}`,
+-                category: 'APPLICATION',
+-                title: title,
+-                body: body,
+-                data: {
+-                    applicationId: applicationId,
+-                    jobId: jobId,
+-                    status: status
+-                },
+-                isRead: false,
+-                is_read: false,
+-                created_at: serverTimestamp(),
+-            });
+-        }
+-
+-        return mapApplicationDocToApplication(appSnap.id, updatedData);
++        const callable = httpsCallable<
++            { applicationId: string; status: ApplicationStatus },
++            { application: Record<string, unknown> }
++        >(functions, 'updateApplicationStatus');
++        const { data } = await callable({ applicationId, status });
++        return mapApplicationDocToApplication(applicationId, data.application as Record<string, unknown>);
+     } catch (error: any) {
+         console.error('Lá»—i chi tiáº¿t khi updateApplicationStatus:', error);
+         if (error?.code) {
+@@ -287,92 +240,24 @@ export async function completeApplicationWithPayment(
+     employerId: string
+ ): Promise<Application> {
+     try {
+-        const appRef = doc(db, 'applications', applicationId);
+-        const appSnap = await getDoc(appRef);
+-        
+-        if (!appSnap.exists()) {
+-            throw new Error('ÄÆ¡n á»©ng tuyá»ƒn khĂ´ng tá»“n táº¡i.');
+-        }
+-
+-        const data = appSnap.data();
+-        const candidateId = String(data.candidate_id || data.candidateId || '');
+-        const jobId = String(data.job_id || data.jobId || '');
+-
+-        // 1. Update Application status and payment info
+-        const newStatus = paymentMethod === 'CASH' ? 'CASH_CONFIRMATION' : 'COMPLETED';
+-        const newPaymentStatus = paymentMethod === 'CASH' ? 'PROCESSING' : 'PAID';
+-
+-        await updateDoc(appRef, {
+-            status: newStatus,
+-            payment_status: newPaymentStatus,
+-            payment_method: paymentMethod,
+-            employerId: employerId, // Ensure employer info is on the app doc if not already
+-            updated_at: serverTimestamp()
+-        });
+-
+-        // 2. Handle Wallet transaction (simulation)
+         if (paymentMethod === 'APP') {
+-            // Get salary from job
+-            let amount = 0;
+-            let jobTitle = 'CĂ´ng viá»‡c';
+-            if (jobId) {
+-                const jobSnap = await getDoc(doc(db, 'jobs', jobId));
+-                if (jobSnap.exists()) {
+-                    const jobData = jobSnap.data();
+-                    const salary = Number(jobData.salary || 0);
+-                    // Critical: salary_type is stored in snake_case in Firestore
+-                    const sTypeRaw = jobData.salary_type || jobData.salaryType || 'HOURLY';
+-                    jobTitle = String(jobData.title || 'CĂ´ng viá»‡c');
+-
+-                    if (sTypeRaw === 'HOURLY') {
+-                        // Calculate actual hours worked
+-                        const checkInMillis = timestampToMillis(data.check_in_time || data.checkInTime);
+-                        const checkOutMillis = timestampToMillis(data.check_out_time || data.checkOutTime || Date.now());
+-
+-                        if (checkInMillis > 0 && checkOutMillis > checkInMillis) {
+-                            const hoursWorked = (checkOutMillis - checkInMillis) / (1000 * 60 * 60);
+-                            // Round to 2 decimal places or as per business rules
+-                            amount = Math.round(hoursWorked * salary);
+-                            console.log(`[applicationService] Hourly calc for ${applicationId}: ${hoursWorked.toFixed(2)}h * ${salary} = ${amount}`);
+-                        } else {
+-                            // Fallback if timings are missing
+-                            amount = salary; 
+-                            console.warn(`[applicationService] Missing timings for ${applicationId}, paying flat rate: ${amount}`);
+-                        }
+-                    } else {
+-                        amount = salary;
+-                        console.log(`[applicationService] Flat pay for ${applicationId} (${sTypeRaw}): ${amount}`);
+-                    }
+-                }
+-            }
+-
+-            if (amount > 0) {
+-                await processAppPayment(employerId, candidateId, amount, jobTitle, applicationId);
+-                console.log(`[applicationService] Processed APP payment of ${amount} to ${candidateId} from ${employerId}`);
+-            }
++            const callable = httpsCallable<
++                { applicationId: string; employerId: string },
++                { amount: number; candidateId: string; employerId: string; jobTitle: string }
++            >(functions, 'processPayment');
++            await callable({ applicationId, employerId });
++        } else {
++            const callable = httpsCallable<
++                { applicationId: string; employerId: string },
++                { success: boolean }
++            >(functions, 'markCashPayment');
++            await callable({ applicationId, employerId });
+         }
+ 
+-        // 3. Notify candidate
+-        let jobTitle = 'CĂ´ng viá»‡c';
+-        if (jobId) {
+-            const jobSnap = await getDoc(doc(db, 'jobs', jobId));
+-            if (jobSnap.exists()) jobTitle = jobSnap.data().title;
++        const refreshed = await getDoc(doc(db, 'applications', applicationId));
++        if (!refreshed.exists()) {
++            throw new Error('KhĂ´ng tĂ¬m tháº¥y Ä‘Æ¡n á»©ng tuyá»ƒn sau khi cáº­p nháº­t thanh toĂ¡n.');
+         }
+-
+-        await addDoc(collection(db, 'notifications'), {
+-            userId: candidateId,
+-            user_id: candidateId,
+-            type: paymentMethod === 'CASH' ? 'PAYMENT_CONFIRM_REQUIRED' : 'PAYMENT_RECEIVED',
+-            category: 'SYSTEM',
+-            title: paymentMethod === 'CASH' ? 'NhĂ  tuyá»ƒn dá»¥ng Ä‘Ă£ thanh toĂ¡n' : 'Thanh toĂ¡n thĂ nh cĂ´ng',
+-            body: paymentMethod === 'CASH' 
+-                ? `NhĂ  tuyá»ƒn dá»¥ng Ä‘Ă£ Ä‘Ă¡nh dáº¥u thanh toĂ¡n TIá»€N Máº¶T cho "${jobTitle}". Vui lĂ²ng xĂ¡c nháº­n náº¿u báº¡n Ä‘Ă£ nháº­n Ä‘á»§ tiá»n.`
+-                : `Báº¡n Ä‘Ă£ Ä‘Æ°á»£c thanh toĂ¡n cho cĂ´ng viá»‡c "${jobTitle}" qua hĂ¬nh thá»©c á»¨ng dá»¥ng.`,
+-            isRead: false,
+-            created_at: serverTimestamp(),
+-        });
+-
+-        const refreshed = await getDoc(appRef);
+         return mapApplicationDocToApplication(refreshed.id, refreshed.data() as any);
+     } catch (error: any) {
+         console.error('Error in completeApplicationWithPayment:', error);
+@@ -387,14 +272,16 @@ export async function confirmPaymentReceived(applicationId: string): Promise<App
+     try {
+         const appRef = doc(db, 'applications', applicationId);
+         const appSnap = await getDoc(appRef);
+-        
+         if (!appSnap.exists()) throw new Error('ÄÆ¡n á»©ng tuyá»ƒn khĂ´ng tá»“n táº¡i.');
+ 
+-        await updateDoc(appRef, {
+-            status: 'COMPLETED',
+-            payment_status: 'PAID',
+-            updated_at: serverTimestamp()
+-        });
++        const appData = appSnap.data();
++        const candidateId = String(appData.candidate_id || appData.candidateId || '');
++
++        const callable = httpsCallable<
++            { applicationId: string; candidateId: string },
++            { success: boolean }
++        >(functions, 'confirmCashPaymentReceived');
++        await callable({ applicationId, candidateId });
+ 
+         const refreshed = await getDoc(appRef);
+         return mapApplicationDocToApplication(refreshed.id, refreshed.data() as any);
+diff --git a/apps/web/src/features/jobs/services/attendanceService.ts b/apps/web/src/features/jobs/services/attendanceService.ts
+index 2b56448..8ae9ea9 100644
+--- a/apps/web/src/features/jobs/services/attendanceService.ts
++++ b/apps/web/src/features/jobs/services/attendanceService.ts
+@@ -1,15 +1,5 @@
+-import {
+-    collection,
+-    doc,
+-    getDoc,
+-    getDocs,
+-    query,
+-    where,
+-    writeBatch,
+-    serverTimestamp,
+-    updateDoc,
+-} from 'firebase/firestore';
+-import { db } from '@/config/firebase';
++import { httpsCallable } from 'firebase/functions';
++import { functions } from '@/config/firebase';
+ import type { CheckInInput, CheckInResult, CheckOutInput } from '@jobnow/types';
+ 
+ export interface GpsValidationInput {
+@@ -73,103 +63,9 @@ export function validateGpsClientSide(input: GpsValidationInput): GpsValidationR
+  */
+ export async function checkIn(input: CheckInInput): Promise<CheckInResult> {
+     try {
+-        const appRef = doc(db, 'applications', input.applicationId);
+-        const appSnap = await getDoc(appRef);
+-        if (!appSnap.exists()) throw new Error('ÄÆ¡n á»©ng tuyá»ƒn khĂ´ng tá»“n táº¡i.');
+-
+-        const appData = appSnap.data();
+-        const jobId = appData.job_id || appData.jobId;
+-        if (!jobId) throw new Error('KhĂ´ng tĂ¬m tháº¥y thĂ´ng tin cĂ´ng viá»‡c.');
+-
+-        const jobSnap = await getDoc(doc(db, 'jobs', jobId));
+-        if (!jobSnap.exists()) throw new Error('CĂ´ng viá»‡c khĂ´ng tá»“n táº¡i.');
+-        const jobData = jobSnap.data();
+-
+-        // 0. Block multiple simultaneous check-ins
+-        const activeCheckInsQuery = query(
+-            collection(db, 'applications'),
+-            where('candidate_id', '==', input.candidateId),
+-            where('status', '==', 'CHECKED_IN')
+-        );
+-        const activeSnap = await getDocs(activeCheckInsQuery);
+-        if (!activeSnap.empty) {
+-            throw new Error('Báº¡n Ä‘ang trong má»™t ca lĂ m viá»‡c khĂ¡c. Vui lĂ²ng check-out trÆ°á»›c khi báº¯t Ä‘áº§u ca má»›i.');
+-        }
+-
+-        // 1. Validate Time (Real-world constraint)
+-        // Only allow check-in 30 mins before or after the shift start
+-        let isLate = false;
+-        let lateMinutes = 0;
+-
+-        if (jobData.startTime) {
+-            const shiftStart = jobData.startTime.toDate?.() || new Date(jobData.startTime);
+-            const now = new Date();
+-            const diffMinutes = (now.getTime() - shiftStart.getTime()) / (1000 * 60);
+-
+-            // If check-in is more than 30 mins EARLY, block it
+-            if (diffMinutes < -30) {
+-                throw new Error('Báº¡n Ä‘áº¿n quĂ¡ sá»›m. Vui lĂ²ng check-in trong vĂ²ng 30 phĂºt trÆ°á»›c ca lĂ m.');
+-            }
+-            
+-            // If check-in is more than 1 minute late, flag it as late
+-            if (diffMinutes > 1) { 
+-                 isLate = true;
+-                 lateMinutes = Math.floor(diffMinutes);
+-                 console.warn('[Attendance] Late check-in detected:', lateMinutes, 'minutes late');
+-            }
+-        }
+-
+-        // 2. Validate GPS
+-        const validation = validateGpsClientSide({
+-            userLat: input.latitude,
+-            userLng: input.longitude,
+-            targetLat: jobData.location.latitude,
+-            targetLng: jobData.location.longitude,
+-            accuracy: input.accuracy,
+-        });
+-
+-        if (!validation.valid) {
+-            if (validation.reason === 'out_of_radius') {
+-                throw new Error(`Báº¡n Ä‘ang á»Ÿ cĂ¡ch Ä‘á»‹a Ä‘iá»ƒm lĂ m viá»‡c ${Math.round(validation.distanceMeters)}m. Báº¡n cáº§n á»Ÿ trong bĂ¡n kĂ­nh 5000m Ä‘á»ƒ check-in.`);
+-            }
+-            throw new Error('Vá»‹ trĂ­ GPS khĂ´ng chĂ­nh xĂ¡c hoáº·c khĂ´ng há»£p lá»‡.');
+-        }
+-
+-        const batch = writeBatch(db);
+-        
+-        // Update application status
+-        batch.update(appRef, {
+-            status: 'CHECKED_IN',
+-            is_late: isLate,
+-            late_minutes: lateMinutes,
+-            updated_at: serverTimestamp(),
+-            check_in_time: serverTimestamp(), // Record on main doc for easy listing
+-        });
+-
+-        // Add check-in record
+-        const checkinRef = doc(collection(appRef, 'checkins'));
+-        batch.set(checkinRef, {
+-            type: 'GPS',
+-            check_in_time: serverTimestamp(),
+-            status: 'CHECKED_IN',
+-            is_late: isLate,
+-            late_minutes: lateMinutes,
+-            gps_location: {
+-                latitude: input.latitude,
+-                longitude: input.longitude,
+-            },
+-            created_at: serverTimestamp(),
+-            distance_meters: validation.distanceMeters,
+-        });
+-
+-        await batch.commit();
+-
+-        return {
+-            checkinId: checkinRef.id,
+-            status: 'CHECKED_IN',
+-            method: 'GPS',
+-            distanceMeters: validation.distanceMeters,
+-        };
++        const callable = httpsCallable<CheckInInput, CheckInResult>(functions, 'checkIn');
++        const { data } = await callable(input);
++        return data;
+     } catch (error: any) {
+         console.error('Error in checkIn:', error);
+         throw error;
+@@ -183,72 +79,12 @@ export async function checkIn(input: CheckInInput): Promise<CheckInResult> {
+  */
+ export async function checkOut(input: CheckOutInput & { latitude?: number; longitude?: number; accuracy?: number; isForce?: boolean }): Promise<{ success: boolean }> {
+     try {
+-        const appRef = doc(db, 'applications', input.applicationId);
+-        const appSnap = await getDoc(appRef);
+-        if (!appSnap.exists()) throw new Error('ÄÆ¡n á»©ng tuyá»ƒn khĂ´ng tá»“n táº¡i.');
+-
+-        const appData = appSnap.data();
+-        const jobId = appData.job_id || appData.jobId;
+-        
+-        let jobData: any = null;
+-
+-        // Validate GPS on Check-out if coordinates are provided
+-        if (input.latitude !== undefined && input.longitude !== undefined) {
+-            const jobSnap = await getDoc(doc(db, 'jobs', jobId));
+-            if (jobSnap.exists()) {
+-                jobData = jobSnap.data();
+-                const validation = validateGpsClientSide({
+-                    userLat: input.latitude,
+-                    userLng: input.longitude,
+-                    targetLat: jobData.location.latitude,
+-                    targetLng: jobData.location.longitude,
+-                    accuracy: input.accuracy || 50,
+-                });
+-
+-                if (!validation.valid) {
+-                    throw new Error('Báº¡n cáº§n pháº£i á»Ÿ táº¡i Ä‘á»‹a Ä‘iá»ƒm lĂ m viá»‡c Ä‘á»ƒ thá»±c hiá»‡n check-out.');
+-                }
+-            }
+-        }
+-
+-        // Validate Time (Shift end requirement)
+-        if (!input.isForce) {
+-             if (!jobData) {
+-                const jobSnap = await getDoc(doc(db, 'jobs', jobId));
+-                if (jobSnap.exists()) jobData = jobSnap.data();
+-             }
+-
+-             if (jobData) {
+-                 const shiftId = appData.shift_id || appData.shiftId;
+-                 const shift = jobData.shifts?.find((s: any) => s.id === shiftId);
+-                 if (shift) {
+-                     const [endH, endM] = shift.endTime.split(':').map(Number);
+-                     const now = new Date();
+-                     const shiftEnd = new Date(now);
+-                     // Note: This assumes shift is on the current day. 
+-                     // For overnight shifts, more complex logic is needed.
+-                     shiftEnd.setHours(endH, endM, 0, 0);
+-                     
+-                     if (now < shiftEnd) {
+-                         throw new Error(`Báº¡n chÆ°a thá»ƒ káº¿t thĂºc ca lĂ m. Thá»i gian káº¿t thĂºc ca lĂ  ${shift.endTime}.`);
+-                     }
+-                 }
+-             }
+-        }
+-
+-        // Find the active check-in record to update it
+-        // Note: For simplicity, we update the status on appRef and we'd ideally find the last check-in record in a real app.
+-        // Here we'll just update the application status.
+-        
+-        await writeBatch(db)
+-            .update(appRef, {
+-                status: 'WORK_FINISHED',
+-                check_out_time: serverTimestamp(),
+-                updated_at: serverTimestamp(),
+-            })
+-            .commit();
+-
+-        return { success: true };
++        const callable = httpsCallable<CheckOutInput, { success: boolean }>(functions, 'checkOut');
++        const { data } = await callable({
++            applicationId: input.applicationId,
++            candidateId: input.candidateId,
++        });
++        return data;
+     } catch (error: any) {
+         console.error('Error in checkOut:', error);
+         throw new Error(error.message || 'KhĂ´ng thá»ƒ check-out. Vui lĂ²ng thá»­ láº¡i.');
+@@ -259,20 +95,12 @@ export async function checkOut(input: CheckOutInput & { latitude?: number; longi
+  * Force check-out an application (Employer action)
+  */
+ export async function forceCheckOut(applicationId: string, employerId: string): Promise<{ success: boolean }> {
+-    const appRef = doc(db, 'applications', applicationId);
+-    const appSnap = await getDoc(appRef);
+-    if (!appSnap.exists()) throw new Error('ÄÆ¡n á»©ng tuyá»ƒn khĂ´ng tá»“n táº¡i.');
+-    
+-    const appData = appSnap.data();
+-    if (appData.employer_id !== employerId && appData.employerId !== employerId) {
+-        throw new Error('Báº¡n khĂ´ng cĂ³ quyá»n thá»±c hiá»‡n hĂ nh Ä‘á»™ng nĂ y.');
+-    }
+-
+-    return checkOut({ 
+-        applicationId, 
+-        candidateId: appData.candidate_id || appData.candidateId,
+-        isForce: true 
+-    });
++    const callable = httpsCallable<
++        { applicationId: string; employerId: string },
++        { success: boolean }
++    >(functions, 'forceCheckOut');
++    const { data } = await callable({ applicationId, employerId });
++    return data;
+ }
+ 
+ /**
+@@ -280,17 +108,9 @@ export async function forceCheckOut(applicationId: string, employerId: string):
+  * Moves check_in_time back by specified hours.
+  */
+ export async function simulateWorkTime(applicationId: string, hoursAgo: number): Promise<void> {
+-    const appRef = doc(db, 'applications', applicationId);
+-    const appSnap = await getDoc(appRef);
+-    if (!appSnap.exists()) throw new Error('ÄÆ¡n á»©ng tuyá»ƒn khĂ´ng tá»“n táº¡i.');
+-
+-    const now = new Date();
+-    const simulatedDate = new Date(now.getTime() - hoursAgo * 60 * 60 * 1000);
+-
+-    await updateDoc(appRef, {
+-        check_in_time: simulatedDate,
+-        updated_at: serverTimestamp(),
+-    });
+-
+-    console.log(`[Simulation] Moved check_in_time for ${applicationId} to ${hoursAgo} hours ago.`);
++    const callable = httpsCallable<
++        { applicationId: string; hoursAgo: number },
++        { success: boolean }
++    >(functions, 'simulateWorkTime');
++    await callable({ applicationId, hoursAgo });
+ }
+diff --git a/apps/web/src/features/jobs/services/candidateProfileService.ts b/apps/web/src/features/jobs/services/candidateProfileService.ts
+index ae695f7..0ccfb94 100644
+--- a/apps/web/src/features/jobs/services/candidateProfileService.ts
++++ b/apps/web/src/features/jobs/services/candidateProfileService.ts
+@@ -69,7 +69,7 @@ export async function updateCandidatePublicProfile(
+ export async function uploadEkycAssets(uid: string, files: File[]): Promise<string[]> {
+     const uploads = files.map(async (file) => {
+         const fileRef = ref(storage, `users_private/${uid}/ekyc/${Date.now()}_${file.name}`);
+-        await uploadBytes(fileRef, file);
++        await uploadBytes(fileRef, file, { contentType: file.type || 'image/jpeg' });
+         return getDownloadURL(fileRef);
+     });
+ 
+diff --git a/apps/web/src/features/jobs/services/jobSearchService.ts b/apps/web/src/features/jobs/services/jobSearchService.ts
+index cc3eb5c..f6a4bc8 100644
+--- a/apps/web/src/features/jobs/services/jobSearchService.ts
++++ b/apps/web/src/features/jobs/services/jobSearchService.ts
+@@ -86,9 +86,18 @@ export async function fetchAllJobs(): Promise<Job[]> {
+                 updated_at: raw.updated_at ?? raw.updatedAt,
+                 images: Array.isArray(raw.images) ? raw.images : [],
+                 is_premium: Boolean(raw.is_premium ?? raw.isPremium ?? false),
++                moderation_status: (raw.moderation_status ?? raw.moderationStatus) as JobDoc['moderation_status'],
++                moderation_reason: String(raw.moderation_reason ?? raw.moderationReason ?? ''),
++                is_boosted: Boolean(raw.is_boosted ?? raw.isBoosted ?? false),
++                boost_expires_at: raw.boost_expires_at ?? raw.boostExpiresAt,
++                boost_package_code: (raw.boost_package_code ?? raw.boostPackageCode) as JobDoc['boost_package_code'],
+             };
+             return mapJobDocToJob(docSnap.id, normalized);
+         })
++        .filter(job => {
++            const moderationStatus = String(job.moderationStatus ?? '').toUpperCase();
++            return (moderationStatus === '' || moderationStatus === 'APPROVED') && ['OPEN', 'ACTIVE', 'FULL'].includes(String(job.status ?? '').toUpperCase());
++        })
+         .filter(job => {
+             // Hide jobs where ALL shifts are fully booked (remaining_slots <= 0)
+             // If no shift_capacity data exists, show the job (assume slots available)
+@@ -101,6 +110,15 @@ export async function fetchAllJobs(): Promise<Job[]> {
+                 (cap: any) => !cap || cap.remaining_slots === undefined || Number(cap.remaining_slots) > 0
+             );
+             return hasOpenSlot;
++        })
++        .sort((a, b) => {
++            const boostA = a.isBoosted ? 1 : 0;
++            const boostB = b.isBoosted ? 1 : 0;
++            if (boostA !== boostB) return boostB - boostA;
++
++            const timeA = new Date(a.createdAt ?? 0).getTime();
++            const timeB = new Date(b.createdAt ?? 0).getTime();
++            return timeB - timeA;
+         });
+ }
+ 
+diff --git a/apps/web/src/features/jobs/services/jobService.ts b/apps/web/src/features/jobs/services/jobService.ts
+index f1bfeeb..7a2b402 100644
+--- a/apps/web/src/features/jobs/services/jobService.ts
++++ b/apps/web/src/features/jobs/services/jobService.ts
+@@ -1,18 +1,19 @@
+ import {
+     collection,
+     doc,
+-    setDoc,
+     getDoc,
+     getDocs,
+     query,
+     where,
+     serverTimestamp,
+     updateDoc,
+-    deleteDoc,
+     increment,
++    writeBatch,
+ } from 'firebase/firestore';
+-import { db } from '@/config/firebase';
+-import type { Job } from '@jobnow/types';
++
++import { httpsCallable } from 'firebase/functions';
++import { db, functions } from '@/config/firebase';
++import type { BoostPackage, Job, JobPostingQuota } from '@jobnow/types';
+ import { mapJobDocToJob, mapNearbyApiToJobDoc } from './adapters';
+ 
+ export type CreateJobDTO = Omit<Job, 'id' | 'createdAt' | 'updatedAt'>;
+@@ -67,7 +68,24 @@ function dedupeJobs(items: Job[]): Job[] {
+     return Array.from(map.values());
+ }
+ 
+-function mapJobSnapshot(docSnap: { id: string; data: () => Record<string, unknown> }): Job {
++async function fetchShiftDocs(jobId: string): Promise<Array<{ id: string; name: string; start_time: string; end_time: string; quantity: number }>> {
++    const snapshot = await getDocs(collection(db, 'jobs', jobId, 'shifts'));
++    return snapshot.docs.map((docSnap) => {
++        const data = docSnap.data();
++        return {
++            id: docSnap.id,
++            name: String(data.name ?? ''),
++            start_time: String(data.start_time ?? data.startTime ?? '00:00'),
++            end_time: String(data.end_time ?? data.endTime ?? '00:00'),
++            quantity: Number(data.quantity ?? 0),
++        };
++    });
++}
++
++function mapJobSnapshot(
++    docSnap: { id: string; data: () => Record<string, unknown> },
++    shiftsOverride?: Array<{ id: string; name: string; start_time: string; end_time: string; quantity: number }>,
++): Job {
+     const raw = docSnap.data();
+     
+     // Convert Firestore Timestamp to Date if it has a toDate method
+@@ -86,7 +104,9 @@ function mapJobSnapshot(docSnap: { id: string; data: () => Record<string, unknow
+         category_id: String(raw.category_id ?? raw.categoryId ?? ''),
+         salary_type: (raw.salary_type ?? raw.salaryType ?? 'HOURLY') as any,
+         is_gps_required: Boolean(raw.is_gps_required ?? raw.isGpsRequired ?? false),
+-        shifts: Array.isArray(raw.shifts)
++        shifts: Array.isArray(shiftsOverride) && shiftsOverride.length > 0
++            ? shiftsOverride
++            : Array.isArray(raw.shifts)
+             ? raw.shifts.map((shift) => {
+                 const s = shift as Record<string, unknown>;
+                 return {
+@@ -100,6 +120,11 @@ function mapJobSnapshot(docSnap: { id: string; data: () => Record<string, unknow
+             : [],
+         created_at: convertTimestamp(raw.created_at ?? raw.createdAt),
+         updated_at: convertTimestamp(raw.updated_at ?? raw.updatedAt),
++        moderation_status: (raw.moderation_status ?? raw.moderationStatus) as any,
++        moderation_reason: String(raw.moderation_reason ?? raw.moderationReason ?? ''),
++        is_boosted: Boolean(raw.is_boosted ?? raw.isBoosted ?? false),
++        boost_expires_at: raw.boost_expires_at ?? raw.boostExpiresAt,
++        boost_package_code: (raw.boost_package_code ?? raw.boostPackageCode) as any,
+     };
+ 
+     return mapJobDocToJob(docSnap.id, normalized);
+@@ -116,10 +141,11 @@ export async function fetchEmployerJobs(employerId: string): Promise<Job[]> {
+             getDocs(query(jobsRef, where('employer_id', '==', employerId))),
+         ]);
+ 
+-        const allItems = [
+-            ...camelSnapshot.docs.map((docSnap) => mapJobSnapshot(docSnap)),
+-            ...snakeSnapshot.docs.map((docSnap) => mapJobSnapshot(docSnap)),
+-        ];
++        const allDocs = [...camelSnapshot.docs, ...snakeSnapshot.docs];
++        const allItems = await Promise.all(allDocs.map(async (docSnap) => {
++            const shifts = await fetchShiftDocs(docSnap.id);
++            return mapJobSnapshot(docSnap, shifts);
++        }));
+ 
+         return dedupeJobs(allItems);
+     } catch (error) {
+@@ -135,7 +161,8 @@ export async function fetchJobById(jobId: string): Promise<Job | null> {
+     try {
+         const docSnap = await getDoc(doc(db, 'jobs', jobId));
+         if (!docSnap.exists()) return null;
+-        return mapJobSnapshot(docSnap as any);
++        const shifts = await fetchShiftDocs(docSnap.id);
++        return mapJobSnapshot(docSnap as any, shifts);
+     } catch (error) {
+         console.error('Error in fetchJobById:', error);
+         throw new Error('KhĂ´ng thá»ƒ láº¥y thĂ´ng tin tin tuyá»ƒn dá»¥ng.');
+@@ -143,61 +170,112 @@ export async function fetchJobById(jobId: string): Promise<Job | null> {
+ }
+ 
+ /**
+- * Create a new job posting in Firestore.
++ * Create a new job posting in Firestore directly (bypassing Cloud Function for Spark plan compatibility).
+  */
+ export async function createJob(jobData: Partial<Job>): Promise<Job> {
+     try {
+-        const jobsRef = collection(db, 'jobs');
+-        const newJobRef = doc(jobsRef);
+-        const latitude = Number(jobData.location?.latitude ?? 0);
+-        const longitude = Number(jobData.location?.longitude ?? 0);
++        console.log('[createJob] v2 - DIRECT FIRESTORE WRITE - START');
++        const { getAuth } = await import('firebase/auth');
+ 
+-        const geohash = latitude && longitude
+-            ? encodeGeohash(latitude, longitude)
+-            : '';
++        const auth = getAuth();
++        const user = auth.currentUser;
++        if (!user) throw new Error('Báº¡n cáº§n Ä‘Äƒng nháº­p Ä‘á»ƒ Ä‘Äƒng tin.');
+ 
+-        const jobToSave: any = {
+-            employer_id: jobData.employerId,
+-            category_id: jobData.categoryId,
+-            title: jobData.title,
+-            description: jobData.description,
+-            salary: jobData.salary,
+-            salary_type: jobData.salaryType,
+-            address: jobData.location?.address ?? '',
+-            location: {
+-                latitude,
+-                longitude,
+-            },
+-            geohash,
+-            is_gps_required: jobData.isGpsRequired ?? false,
+-            status: jobData.status === 'ACTIVE' ? 'OPEN' : (jobData.status ?? 'OPEN'),
+-            shifts: (jobData.shifts ?? []).map((shift) => ({
+-                id: shift.id,
+-                name: shift.name,
+-                start_time: shift.startTime,
+-                end_time: shift.endTime,
+-                quantity: shift.quantity,
+-            })),
+-            created_at: serverTimestamp(),
+-            updated_at: serverTimestamp(),
++        // Fetch employer profile to get name
++        const employerSnap = await getDoc(doc(db, 'users', user.uid));
++        if (!employerSnap.exists()) throw new Error('KhĂ´ng tĂ¬m tháº¥y há»“ sÆ¡ nhĂ  tuyá»ƒn dá»¥ng.');
++        const employerData = employerSnap.data();
++        const employerName = String(
++            employerData.company_name ??
++            employerData.full_name ??
++            employerData.fullName ??
++            'NhĂ  tuyá»ƒn dá»¥ng JobNow'
++        );
++
++        const shifts = (jobData.shifts ?? []).map((shift, index) => {
++            const id = String(shift.id || `shift_${Date.now()}_${index + 1}`);
++            return {
++                id,
++                name: String(shift.name || `Ca ${index + 1}`),
++                start_time: String(shift.startTime || '08:00'),
++                end_time: String(shift.endTime || '17:00'),
++                quantity: Math.max(Number(shift.quantity || 1), 1),
++                status: 'OPEN',
++            };
++        });
++
++        const shiftCapacity: Record<string, { total_slots: number; remaining_slots: number; applied_count: number }> = {};
++        shifts.forEach((s) => {
++            shiftCapacity[s.id] = { total_slots: s.quantity, remaining_slots: s.quantity, applied_count: 0 };
++        });
++
++        const lat = Number(jobData.location?.latitude ?? 0);
++        const lng = Number(jobData.location?.longitude ?? 0);
++
++        const jobRef = doc(collection(db, 'jobs'));
++        const now = serverTimestamp();
++
++        const jobPayload = {
++            employer_id: user.uid,
++            employer_name: employerName,
++            category_id: String(jobData.categoryId ?? ''),
++            title: String(jobData.title ?? '').trim(),
++            description: String(jobData.description ?? '').trim(),
++            salary: Number(jobData.salary ?? 0),
++            salary_type: (jobData.salaryType ? String(jobData.salaryType).toUpperCase() : 'HOURLY'),
++            address: String(jobData.location?.address ?? ''),
++            location: { latitude: lat, longitude: lng },
++            geohash: encodeGeohash(lat, lng),
++            is_gps_required: Boolean(jobData.isGpsRequired ?? false),
++            status: ((jobData.status as string) ?? 'OPEN').toUpperCase() as 'OPEN' | 'ACTIVE' | 'DRAFT',
++            moderation_status: 'PENDING_REVIEW',
++
++            shifts,
++            shift_capacity: shiftCapacity,
++            vacancies: Number(jobData.vacancies ?? shifts.reduce((s, sh) => s + sh.quantity, 0)),
++            deadline: jobData.deadline ?? null,
++            requirements: Array.isArray(jobData.requirements) ? jobData.requirements : [],
++            images: Array.isArray(jobData.images) ? jobData.images : [],
++            gender_preference: String(jobData.genderPreference ?? 'ANY').toUpperCase(),
++            start_date: jobData.startDate ?? null,
++            is_premium: false,
++            is_boosted: false,
++            boost_expires_at: null,
++            created_at: now,
++            updated_at: now,
+         };
+ 
+-        if (jobData.vacancies !== undefined) jobToSave.vacancies = jobData.vacancies;
+-        if (jobData.deadline !== undefined) jobToSave.deadline = jobData.deadline;
+-        if (jobData.requirements !== undefined) jobToSave.requirements = jobData.requirements;
+-        if (jobData.images !== undefined) jobToSave.images = jobData.images;
+-        if (jobData.genderPreference !== undefined) jobToSave.gender_preference = jobData.genderPreference;
+-        if (jobData.startDate !== undefined) jobToSave.start_date = jobData.startDate;
+-        if (jobData.isPremium !== undefined) jobToSave.is_premium = jobData.isPremium;
++        const batch = writeBatch(db);
++        batch.set(jobRef, jobPayload);
++        shifts.forEach((shift) => {
++            const shiftRef = doc(collection(db, 'jobs', jobRef.id, 'shifts'), shift.id);
++            batch.set(shiftRef, {
++                ...shift,
++                job_id: jobRef.id,
++                employer_id: user.uid,
++                created_at: now,
++                updated_at: now,
++            });
++        });
++        console.log('--- FIRESTORE JOB PAYLOAD ---', JSON.stringify(jobPayload, null, 2));
++        await batch.commit();
++
+ 
+-        await setDoc(newJobRef, jobToSave);
+-        return mapJobDocToJob(newJobRef.id, jobToSave as any);
++        const created = await fetchJobById(jobRef.id);
++        if (!created) throw new Error('KhĂ´ng thá»ƒ táº£i láº¡i tin sau khi táº¡o.');
++        return created;
+     } catch (error) {
+-        console.error('Error in createJob:', error);
+-        throw new Error('KhĂ´ng thá»ƒ táº¡o tin tuyá»ƒn dá»¥ng. Vui lĂ²ng thá»­ láº¡i sau.');
++        console.error('--- FULL CREATE JOB ERROR ---', error);
++        if (error && typeof error === 'object') {
++            const fbError = error as any;
++            console.error('Error Code:', fbError.code);
++            console.error('Error Details:', fbError.details ?? fbError.message);
++        }
++        throw new Error((error as { message?: string })?.message || 'KhĂ´ng thá»ƒ táº¡o tin tuyá»ƒn dá»¥ng. Vui lĂ²ng thá»­ láº¡i sau.');
+     }
+ }
+ 
++
+ /**
+  * Update an existing job posting in Firestore.
+  */
+@@ -228,6 +306,11 @@ export async function updateJob(jobId: string, data: Partial<Job>): Promise<void
+         if (data.startDate !== undefined) updateData.start_date = data.startDate;
+         if (data.isPremium !== undefined) updateData.is_premium = data.isPremium;
+         if (data.isGpsRequired !== undefined) updateData.is_gps_required = data.isGpsRequired;
++        if (data.moderationStatus !== undefined) updateData.moderation_status = data.moderationStatus;
++        if (data.moderationReason !== undefined) updateData.moderation_reason = data.moderationReason;
++        if (data.isBoosted !== undefined) updateData.is_boosted = data.isBoosted;
++        if (data.boostExpiresAt !== undefined) updateData.boost_expires_at = data.boostExpiresAt;
++        if (data.boostPackageCode !== undefined) updateData.boost_package_code = data.boostPackageCode;
+ 
+         if (data.location !== undefined) {
+             updateData.address = data.location?.address ?? '';
+@@ -256,17 +339,104 @@ export async function updateJob(jobId: string, data: Partial<Job>): Promise<void
+ }
+ 
+ /**
+- * Delete a job posting from Firestore.
++ * Delete a job posting directly from Firestore (bypassing Cloud Function for Spark plan).
+  */
+ export async function deleteJob(jobId: string): Promise<void> {
+     try {
+-        await deleteDoc(doc(db, 'jobs', jobId));
++        const jobRef = doc(db, 'jobs', jobId);
++        // Soft delete: mark as CLOSED then hard delete
++        await updateDoc(jobRef, {
++            status: 'CLOSED',
++            updated_at: serverTimestamp(),
++        });
++        // Then do hard delete
++        const { deleteDoc } = await import('firebase/firestore');
++        await deleteDoc(jobRef);
+     } catch (error) {
+         console.error('Error in deleteJob:', error);
+-        throw new Error('KhĂ´ng thá»ƒ xoĂ¡ tin tuyá»ƒn dá»¥ng.');
++        throw new Error('KhĂ´ng thá»ƒ xoĂ¡ tin tuyá»ƒn dá»¥ng: ' + (error as { message?: string })?.message);
+     }
+ }
+ 
++
++export async function fetchMyJobPostingQuota(): Promise<JobPostingQuota> {
++    const callable = httpsCallable<Record<string, never>, JobPostingQuota>(functions, 'getMyJobPostingQuota');
++    const result = await callable({});
++    return result.data;
++}
++
++export async function reviewJobModeration(
++    jobId: string,
++    action: 'APPROVE' | 'REJECT',
++    reason?: string,
++): Promise<void> {
++    const callable = httpsCallable<{ jobId: string; action: 'APPROVE' | 'REJECT'; reason?: string }, { success: boolean }>(
++        functions,
++        'reviewJobModeration',
++    );
++    await callable({ jobId, action, reason });
++}
++
++export async function purchaseBoostPackage(
++    jobId: string,
++    packageCode: BoostPackage['code'],
++): Promise<{ expiresAt: string; price: number }> {
++    const callable = httpsCallable<
++        { jobId: string; packageCode: BoostPackage['code'] },
++        { success: boolean; expiresAt: string; price: number }
++    >(functions, 'purchaseBoostPackage');
++    const result = await callable({ jobId, packageCode });
++    return {
++        expiresAt: result.data.expiresAt,
++        price: result.data.price,
++    };
++}
++
++export async function closeJobSafely(
++    jobId: string,
++    confirmed = false,
++    notifyCandidates = true,
++): Promise<{ requiresConfirmation: boolean; affectedCandidates: number; latePenaltyPossible: boolean; success?: boolean }> {
++    const callable = httpsCallable<
++        { jobId: string; confirmed?: boolean; notifyCandidates?: boolean },
++        { requiresConfirmation: boolean; affectedCandidates: number; latePenaltyPossible: boolean; success?: boolean }
++    >(functions, 'closeJobSafely');
++    const result = await callable({ jobId, confirmed, notifyCandidates });
++    return result.data;
++}
++
++export function getBoostPackages(): BoostPackage[] {
++    return [
++        {
++            id: 'BOOST_24H',
++            code: 'BOOST_24H',
++            name: 'Äáº©y top 24 giá»',
++            description: 'Æ¯u tiĂªn hiá»ƒn thá»‹ trong 24 giá».',
++            price: 39000,
++            durationHours: 24,
++            active: true,
++        },
++        {
++            id: 'BOOST_3D',
++            code: 'BOOST_3D',
++            name: 'Äáº©y top 3 ngĂ y',
++            description: 'Æ¯u tiĂªn hiá»ƒn thá»‹ trong 3 ngĂ y.',
++            price: 99000,
++            durationHours: 72,
++            active: true,
++        },
++        {
++            id: 'BOOST_7D',
++            code: 'BOOST_7D',
++            name: 'Äáº©y top 7 ngĂ y',
++            description: 'Æ¯u tiĂªn hiá»ƒn thá»‹ trong 7 ngĂ y.',
++            price: 199000,
++            durationHours: 168,
++            active: true,
++        },
++    ];
++}
++
+ /**
+  * Increment the view count for a job posting.
+  */
+@@ -302,4 +472,3 @@ export async function fetchCategories(): Promise<string[]> {
+         return [];
+     }
+ }
+-
+diff --git a/apps/web/src/features/jobs/services/ratingService.ts b/apps/web/src/features/jobs/services/ratingService.ts
+index 0f07244..d1864df 100644
+--- a/apps/web/src/features/jobs/services/ratingService.ts
++++ b/apps/web/src/features/jobs/services/ratingService.ts
+@@ -7,10 +7,9 @@ import {
+     orderBy,
+     query,
+     where,
+-    serverTimestamp,
+-    runTransaction,
+ } from 'firebase/firestore';
+-import { db } from '@/config/firebase';
++import { httpsCallable } from 'firebase/functions';
++import { db, functions } from '@/config/firebase';
+ import type { RatingInput, RatingResult } from '@jobnow/types';
+ 
+ export interface RatingEligibility {
+@@ -28,76 +27,11 @@ export interface RatingRecord {
+     createdAt?: Date;
+ }
+ 
+-/**
+- * Submits a rating using a Firestore Transaction to ensure consistency.
+- * 1. Creates a review record.
+- * 2. Updates the reviewee's average_rating and total_ratings.
+- * 3. Creates a notification for the reviewee.
+- */
+ export async function submitRating(input: RatingInput): Promise<RatingResult> {
+-    const revieweeRef = doc(db, 'users', input.revieweeId);
+-    const reviewsRef = collection(db, 'reviews');
+-    const notificationsRef = collection(db, 'notifications');
+-
+     try {
+-        const result = await runTransaction(db, async (transaction) => {
+-            // 1. Get reviewee profile for aggregation
+-            const revieweeSnap = await transaction.get(revieweeRef);
+-            const revieweeData = revieweeSnap.exists() ? revieweeSnap.data() : {};
+-            
+-            const currentTotal = Number(revieweeData.total_ratings || 0);
+-            const currentAvg = Number(revieweeData.average_rating || 0);
+-            
+-            const newTotal = currentTotal + 1;
+-            const newAvg = Number(((currentAvg * currentTotal + input.rating) / newTotal).toFixed(1));
+-
+-            // 2. Add Review Document (using generated doc for ID)
+-            const newReviewRef = doc(reviewsRef);
+-            transaction.set(newReviewRef, {
+-                application_id: input.applicationId,
+-                reviewer_id: input.reviewerId,
+-                reviewee_id: input.revieweeId,
+-                rating: input.rating,
+-                comment: input.comment || '',
+-                created_at: serverTimestamp(),
+-            });
+-
+-            // 3. Add Notification
+-            const newNotifRef = doc(notificationsRef);
+-            transaction.set(newNotifRef, {
+-                userId: input.revieweeId,
+-                user_id: input.revieweeId,
+-                type: 'NEW_REVIEW',
+-                category: 'SYSTEM',
+-                title: 'ÄĂ¡nh giĂ¡ má»›i',
+-                body: `Báº¡n vá»«a nháº­n Ä‘Æ°á»£c Ä‘Ă¡nh giĂ¡ ${input.rating} sao tá»« Ä‘á»‘i tĂ¡c.`,
+-                data: {
+-                    applicationId: input.applicationId,
+-                    reviewerId: input.reviewerId,
+-                    rating: input.rating,
+-                },
+-                isRead: false,
+-                is_read: false,
+-                created_at: serverTimestamp(),
+-                createdAt: serverTimestamp(),
+-            });
+-
+-            const newReputation = Math.round(newAvg * 20);
+-
+-            // 4. Update Reviewee Profile using set(merge) for robustness
+-            transaction.set(revieweeRef, {
+-                average_rating: newAvg,
+-                total_ratings: newTotal,
+-                reputation_score: newReputation,
+-                updated_at: serverTimestamp(),
+-                updatedAt: serverTimestamp(),
+-            }, { merge: true });
+-
+-            console.log(`Review submitted: reviewId=${newReviewRef.id}, app=${input.applicationId}, reviewee=${input.revieweeId}, newScore=${newReputation}`);
+-            return { reviewId: newReviewRef.id, updatedReputationScore: newReputation };
+-        });
+-
+-        return result;
++        const callable = httpsCallable<RatingInput, RatingResult>(functions, 'submitRating');
++        const { data } = await callable(input);
++        return data;
+     } catch (error: any) {
+         console.error('Error in submitRating:', error);
+         throw new Error(error.message || 'KhĂ´ng thá»ƒ gá»­i Ä‘Ă¡nh giĂ¡. Vui lĂ²ng thá»­ láº¡i sau.');
+diff --git a/apps/web/src/features/wallet/services/walletService.ts b/apps/web/src/features/wallet/services/walletService.ts
+index da528b0..ff0e398 100644
+--- a/apps/web/src/features/wallet/services/walletService.ts
++++ b/apps/web/src/features/wallet/services/walletService.ts
+@@ -1,5 +1,6 @@
+-import { collection, query, where, getDocs, doc, getDoc, runTransaction, serverTimestamp, onSnapshot, type Unsubscribe } from 'firebase/firestore';
+-import { db } from '@/config/firebase';
++import { collection, query, where, getDocs, doc, getDoc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
++import { httpsCallable } from 'firebase/functions';
++import { db, functions } from '@/config/firebase';
+ 
+ export interface TransactionRecord {
+     id: string;
+@@ -121,13 +122,11 @@ export async function requestPayment(
+     jobId: string,
+     applicationId: string
+ ): Promise<void> {
+-    // In a real implementation, this would call:
+-    // const processPayment = httpsCallable(functions, 'processPayment');
+-    // await processPayment({ candidateId, amount, jobId, applicationId });
+-
+-    // Placeholder: Log the intent
+-    console.log('[Wallet] Payment request:', { employerId, candidateId, amount, jobId, applicationId });
+-    throw new Error('Cloud Function chÆ°a Ä‘Æ°á»£c triá»ƒn khai. Vui lĂ²ng liĂªn há»‡ admin.');
++    const callable = httpsCallable<
++        { applicationId: string; employerId: string },
++        { amount: number; candidateId: string; employerId: string; jobTitle: string }
++    >(functions, 'processPayment');
++    await callable({ applicationId, employerId });
+ }
+ 
+ /**
+@@ -137,31 +136,12 @@ export async function requestPayment(
+ export async function processDeposit(userId: string, amount: number, method: string): Promise<void> {
+     if (amount <= 0) throw new Error('Sá»‘ tiá»n pháº£i lá»›n hÆ¡n 0');
+ 
+-    const userRef = doc(db, 'users', userId);
+-    const newTxRef = doc(collection(db, 'transactions'));
+-
+-    await runTransaction(db, async (transaction) => {
+-        const userDoc = await transaction.get(userRef);
+-        if (!userDoc.exists()) {
+-            throw new Error('User does not exist');
+-        }
+-
+-        const currentBalance = userDoc.data().balance || 0;
+-        const newBalance = currentBalance + amount;
++    const callable = httpsCallable<
++        { userId: string; amount: number; method: string },
++        { success: boolean }
++    >(functions, 'processDeposit');
+ 
+-        // Update balance
+-        transaction.update(userRef, { balance: newBalance });
+-
+-        // Add transaction log
+-        transaction.set(newTxRef, {
+-            userId,
+-            type: 'DEPOSIT',
+-            amount,
+-            description: `Náº¡p tiá»n qua ${method}`,
+-            status: 'COMPLETED',
+-            created_at: serverTimestamp(),
+-        });
+-    });
++    await callable({ userId, amount, method });
+ }
+ 
+ /**
+@@ -171,97 +151,12 @@ export async function processDeposit(userId: string, amount: number, method: str
+ export async function processWithdrawal(userId: string, amount: number, bankAccount: string): Promise<void> {
+     if (amount <= 0) throw new Error('Sá»‘ tiá»n pháº£i lá»›n hÆ¡n 0');
+ 
+-    const userRef = doc(db, 'users', userId);
+-    const newTxRef = doc(collection(db, 'transactions'));
+-
+-    await runTransaction(db, async (transaction) => {
+-        const userDoc = await transaction.get(userRef);
+-        if (!userDoc.exists()) {
+-            throw new Error('User does not exist');
+-        }
+-
+-        const currentBalance = userDoc.data().balance || 0;
+-        if (currentBalance < amount) {
+-            throw new Error('Sá»‘ dÆ° khĂ´ng Ä‘á»§ Ä‘á»ƒ thá»±c hiá»‡n giao dá»‹ch');
+-        }
+-
+-        const newBalance = currentBalance - amount;
+-
+-        // Update balance
+-        transaction.update(userRef, { balance: newBalance });
+-
+-        // Add transaction log
+-        transaction.set(newTxRef, {
+-            userId,
+-            type: 'WITHDRAW',
+-            amount,
+-            description: `RĂºt tiá»n vá» ${bankAccount}`,
+-            status: 'COMPLETED', // usually PENDING in real world
+-            created_at: serverTimestamp(),
+-        });
+-    });
+-}
+-
+-/**
+- * Handle in-app payment from employer to candidate.
+- * Deducts amount from employer's balance and adds to candidate's balance.
+- */
+-export async function processAppPayment(
+-    employerId: string,
+-    candidateId: string,
+-    amount: number,
+-    jobTitle: string,
+-    applicationId: string
+-): Promise<void> {
+-    if (amount <= 0) return;
+-
+-    const employerRef = doc(db, 'users', employerId);
+-    const candidateRef = doc(db, 'users', candidateId);
+-    const employerTxRef = doc(collection(db, 'transactions'));
+-    const candidateTxRef = doc(collection(db, 'transactions'));
++    const callable = httpsCallable<
++        { userId: string; amount: number; bankAccount: string },
++        { success: boolean }
++    >(functions, 'processWithdrawal');
+ 
+-    await runTransaction(db, async (transaction) => {
+-        const [employerDoc, candidateDoc] = await Promise.all([
+-            transaction.get(employerRef),
+-            transaction.get(candidateRef)
+-        ]);
+-
+-        if (!employerDoc.exists()) throw new Error('NhĂ  tuyá»ƒn dá»¥ng khĂ´ng tá»“n táº¡i.');
+-        if (!candidateDoc.exists()) throw new Error('á»¨ng viĂªn khĂ´ng tá»“n táº¡i.');
+-
+-        const employerBalance = employerDoc.data().balance || 0;
+-        if (employerBalance < amount) {
+-            throw new Error('Sá»‘ dÆ° tĂ i khoáº£n cá»§a báº¡n khĂ´ng Ä‘á»§ Ä‘á»ƒ thá»±c hiá»‡n thanh toĂ¡n. Vui lĂ²ng náº¡p thĂªm tiá»n.');
+-        }
+-
+-        const candidateBalance = candidateDoc.data().balance || 0;
+-
+-        // Update balances
+-        transaction.update(employerRef, { balance: employerBalance - amount });
+-        transaction.update(candidateRef, { balance: candidateBalance + amount });
+-
+-        // Add transaction log for employer (SENT)
+-        transaction.set(employerTxRef, {
+-            userId: employerId,
+-            type: 'PAYMENT',
+-            amount: -amount, // Negative to show deduction
+-            description: `Thanh toĂ¡n lÆ°Æ¡ng cho: ${jobTitle}`,
+-            relatedApplicationId: applicationId,
+-            status: 'COMPLETED',
+-            created_at: serverTimestamp(),
+-        });
+-
+-        // Add transaction log for candidate (RECEIVED)
+-        transaction.set(candidateTxRef, {
+-            userId: candidateId,
+-            type: 'PAYMENT',
+-            amount: amount,
+-            description: `Nháº­n lÆ°Æ¡ng tá»« cĂ´ng viá»‡c: ${jobTitle}`,
+-            relatedApplicationId: applicationId,
+-            status: 'COMPLETED',
+-            created_at: serverTimestamp(),
+-        });
+-    });
++    await callable({ userId, amount, bankAccount });
+ }
+ 
+ function mapTransaction(docSnap: any): TransactionRecord {

@@ -1,0 +1,83 @@
+﻿diff --git a/apps/web/src/hooks/useFCM.ts b/apps/web/src/hooks/useFCM.ts
+index dadee09..7b7c0a7 100644
+--- a/apps/web/src/hooks/useFCM.ts
++++ b/apps/web/src/hooks/useFCM.ts
+@@ -1,7 +1,7 @@
+ import { useEffect } from 'react';
+ import { messaging, db } from '@/config/firebase';
+ import { getToken, onMessage } from 'firebase/messaging';
+-import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
++import { doc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
+ import { useAuth } from '@/features/auth/context/AuthContext';
+ import { toast } from 'sonner';
+ 
+@@ -9,17 +9,26 @@ export const useFCM = () => {
+   const { userProfile } = useAuth();
+   
+   useEffect(() => {
+-    if (!messaging || !userProfile?.uid) return;
++    if (!messaging || !userProfile?.uid || userProfile.notification_push === false) return;
+     
+     const requestPermission = async () => {
+       try {
++        if (typeof window === 'undefined' || !('Notification' in window)) return;
++
+         const permission = await Notification.requestPermission();
+         if (permission === 'granted') {
+-          // Register token
+-          const token = await getToken(messaging!);
++          const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
++          const token = await getToken(messaging!, {
++            serviceWorkerRegistration: registration,
++            vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY || undefined,
++          });
+           if (token) {
+              const userRef = doc(db, 'users', userProfile.uid);
+-             await updateDoc(userRef, { fcmTokens: arrayUnion(token) });
++             await updateDoc(userRef, {
++              fcmTokens: arrayUnion(token),
++              fcm_tokens: arrayUnion(token),
++              updated_at: serverTimestamp(),
++             });
+              console.log('[FCM] Token registered successfully');
+           }
+         }
+@@ -38,5 +47,5 @@ export const useFCM = () => {
+     });
+     
+     return () => unsubscribe();
+-  }, [userProfile?.uid]);
++  }, [userProfile?.notification_push, userProfile?.uid]);
+ };
+diff --git a/apps/web/src/lib/firestore.ts b/apps/web/src/lib/firestore.ts
+index 6955af1..7a62ff4 100644
+--- a/apps/web/src/lib/firestore.ts
++++ b/apps/web/src/lib/firestore.ts
+@@ -7,6 +7,7 @@ import {
+ } from 'firebase/firestore';
+ import { db } from '@/config/firebase';
+ import type { UserProfile, UserRole } from '@/features/auth/types/user';
++import { DEFAULT_REPUTATION_SCORE, getReputationTier } from '@jobnow/types';
+ 
+ /**
+  * Create a new user document in Firestore `users` collection.
+@@ -33,7 +34,8 @@ export async function createUserDocument(
+         address_text: null,
+         status: 'ACTIVE',
+         balance: 0,
+-        reputation_score: 100,
++        reputation_score: DEFAULT_REPUTATION_SCORE,
++        current_tier: getReputationTier(DEFAULT_REPUTATION_SCORE),
+         skills: [],
+         identity_images: [],
+         created_at: serverTimestamp(),
+@@ -63,7 +65,8 @@ export async function getUserDocument(uid: string): Promise<UserProfile | null>
+         address_text: data.address_text || null,
+         status: data.status,
+         balance: data.balance ?? 0,
+-        reputation_score: data.reputation_score ?? 100,
++        reputation_score: data.reputation_score ?? DEFAULT_REPUTATION_SCORE,
++        current_tier: data.current_tier ?? getReputationTier(data.reputation_score ?? DEFAULT_REPUTATION_SCORE),
+         average_rating: data.average_rating ?? 0,     // New: Average rating
+         total_ratings: data.total_ratings ?? 0,       // New: Total ratings
+         skills: data.skills || [],

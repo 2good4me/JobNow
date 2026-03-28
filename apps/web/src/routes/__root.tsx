@@ -1,4 +1,4 @@
-import { createRootRoute, Outlet, useNavigate, useLocation, Link } from '@tanstack/react-router';
+import { createRootRoute, Outlet, useNavigate, useLocation, Link, ScrollRestoration } from '@tanstack/react-router';
 import { BriefcaseBusiness } from 'lucide-react';
 import { useAuth } from '../features/auth/context/AuthContext';
 import { useEffect } from 'react';
@@ -17,6 +17,7 @@ export const Route = createRootRoute({
 const AUTH_ROUTES = ['/login', '/register', '/forgot-password', '/onboarding'];
 const ADMIN_ROUTES_PREFIX = '/admin';
 const ONBOARDING_STORAGE_KEY = 'jobnow_onboarding_seen';
+const GUEST_PUBLIC_ROUTES = ['/jobs', '/support-center'];
 
 function hasSeenGuestOnboarding() {
     try {
@@ -31,6 +32,7 @@ function RootLayout() {
     const { user, role, needsProfileSetup, loading } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
+    const isPublicGuestRoute = GUEST_PUBLIC_ROUTES.some((route) => location.pathname === route || location.pathname.startsWith(`${route}/`));
     
     // Heartbeat for online status
     useOnlineStatus();
@@ -40,7 +42,7 @@ function RootLayout() {
     const isAuthPage = AUTH_ROUTES.some((r) => location.pathname.startsWith(r));
     const guestOnboardingSeen = hasSeenGuestOnboarding();
     const shouldRedirectGuestToOnboarding =
-        !loading && !user && !guestOnboardingSeen && location.pathname !== '/onboarding';
+        !loading && !user && !guestOnboardingSeen && location.pathname !== '/onboarding' && !isPublicGuestRoute;
 
     // Guest-first onboarding: first open must see onboarding before auth pages.
     useEffect(() => {
@@ -118,7 +120,12 @@ function RootLayout() {
     const isCandidateRoute = role === 'CANDIDATE' && !isAuthPage;
     const isEmployerRoute = role === 'EMPLOYER' && !isAuthPage;
     const isAdminRoute = location.pathname.startsWith(ADMIN_ROUTES_PREFIX);
-    const isFullScreenFlow = location.pathname.startsWith('/employer/post-job');
+    const isFullScreenFlow = location.pathname.startsWith('/employer/post-job') || 
+                             location.pathname.startsWith('/candidate/jobs/') || 
+                             location.pathname.startsWith('/candidate/employer/') ||
+                             location.pathname.startsWith('/candidate/profile/edit') ||
+                             location.pathname.startsWith('/candidate/wallet/transactions') ||
+                             location.pathname.startsWith('/jobs/');
     const isChatRoute = location.pathname.includes('/chat');
 
     // Whether to show mobile-first app layout
@@ -162,8 +169,9 @@ function RootLayout() {
 
     return (
         <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
+            <ScrollRestoration />
             {/* ── Global Header ─────────────────── */}
-            <GlobalHeader isAppLayout={isAppLayout} />
+            {!isFullScreenFlow && <GlobalHeader isAppLayout={isAppLayout} />}
 
             {/* ── Main Content ─────────────────────────── */}
             <main className={`flex-1 w-full ${(isFullScreenFlow || isChatRoute) ? 'pb-0' : 'pb-20'} ${isAppLayout ? '' : 'bg-slate-50/50'}`}>
@@ -171,7 +179,7 @@ function RootLayout() {
             </main>
 
             {/* ── Bottom Navs (hidden during full-screen wizard flows) ── */}
-            {isCandidateRoute && <CandidateBottomNav />}
+            {isCandidateRoute && !isFullScreenFlow && <CandidateBottomNav />}
             {isEmployerRoute && !isFullScreenFlow && <EmployerBottomNav />}
 
             {/* ── Footer (Guest only) ─────────── */}

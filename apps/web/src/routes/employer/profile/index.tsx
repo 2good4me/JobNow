@@ -211,7 +211,7 @@ function EmployerProfilePage() {
             averageRating={userProfile.average_rating || 0}
             statValue={followerCount}
             statLabel="Followers"
-            onViewDetails={() => setFollowDialog({ isOpen: true, type: 'followers' })}
+            onViewDetails={() => navigate({ to: '/employer/profile/reputation' })}
           />
         )}
 

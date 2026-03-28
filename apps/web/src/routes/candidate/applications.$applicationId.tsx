@@ -15,6 +15,7 @@ import {
 import { useJob } from '@/features/jobs/hooks/useJob';
 import { useConfirmPayment } from '@/features/jobs/hooks/useManageApplicants';
 import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export const Route = createFileRoute('/candidate/applications/$applicationId')({
     component: ApplicationDetailPage,
@@ -159,7 +160,7 @@ function ApplicationDetailPage() {
                             disabled={isConfirming}
                             onClick={() => confirmPayment(application.id, {
                                 onSuccess: () => {
-                                    alert('Xác nhận thành công! Ca làm đã hoàn tất.');
+                                    toast.success('Xác nhận thành công! Ca làm đã hoàn tất.');
                                 }
                             })}
                             className="w-full py-4 bg-white text-emerald-700 font-black rounded-xl hover:bg-emerald-50 active:scale-95 transition-all shadow-md flex items-center justify-center gap-2"

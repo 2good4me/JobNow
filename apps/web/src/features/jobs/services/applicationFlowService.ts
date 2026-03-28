@@ -8,8 +8,6 @@ import {
     orderBy,
     query,
     where,
-    runTransaction,
-    serverTimestamp,
     type QueryDocumentSnapshot,
     type Unsubscribe,
 } from 'firebase/firestore';
@@ -117,142 +115,10 @@ export async function precheckApply(input: ApplyJobInput): Promise<ApplyPrecheck
     };
 }
 
-function normalizeApplicationId(candidateId: string, jobId: string, shiftId: string): string {
-    return `${candidateId}_${jobId}_${shiftId}`.replace(/[^a-zA-Z0-9_-]/g, '_');
-}
-
 export async function applyJob(input: ApplyJobInput): Promise<ApplyJobResult> {
-    const applicationId = normalizeApplicationId(input.candidateId, input.jobId, input.shiftId);
-    const applicationRef = doc(db, 'applications', applicationId);
-    const jobRef = doc(db, 'jobs', input.jobId);
-
-    return await runTransaction(db, async (tx) => {
-        const candidateRef = doc(db, 'users', input.candidateId);
-        const [jobSnap, appSnap, candidateSnap] = await Promise.all([
-            tx.get(jobRef),
-            tx.get(applicationRef),
-            tx.get(candidateRef),
-        ]);
-
-        if (!jobSnap.exists()) {
-            throw new Error('Công việc không tồn tại.');
-        }
-
-        if (appSnap.exists()) {
-            const appData = appSnap.data() || {};
-            return {
-                applicationId: appSnap.id,
-                status: String(appData.status ?? 'NEW') as any,
-                remainingSlots: undefined,
-            };
-        }
-
-        const jobData = jobSnap.data() || {};
-        const status = String(jobData.status ?? 'OPEN').toUpperCase();
-        if (status !== 'OPEN' && status !== 'ACTIVE') {
-            throw new Error('Công việc đã đóng tuyển.');
-        }
-
-        const targetShift = Array.isArray(jobData.shifts) 
-            ? jobData.shifts.find((item: any) => String(item.id) === input.shiftId) 
-            : null;
-        const shiftTime = targetShift ? `${targetShift.start_time || ''} - ${targetShift.end_time || ''}` : '';
-        const jobTitle = String(jobData.title || '');
-
-        const shiftCapacity = (jobData.shift_capacity ?? {}) as Record<string, any>;
-        let capacity = shiftCapacity[input.shiftId];
-
-        if (!capacity) {
-            const shifts = Array.isArray(jobData.shifts) ? jobData.shifts : [];
-            const targetShift = shifts.find((item: any) => String(item.id) === input.shiftId);
-            const quantity = Number(targetShift?.quantity ?? 0);
-            capacity = {
-                total_slots: quantity,
-                remaining_slots: quantity,
-                applied_count: 0,
-            };
-        }
-
-        if (capacity.remaining_slots <= 0) {
-            throw new Error('Ca làm đã đủ số lượng.');
-        }
-
-        const employerId = String(jobData.employer_id ?? jobData.employerId ?? '');
-        const employerName = String(jobData.employer_name ?? jobData.employerName ?? '');
-
-        // Denormalize candidate snapshot
-        const candidateData = candidateSnap.exists() ? (candidateSnap.data() || {}) : {};
-        const candidateName = String(candidateData.full_name ?? candidateData.fullName ?? candidateData.display_name ?? candidateData.displayName ?? '');
-        const candidateAvatar = String(candidateData.avatar_url ?? candidateData.avatarUrl ?? candidateData.photo_url ?? candidateData.photoURL ?? '');
-        const candidateSkills = (candidateData.skills as string[]) ?? [];
-        const candidateRating = Number(candidateData.reputation_score ?? candidateData.reputationScore ?? 0);
-        const candidateVerified = (candidateData.verification_status ?? candidateData.verificationStatus) === 'VERIFIED';
-
-        tx.set(applicationRef, {
-            job_id: input.jobId,
-            shift_id: input.shiftId,
-            employer_id: employerId,
-            employerId: employerId, // Standardize duplicate field for robust triggers
-            candidate_id: input.candidateId,
-            status: 'NEW',
-            payment_status: 'UNPAID',
-            cover_letter: input.coverLetter ?? '',
-            idempotency_key: input.idempotencyKey,
-            applied_at: serverTimestamp(),
-            created_at: serverTimestamp(),
-            updated_at: serverTimestamp(),
-            // Denormalized candidate snapshot
-            candidate_name: candidateName,
-            candidate_avatar: candidateAvatar,
-            candidate_skills: candidateSkills,
-            candidate_rating: candidateRating,
-            candidate_verified: candidateVerified,
-            // Denormalized job/shift info
-            job_title: jobTitle,
-            shift_time: shiftTime,
-            employer_name: employerName,
-            employerName: employerName,
-        });
-
-        const nextRemaining = Math.max(Number(capacity.remaining_slots) - 1, 0);
-        tx.set(jobRef, {
-            shift_capacity: {
-                ...(jobData.shift_capacity ?? {}),
-                [input.shiftId]: {
-                    total_slots: Number(capacity.total_slots),
-                    remaining_slots: nextRemaining,
-                    applied_count: Number(capacity.applied_count) + 1,
-                },
-            },
-            updated_at: serverTimestamp(),
-        }, { merge: true });
-
-        // Create Notification for Employer
-        const notificationRef = doc(collection(db, 'notifications'));
-        tx.set(notificationRef, {
-            userId: employerId,
-            user_id: employerId,
-            type: 'NEW_APPLICATION',
-            category: 'APPLICATION',
-            title: 'Đơn ứng tuyển mới',
-            body: `Bạn có đơn ứng tuyển mới từ ${candidateName} cho công việc: ${jobTitle}`,
-            data: {
-                applicationId,
-                jobId: input.jobId,
-                candidateId: input.candidateId,
-            },
-            isRead: false,
-            is_read: false,
-            created_at: serverTimestamp(),
-            createdAt: serverTimestamp(),
-        });
-
-        return {
-            applicationId,
-            status: 'NEW',
-            remainingSlots: nextRemaining,
-        };
-    });
+    const callable = httpsCallable<ApplyJobInput, ApplyJobResult>(functions, 'applyJob');
+    const { data } = await callable(input);
+    return data;
 }
 
 export async function withdrawApplication(input: WithdrawApplicationInput): Promise<{ success: boolean }> {

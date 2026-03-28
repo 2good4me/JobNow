@@ -1,4 +1,5 @@
 import {
+  Ban,
   Lock,
   AlertTriangle,
   ShieldCheck,
@@ -24,6 +25,7 @@ export function ReputationBadge({
 
   // Map icon string to component
   const IconMap = {
+    Ban,
     Lock,
     AlertTriangle,
     ShieldCheck,

@@ -1,12 +1,36 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onApplicationCreated = exports.submitRating = exports.markConversationRead = exports.sendChatMessage = exports.startConversation = exports.checkOut = exports.checkIn = exports.updateApplicationStatus = exports.withdrawApplication = exports.applyJob = void 0;
+exports.penalizeNoShowCandidates = exports.expireBoostedJobs = exports.sendShiftReminders = exports.onJobCreated = exports.onNotificationCreated = exports.onApplicationCreated = exports.closeJobSafely = exports.purchaseBoostPackage = exports.reviewJobModeration = exports.createJobPosting = exports.getMyJobPostingQuota = exports.adminSetUserStatus = exports.reviewVerificationRequest = exports.processWithdrawal = exports.processDeposit = exports.confirmCashPaymentReceived = exports.markCashPayment = exports.submitReputationAppeal = exports.deleteJobPosting = exports.processPayment = exports.submitRating = exports.markConversationRead = exports.sendChatMessage = exports.startConversation = exports.simulateWorkTime = exports.forceCheckOut = exports.checkOut = exports.checkIn = exports.updateApplicationStatus = exports.withdrawApplication = exports.applyJob = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const app_1 = require("firebase-admin/app");
+const auth_1 = require("firebase-admin/auth");
 const firestore_1 = require("firebase-admin/firestore");
 const firestore_2 = require("firebase-functions/v2/firestore");
+const messaging_1 = require("firebase-admin/messaging");
+const scheduler_1 = require("firebase-functions/v2/scheduler");
+const reputation_1 = require("./reputation");
 (0, app_1.initializeApp)();
 const db = (0, firestore_1.getFirestore)();
+const BOOST_PACKAGE_CONFIG = {
+    BOOST_24H: {
+        name: 'Đẩy top 24 giờ',
+        price: 39000,
+        durationHours: 24,
+        description: 'Ưu tiên hiển thị trong 24 giờ.',
+    },
+    BOOST_3D: {
+        name: 'Đẩy top 3 ngày',
+        price: 99000,
+        durationHours: 72,
+        description: 'Ưu tiên hiển thị trong 3 ngày.',
+    },
+    BOOST_7D: {
+        name: 'Đẩy top 7 ngày',
+        price: 199000,
+        durationHours: 168,
+        description: 'Ưu tiên hiển thị trong 7 ngày.',
+    },
+};
 function assertAuth(context) {
     if (!context.auth?.uid) {
         throw new https_1.HttpsError('unauthenticated', 'Bạn cần đăng nhập để thực hiện thao tác này.');
@@ -15,6 +39,55 @@ function assertAuth(context) {
 }
 function normalizeApplicationId(candidateId, jobId, shiftId) {
     return `${candidateId}_${jobId}_${shiftId}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+function normalizeDocumentId(value) {
+    return value.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 120);
+}
+function monthRange(now = new Date()) {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
+    return { start, end };
+}
+function calculateGeohash(latitude, longitude, precision = 9) {
+    const base32 = '0123456789bcdefghjkmnpqrstuvwxyz';
+    let latRange = [-90, 90];
+    let lngRange = [-180, 180];
+    let hash = '';
+    let bit = 0;
+    let ch = 0;
+    let isEven = true;
+    while (hash.length < precision) {
+        if (isEven) {
+            const mid = (lngRange[0] + lngRange[1]) / 2;
+            if (longitude >= mid) {
+                ch |= 1 << (4 - bit);
+                lngRange[0] = mid;
+            }
+            else {
+                lngRange[1] = mid;
+            }
+        }
+        else {
+            const mid = (latRange[0] + latRange[1]) / 2;
+            if (latitude >= mid) {
+                ch |= 1 << (4 - bit);
+                latRange[0] = mid;
+            }
+            else {
+                latRange[1] = mid;
+            }
+        }
+        isEven = !isEven;
+        if (bit < 4) {
+            bit += 1;
+        }
+        else {
+            hash += base32[ch];
+            bit = 0;
+            ch = 0;
+        }
+    }
+    return hash;
 }
 function haversineDistanceMeters(lat1, lon1, lat2, lon2) {
     const R = 6371000;
@@ -34,25 +107,6 @@ function decodeQrPayload(payload) {
     catch {
         return null;
     }
-}
-function getCapacity(jobData, shiftId) {
-    const shiftCapacity = (jobData.shift_capacity ?? {});
-    const capacity = shiftCapacity[shiftId];
-    if (capacity) {
-        return {
-            totalSlots: Number(capacity.total_slots ?? 0),
-            remainingSlots: Number(capacity.remaining_slots ?? 0),
-            appliedCount: Number(capacity.applied_count ?? 0),
-        };
-    }
-    const shifts = Array.isArray(jobData.shifts) ? jobData.shifts : [];
-    const targetShift = shifts.find((item) => String(item.id) === shiftId);
-    const quantity = Number(targetShift?.quantity ?? 0);
-    return {
-        totalSlots: quantity,
-        remainingSlots: quantity,
-        appliedCount: 0,
-    };
 }
 function getChatPermissionFromApplicationStatus(status) {
     if (['APPROVED', 'CHECKED_IN', 'COMPLETED'].includes(status)) {
@@ -76,13 +130,156 @@ function normalizeMessageId(clientMessageId) {
         return normalized;
     return `msg_${Date.now()}`;
 }
-async function createNotification(tx, userId, type, title, body, data = {}) {
-    const notifRef = db.collection('notifications').doc();
-    tx.set(notifRef, {
+function timestampToDate(value) {
+    if (!value)
+        return null;
+    if (typeof value === 'object' && value && 'toDate' in value && typeof value.toDate === 'function') {
+        try {
+            return value.toDate();
+        }
+        catch {
+            return null;
+        }
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+function getShiftFromJobData(jobData, shiftId) {
+    const shifts = Array.isArray(jobData.shifts) ? jobData.shifts : [];
+    return shifts.find((item) => String(item.id) === shiftId) ?? null;
+}
+async function getShiftData(jobRef, jobData, shiftId, tx) {
+    const shiftRef = jobRef.collection('shifts').doc(shiftId);
+    const shiftSnap = tx ? await tx.get(shiftRef) : await shiftRef.get();
+    if (shiftSnap.exists) {
+        return shiftSnap.data() || null;
+    }
+    return getShiftFromJobData(jobData, shiftId);
+}
+async function getCapacityForShift(jobRef, jobData, shiftId, tx) {
+    const shiftCapacity = (jobData.shift_capacity ?? {});
+    const capacity = shiftCapacity[shiftId];
+    if (capacity) {
+        return {
+            totalSlots: Number(capacity.total_slots ?? 0),
+            remainingSlots: Number(capacity.remaining_slots ?? 0),
+            appliedCount: Number(capacity.applied_count ?? 0),
+        };
+    }
+    const targetShift = await getShiftData(jobRef, jobData, shiftId, tx);
+    const quantity = Number(targetShift?.quantity ?? 0);
+    return {
+        totalSlots: quantity,
+        remainingSlots: quantity,
+        appliedCount: 0,
+    };
+}
+function getShiftWindowFromData(jobData, targetShift) {
+    const startDate = String(jobData.start_date ?? jobData.startDate ?? '').trim();
+    const startTime = String(targetShift?.start_time ?? targetShift?.startTime ?? '').trim();
+    const endTime = String(targetShift?.end_time ?? targetShift?.endTime ?? '').trim();
+    if (!targetShift || !startDate || !startTime || !endTime) {
+        return null;
+    }
+    const start = new Date(`${startDate}T${startTime}:00`);
+    const end = new Date(`${startDate}T${endTime}:00`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        return null;
+    }
+    if (end <= start) {
+        end.setDate(end.getDate() + 1);
+    }
+    return {
+        shift: targetShift,
+        start,
+        end,
+        startTime,
+        endTime,
+        title: String(jobData.title ?? 'Công việc'),
+    };
+}
+async function getShiftWindow(jobRef, jobData, shiftId, tx) {
+    const targetShift = await getShiftData(jobRef, jobData, shiftId, tx);
+    return getShiftWindowFromData(jobData, targetShift);
+}
+async function getHoursUntilShift(jobRef, jobData, shiftId, now = new Date(), tx) {
+    const shiftWindow = await getShiftWindow(jobRef, jobData, shiftId, tx);
+    if (!shiftWindow)
+        return null;
+    return (shiftWindow.start.getTime() - now.getTime()) / (1000 * 60 * 60);
+}
+function getUserRoleFromData(userData) {
+    const role = String(userData?.role ?? '').toUpperCase();
+    if (role === 'CANDIDATE' || role === 'EMPLOYER') {
+        return role;
+    }
+    return null;
+}
+function calculatePayoutAmount(jobData, applicationData) {
+    const salary = Number(jobData.salary ?? 0);
+    const salaryType = String(jobData.salary_type ?? jobData.salaryType ?? 'HOURLY').toUpperCase();
+    if (salary <= 0)
+        return 0;
+    if (salaryType !== 'HOURLY') {
+        return salary;
+    }
+    const checkInTime = timestampToDate(applicationData.check_in_time ?? applicationData.checkInTime);
+    const checkOutTime = timestampToDate(applicationData.check_out_time ?? applicationData.checkOutTime);
+    if (!checkInTime || !checkOutTime || checkOutTime <= checkInTime) {
+        return salary;
+    }
+    const hoursWorked = (checkOutTime.getTime() - checkInTime.getTime()) / (1000 * 60 * 60);
+    return Math.max(Math.round(hoursWorked * salary), 0);
+}
+function normalizeVerificationStatus(value) {
+    const status = String(value ?? 'UNVERIFIED').toUpperCase();
+    if (status === 'VERIFIED' || status === 'PENDING') {
+        return status;
+    }
+    return 'UNVERIFIED';
+}
+async function getJobPostingQuota(userId) {
+    const userSnap = await db.collection('users').doc(userId).get();
+    const verificationStatus = normalizeVerificationStatus(userSnap.data()?.verification_status);
+    const monthlyLimit = verificationStatus === 'VERIFIED' ? 10 : 2;
+    const activeShiftLimit = verificationStatus === 'VERIFIED' ? 999 : 1;
+    const { start } = monthRange();
+    const [snakeJobsSnap, camelJobsSnap] = await Promise.all([
+        db.collection('jobs').where('employer_id', '==', userId).get(),
+        db.collection('jobs').where('employerId', '==', userId).get(),
+    ]);
+    const dedupedJobs = Array.from(new Map([...snakeJobsSnap.docs, ...camelJobsSnap.docs].map((docSnap) => [docSnap.id, docSnap])).values());
+    const monthlyUsed = dedupedJobs.filter((docSnap) => {
+        const createdAt = timestampToDate(docSnap.data().created_at ?? docSnap.data().createdAt);
+        return createdAt ? createdAt >= start : false;
+    }).length;
+    const activeShiftUsed = dedupedJobs.reduce((sum, docSnap) => {
+        const data = docSnap.data();
+        const status = String(data.status ?? '').toUpperCase();
+        const moderationStatus = String(data.moderation_status ?? 'APPROVED').toUpperCase();
+        const isActiveJob = ['OPEN', 'ACTIVE', 'FULL'].includes(status) && moderationStatus !== 'REJECTED';
+        if (!isActiveJob)
+            return sum;
+        const shifts = Array.isArray(data.shifts) ? data.shifts : [];
+        return sum + shifts.length;
+    }, 0);
+    return {
+        monthlyLimit,
+        monthlyUsed,
+        monthlyRemaining: Math.max(monthlyLimit - monthlyUsed, 0),
+        activeShiftLimit,
+        activeShiftUsed,
+        activeShiftRemaining: Math.max(activeShiftLimit - activeShiftUsed, 0),
+        verificationStatus,
+        tierLabel: verificationStatus === 'VERIFIED' ? 'Verified' : 'Starter',
+    };
+}
+function buildNotificationPayload(userId, type, title, body, data = {}, category = 'APPLICATION') {
+    return {
         userId,
         user_id: userId,
         type,
-        category: 'APPLICATION',
+        category,
         title,
         body,
         data,
@@ -90,7 +287,76 @@ async function createNotification(tx, userId, type, title, body, data = {}) {
         is_read: false,
         created_at: firestore_1.FieldValue.serverTimestamp(),
         createdAt: firestore_1.FieldValue.serverTimestamp(),
+    };
+}
+async function createNotification(tx, userId, type, title, body, data = {}, category = 'APPLICATION') {
+    const notifRef = db.collection('notifications').doc();
+    tx.set(notifRef, buildNotificationPayload(userId, type, title, body, data, category));
+}
+async function createNotificationDoc(userId, type, title, body, data = {}, category = 'APPLICATION') {
+    const notifRef = db.collection('notifications').doc();
+    await notifRef.set(buildNotificationPayload(userId, type, title, body, data, category));
+}
+async function assertAdmin(uid) {
+    const adminSnap = await db.collection('users').doc(uid).get();
+    const role = String(adminSnap.data()?.role ?? '').toUpperCase();
+    if (!adminSnap.exists || role !== 'ADMIN') {
+        throw new https_1.HttpsError('permission-denied', 'Bạn không có quyền quản trị để thực hiện thao tác này.');
+    }
+    return adminSnap;
+}
+async function sendPushForNotification(notification) {
+    const userId = String(notification.user_id ?? notification.userId ?? '').trim();
+    if (!userId)
+        return;
+    const userSnap = await db.collection('users').doc(userId).get();
+    if (!userSnap.exists)
+        return;
+    const userData = userSnap.data() ?? {};
+    if (userData.notification_push === false)
+        return;
+    const rawTokens = [
+        ...(Array.isArray(userData.fcm_tokens) ? userData.fcm_tokens : []),
+        ...(Array.isArray(userData.fcmTokens) ? userData.fcmTokens : []),
+    ];
+    const tokens = Array.from(new Set(rawTokens.filter((item) => typeof item === 'string' && item.length > 0)));
+    if (tokens.length === 0)
+        return;
+    const data = Object.entries((notification.data ?? {})).reduce((acc, [key, value]) => {
+        acc[key] = String(value ?? '');
+        return acc;
+    }, {});
+    const response = await (0, messaging_1.getMessaging)().sendEachForMulticast({
+        tokens,
+        notification: {
+            title: String(notification.title ?? 'JobNow'),
+            body: String(notification.body ?? 'Bạn có thông báo mới.'),
+        },
+        data,
+        webpush: {
+            notification: {
+                title: String(notification.title ?? 'JobNow'),
+                body: String(notification.body ?? 'Bạn có thông báo mới.'),
+            },
+            fcmOptions: {
+                link: data.jobId ? `/candidate/jobs/${data.jobId}` : '/',
+            },
+        },
     });
+    const invalidTokens = response.responses.flatMap((item, index) => {
+        const code = item.error?.code ?? '';
+        if (code === 'messaging/invalid-registration-token' || code === 'messaging/registration-token-not-registered') {
+            return [tokens[index]];
+        }
+        return [];
+    });
+    if (invalidTokens.length > 0) {
+        await db.collection('users').doc(userId).set({
+            fcm_tokens: firestore_1.FieldValue.arrayRemove(...invalidTokens),
+            fcmTokens: firestore_1.FieldValue.arrayRemove(...invalidTokens),
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+    }
 }
 exports.applyJob = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
     const uid = assertAuth(request);
@@ -104,6 +370,37 @@ exports.applyJob = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (req
     const applicationId = normalizeApplicationId(input.candidateId, input.jobId, input.shiftId);
     const applicationRef = db.collection('applications').doc(applicationId);
     const jobRef = db.collection('jobs').doc(input.jobId);
+    const jobPreviewSnap = await jobRef.get();
+    if (!jobPreviewSnap.exists) {
+        throw new https_1.HttpsError('not-found', 'Công việc không tồn tại.');
+    }
+    const jobPreviewData = jobPreviewSnap.data() || {};
+    const targetWindow = await getShiftWindow(jobRef, jobPreviewData, input.shiftId);
+    if (targetWindow) {
+        const approvedApps = await db
+            .collection('applications')
+            .where('candidate_id', '==', input.candidateId)
+            .where('status', 'in', ['APPROVED', 'CHECKED_IN'])
+            .get();
+        for (const appDoc of approvedApps.docs) {
+            if (appDoc.id === applicationId)
+                continue;
+            const otherAppData = appDoc.data();
+            const otherJobId = String(otherAppData.job_id ?? otherAppData.jobId ?? '');
+            const otherShiftId = String(otherAppData.shift_id ?? otherAppData.shiftId ?? '');
+            if (!otherJobId || !otherShiftId)
+                continue;
+            const otherJobSnap = await db.collection('jobs').doc(otherJobId).get();
+            if (!otherJobSnap.exists)
+                continue;
+            const otherWindow = await getShiftWindow(otherJobSnap.ref, otherJobSnap.data() || {}, otherShiftId);
+            if (!otherWindow)
+                continue;
+            if (targetWindow.start < otherWindow.end && targetWindow.end > otherWindow.start) {
+                throw new https_1.HttpsError('failed-precondition', `Khung giờ này trùng với lịch làm việc "${otherWindow.title}" (${otherWindow.startTime}-${otherWindow.endTime}). Vui lòng chọn ca khác.`);
+            }
+        }
+    }
     const result = await db.runTransaction(async (tx) => {
         const candidateRef = db.collection('users').doc(input.candidateId);
         const [jobSnap, appSnap, candidateSnap] = await Promise.all([
@@ -127,17 +424,19 @@ exports.applyJob = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (req
         if (status !== 'OPEN' && status !== 'ACTIVE') {
             throw new https_1.HttpsError('failed-precondition', 'Công việc đã đóng tuyển.');
         }
-        const capacity = getCapacity(jobData, input.shiftId);
+        const capacity = await getCapacityForShift(jobRef, jobData, input.shiftId, tx);
         if (capacity.remainingSlots <= 0) {
             throw new https_1.HttpsError('failed-precondition', 'Ca làm đã đủ số lượng.');
         }
         const employerId = String(jobData.employer_id ?? jobData.employerId ?? '');
+        const employerName = String(jobData.employer_name ?? jobData.employerName ?? '');
+        const shiftWindow = await getShiftWindow(jobRef, jobData, input.shiftId, tx);
         // ─── Denormalize candidate snapshot ───
         const candidateData = candidateSnap.exists ? (candidateSnap.data() || {}) : {};
         const candidateName = String(candidateData.full_name ?? candidateData.fullName ?? candidateData.display_name ?? candidateData.displayName ?? '');
         const candidateAvatar = String(candidateData.avatar_url ?? candidateData.avatarUrl ?? candidateData.photo_url ?? candidateData.photoURL ?? '');
         const candidateSkills = candidateData.skills ?? [];
-        const candidateRating = Number(candidateData.reputation_score ?? candidateData.reputationScore ?? 0);
+        const candidateRating = Number(candidateData.average_rating ?? candidateData.averageRating ?? 0);
         const candidateVerified = (candidateData.verification_status ?? candidateData.verificationStatus) === 'VERIFIED';
         tx.set(applicationRef, {
             job_id: input.jobId,
@@ -157,6 +456,9 @@ exports.applyJob = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (req
             candidate_skills: candidateSkills,
             candidate_rating: candidateRating,
             candidate_verified: candidateVerified,
+            job_title: String(jobData.title ?? ''),
+            shift_time: shiftWindow ? `${shiftWindow.startTime} - ${shiftWindow.endTime}` : '',
+            employer_name: employerName,
         });
         const nextRemaining = Math.max(capacity.remainingSlots - 1, 0);
         tx.set(jobRef, {
@@ -207,11 +509,12 @@ exports.withdrawApplication = (0, https_1.onCall)({ region: 'asia-southeast1' },
         if (!jobId || !shiftId)
             return;
         const jobRef = db.collection('jobs').doc(jobId);
-        const jobSnap = await tx.get(jobRef);
+        const candidateRef = db.collection('users').doc(uid);
+        const [jobSnap, candidateSnap] = await Promise.all([tx.get(jobRef), tx.get(candidateRef)]);
         if (!jobSnap.exists)
             return;
         const jobData = jobSnap.data() || {};
-        const capacity = getCapacity(jobData, shiftId);
+        const capacity = await getCapacityForShift(jobRef, jobData, shiftId, tx);
         tx.set(jobRef, {
             shift_capacity: {
                 ...(jobData.shift_capacity ?? {}),
@@ -223,6 +526,53 @@ exports.withdrawApplication = (0, https_1.onCall)({ region: 'asia-southeast1' },
             },
             updated_at: firestore_1.FieldValue.serverTimestamp(),
         }, { merge: true });
+        const candidateRole = getUserRoleFromData(candidateSnap.data());
+        let actionCode = null;
+        let isUrgent = false;
+        const hoursUntilShift = await getHoursUntilShift(jobRef, jobData, shiftId, new Date(), tx);
+        if (hoursUntilShift !== null) {
+            isUrgent = hoursUntilShift > 0 && hoursUntilShift < 12;
+            actionCode = (0, reputation_1.getCancellationActionCode)(hoursUntilShift);
+        }
+        if (actionCode && candidateRole === 'CANDIDATE') {
+            const result = await (0, reputation_1.applyReputationAction)({
+                tx,
+                db,
+                userId: uid,
+                userRole: candidateRole,
+                userData: candidateSnap.data() || {},
+                actionCode,
+                dedupeKey: input.applicationId,
+                jobId,
+                applicationId: input.applicationId,
+                shiftId,
+                actorId: uid,
+                metadata: {
+                    source: 'withdrawApplication',
+                    hours_until_shift: hoursUntilShift,
+                },
+            });
+            if (result.delta < 0) {
+                await createNotification(tx, uid, 'SYSTEM_ALERT', 'Điểm uy tín bị trừ', `Bạn bị trừ ${Math.abs(result.delta)} điểm uy tín do hủy đơn ứng tuyển.`, { applicationId: input.applicationId, jobId, shiftId }, 'SYSTEM');
+            }
+        }
+        if (isUrgent) {
+            const shiftRef = jobRef.collection('shifts').doc(shiftId);
+            tx.set(shiftRef, {
+                status: 'OPEN',
+                is_urgent: true,
+                updated_at: firestore_1.FieldValue.serverTimestamp()
+            }, { merge: true });
+            const eventRef = db.collection('urgent_shift_events').doc();
+            tx.set(eventRef, {
+                job_id: jobId,
+                shift_id: shiftId,
+                employer_id: jobData.employer_id ?? jobData.employerId ?? '',
+                location: jobData.location ?? null,
+                created_at: firestore_1.FieldValue.serverTimestamp(),
+                processed: false
+            });
+        }
     });
     return { success: true };
 });
@@ -250,6 +600,32 @@ exports.updateApplicationStatus = (0, https_1.onCall)({ region: 'asia-southeast1
             status: input.status,
             updated_at: firestore_1.FieldValue.serverTimestamp(),
         }, { merge: true });
+        if (input.status === 'APPROVED' && employerId) {
+            const employerRef = db.collection('users').doc(employerId);
+            const employerSnap = await tx.get(employerRef);
+            const employerRole = getUserRoleFromData(employerSnap.data());
+            const appliedAt = timestampToDate(appData.applied_at ?? appData.created_at ?? appData.createdAt);
+            const approvedQuickly = appliedAt ? (Date.now() - appliedAt.getTime()) <= (2 * 60 * 60 * 1000) : false;
+            if (employerRole === 'EMPLOYER' && approvedQuickly) {
+                await (0, reputation_1.applyReputationAction)({
+                    tx,
+                    db,
+                    userId: employerId,
+                    userRole: employerRole,
+                    userData: employerSnap.data() || {},
+                    actionCode: 'E_QUICK_APP',
+                    dedupeKey: input.applicationId,
+                    jobId: String(appData.job_id ?? appData.jobId ?? ''),
+                    applicationId: input.applicationId,
+                    shiftId: String(appData.shift_id ?? appData.shiftId ?? ''),
+                    actorId: uid,
+                    metadata: {
+                        source: 'updateApplicationStatus',
+                        approved_within_hours: 2,
+                    },
+                });
+            }
+        }
         // ─── Notify Candidate ───
         if (input.status === 'APPROVED' || input.status === 'REJECTED') {
             const jobRef = db.collection('jobs').doc(String(appData.job_id ?? appData.jobId ?? ''));
@@ -345,6 +721,7 @@ exports.checkIn = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (requ
         });
         tx.set(applicationRef, {
             status: 'CHECKED_IN',
+            check_in_time: firestore_1.FieldValue.serverTimestamp(),
             updated_at: firestore_1.FieldValue.serverTimestamp(),
         }, { merge: true });
         return {
@@ -381,6 +758,9 @@ exports.checkOut = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (req
         if (String(appData.candidate_id ?? '') !== uid) {
             throw new https_1.HttpsError('permission-denied', 'Bạn không có quyền check-out đơn này.');
         }
+        const candidateRef = db.collection('users').doc(uid);
+        const candidateSnap = await tx.get(candidateRef);
+        const candidateRole = getUserRoleFromData(candidateSnap.data());
         tx.set(checkinRef, {
             status: 'CHECKED_OUT',
             check_out_time: firestore_1.FieldValue.serverTimestamp(),
@@ -388,9 +768,104 @@ exports.checkOut = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (req
         }, { merge: true });
         tx.set(applicationRef, {
             status: 'COMPLETED',
+            check_out_time: firestore_1.FieldValue.serverTimestamp(),
             updated_at: firestore_1.FieldValue.serverTimestamp(),
         }, { merge: true });
+        if (candidateRole === 'CANDIDATE') {
+            await (0, reputation_1.applyReputationAction)({
+                tx,
+                db,
+                userId: uid,
+                userRole: candidateRole,
+                userData: candidateSnap.data() || {},
+                actionCode: 'C_COMPLETED',
+                dedupeKey: input.applicationId,
+                jobId: String(appData.job_id ?? ''),
+                applicationId: input.applicationId,
+                shiftId: String(appData.shift_id ?? ''),
+                actorId: uid,
+                metadata: { source: 'checkOut' },
+            });
+        }
     });
+    return { success: true };
+});
+exports.forceCheckOut = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    const uid = assertAuth(request);
+    const input = request.data;
+    if (uid !== input.employerId) {
+        throw new https_1.HttpsError('permission-denied', 'Bạn không thể kết thúc ca thay nhà tuyển dụng khác.');
+    }
+    const applicationRef = db.collection('applications').doc(input.applicationId);
+    const activeCheckins = await applicationRef
+        .collection('checkins')
+        .where('status', '==', 'CHECKED_IN')
+        .limit(1)
+        .get();
+    if (activeCheckins.empty) {
+        throw new https_1.HttpsError('failed-precondition', 'Không tìm thấy phiên check-in đang hoạt động.');
+    }
+    const checkinRef = activeCheckins.docs[0].ref;
+    await db.runTransaction(async (tx) => {
+        const appSnap = await tx.get(applicationRef);
+        if (!appSnap.exists) {
+            throw new https_1.HttpsError('not-found', 'Không tìm thấy đơn ứng tuyển.');
+        }
+        const appData = appSnap.data() || {};
+        const employerId = String(appData.employer_id ?? appData.employerId ?? '');
+        if (employerId !== uid) {
+            throw new https_1.HttpsError('permission-denied', 'Bạn không có quyền kết thúc ca của ứng viên này.');
+        }
+        const candidateId = String(appData.candidate_id ?? appData.candidateId ?? '');
+        const candidateRef = db.collection('users').doc(candidateId);
+        const candidateSnap = await tx.get(candidateRef);
+        const candidateRole = getUserRoleFromData(candidateSnap.data());
+        tx.set(checkinRef, {
+            status: 'CHECKED_OUT',
+            check_out_time: firestore_1.FieldValue.serverTimestamp(),
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        tx.set(applicationRef, {
+            status: 'COMPLETED',
+            check_out_time: firestore_1.FieldValue.serverTimestamp(),
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        if (candidateRole === 'CANDIDATE' && candidateId) {
+            await (0, reputation_1.applyReputationAction)({
+                tx,
+                db,
+                userId: candidateId,
+                userRole: candidateRole,
+                userData: candidateSnap.data() || {},
+                actionCode: 'C_COMPLETED',
+                dedupeKey: input.applicationId,
+                jobId: String(appData.job_id ?? appData.jobId ?? ''),
+                applicationId: input.applicationId,
+                shiftId: String(appData.shift_id ?? appData.shiftId ?? ''),
+                actorId: uid,
+                metadata: { source: 'forceCheckOut' },
+            });
+        }
+    });
+    return { success: true };
+});
+exports.simulateWorkTime = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    const uid = assertAuth(request);
+    await assertAdmin(uid);
+    const input = request.data;
+    const applicationRef = db.collection('applications').doc(input.applicationId);
+    const appSnap = await applicationRef.get();
+    if (!appSnap.exists) {
+        throw new https_1.HttpsError('not-found', 'Đơn ứng tuyển không tồn tại.');
+    }
+    const simulatedDate = new Date(Date.now() - Number(input.hoursAgo) * 60 * 60 * 1000);
+    if (Number.isNaN(simulatedDate.getTime())) {
+        throw new https_1.HttpsError('invalid-argument', 'Số giờ giả lập không hợp lệ.');
+    }
+    await applicationRef.set({
+        check_in_time: firestore_1.Timestamp.fromDate(simulatedDate),
+        updated_at: firestore_1.FieldValue.serverTimestamp(),
+    }, { merge: true });
     return { success: true };
 });
 exports.startConversation = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
@@ -590,8 +1065,15 @@ exports.submitRating = (0, https_1.onCall)({ region: 'asia-southeast1' }, async 
     const applicationRef = db.collection('applications').doc(input.applicationId);
     const reviewId = `${input.applicationId}_${uid}`.replace(/[^a-zA-Z0-9_-]/g, '_');
     const reviewRef = db.collection('reviews').doc(reviewId);
-    await db.runTransaction(async (tx) => {
-        const [appSnap, reviewSnap] = await Promise.all([tx.get(applicationRef), tx.get(reviewRef)]);
+    const result = await db.runTransaction(async (tx) => {
+        const reviewerRef = db.collection('users').doc(input.reviewerId);
+        const revieweeRef = db.collection('users').doc(input.revieweeId);
+        const [appSnap, reviewSnap, reviewerSnap, revieweeSnap] = await Promise.all([
+            tx.get(applicationRef),
+            tx.get(reviewRef),
+            tx.get(reviewerRef),
+            tx.get(revieweeRef),
+        ]);
         if (!appSnap.exists) {
             throw new https_1.HttpsError('not-found', 'Không tìm thấy đơn ứng tuyển.');
         }
@@ -607,6 +1089,10 @@ exports.submitRating = (0, https_1.onCall)({ region: 'asia-southeast1' }, async 
         if (reviewSnap.exists) {
             throw new https_1.HttpsError('already-exists', 'Bạn đã đánh giá cho đơn này rồi.');
         }
+        const reviewerData = reviewerSnap.data() || {};
+        const revieweeData = revieweeSnap.data() || {};
+        const reviewerRole = getUserRoleFromData(reviewerData);
+        const revieweeRole = getUserRoleFromData(revieweeData);
         tx.set(reviewRef, {
             application_id: input.applicationId,
             reviewer_id: input.reviewerId,
@@ -616,23 +1102,862 @@ exports.submitRating = (0, https_1.onCall)({ region: 'asia-southeast1' }, async 
             created_at: firestore_1.FieldValue.serverTimestamp(),
             updated_at: firestore_1.FieldValue.serverTimestamp(),
         });
+        const currentTotal = Number(revieweeData.total_ratings ?? 0);
+        const currentAverage = Number(revieweeData.average_rating ?? 0);
+        const newTotal = currentTotal + 1;
+        const newAverage = Number(((currentAverage * currentTotal + input.rating) / newTotal).toFixed(2));
+        tx.set(revieweeRef, {
+            average_rating: newAverage,
+            total_ratings: newTotal,
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+            updatedAt: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        await createNotification(tx, input.revieweeId, 'NEW_REVIEW', 'Bạn có đánh giá mới', `Bạn vừa nhận được đánh giá ${input.rating} sao từ đối tác.`, {
+            applicationId: input.applicationId,
+            reviewerId: input.reviewerId,
+            rating: String(input.rating),
+        }, 'SYSTEM');
+        if (reviewerRole === 'CANDIDATE') {
+            await (0, reputation_1.applyReputationAction)({
+                tx,
+                db,
+                userId: input.reviewerId,
+                userRole: reviewerRole,
+                userData: reviewerData,
+                actionCode: 'C_REVIEW_OTHER',
+                dedupeKey: input.applicationId,
+                jobId: String(appData.job_id ?? appData.jobId ?? ''),
+                applicationId: input.applicationId,
+                shiftId: String(appData.shift_id ?? appData.shiftId ?? ''),
+                actorId: input.reviewerId,
+                metadata: { source: 'submitRating' },
+            });
+        }
+        if (input.rating === 5 && revieweeRole) {
+            const actionCode = revieweeRole === 'CANDIDATE' ? 'C_RATING_5' : 'E_RATING_5';
+            const reputationResult = await (0, reputation_1.applyReputationAction)({
+                tx,
+                db,
+                userId: input.revieweeId,
+                userRole: revieweeRole,
+                userData: revieweeData,
+                actionCode,
+                dedupeKey: input.applicationId,
+                jobId: String(appData.job_id ?? appData.jobId ?? ''),
+                applicationId: input.applicationId,
+                shiftId: String(appData.shift_id ?? appData.shiftId ?? ''),
+                actorId: input.reviewerId,
+                metadata: { source: 'submitRating', rating: input.rating },
+            });
+            return {
+                reviewId,
+                updatedReputationScore: reputationResult.score,
+            };
+        }
+        return {
+            reviewId,
+            updatedReputationScore: (0, reputation_1.clampReputationScore)(Number(revieweeData.reputation_score ?? reputation_1.DEFAULT_REPUTATION_SCORE)),
+        };
     });
-    const reviewsSnap = await db
-        .collection('reviews')
-        .where('reviewee_id', '==', input.revieweeId)
+    return result;
+});
+exports.processPayment = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    const uid = assertAuth(request);
+    const input = request.data;
+    if (uid !== input.employerId) {
+        throw new https_1.HttpsError('permission-denied', 'Bạn không thể thanh toán thay nhà tuyển dụng khác.');
+    }
+    const applicationRef = db.collection('applications').doc(input.applicationId);
+    const result = await db.runTransaction(async (tx) => {
+        const appSnap = await tx.get(applicationRef);
+        if (!appSnap.exists) {
+            throw new https_1.HttpsError('not-found', 'Đơn ứng tuyển không tồn tại.');
+        }
+        const appData = appSnap.data() || {};
+        const employerId = String(appData.employer_id ?? appData.employerId ?? '');
+        const candidateId = String(appData.candidate_id ?? appData.candidateId ?? '');
+        const jobId = String(appData.job_id ?? appData.jobId ?? '');
+        const currentStatus = String(appData.status ?? 'NEW').toUpperCase();
+        const paymentStatus = String(appData.payment_status ?? appData.paymentStatus ?? 'UNPAID').toUpperCase();
+        if (employerId !== uid) {
+            throw new https_1.HttpsError('permission-denied', 'Bạn không có quyền thanh toán đơn này.');
+        }
+        if (!['COMPLETED', 'WORK_FINISHED'].includes(currentStatus)) {
+            throw new https_1.HttpsError('failed-precondition', 'Chỉ có thể thanh toán khi ca làm đã hoàn thành.');
+        }
+        if (paymentStatus !== 'UNPAID') {
+            throw new https_1.HttpsError('failed-precondition', 'Đơn này đã được thanh toán hoặc đang chờ xác nhận.');
+        }
+        const jobRef = db.collection('jobs').doc(jobId);
+        const employerRef = db.collection('users').doc(employerId);
+        const candidateRef = db.collection('users').doc(candidateId);
+        const [jobSnap, employerSnap, candidateSnap] = await Promise.all([
+            tx.get(jobRef),
+            tx.get(employerRef),
+            tx.get(candidateRef),
+        ]);
+        if (!jobSnap.exists) {
+            throw new https_1.HttpsError('not-found', 'Không tìm thấy công việc để tính lương.');
+        }
+        if (!employerSnap.exists || !candidateSnap.exists) {
+            throw new https_1.HttpsError('not-found', 'Không tìm thấy ví của nhà tuyển dụng hoặc ứng viên.');
+        }
+        const jobData = jobSnap.data() || {};
+        const employerData = employerSnap.data() || {};
+        const candidateData = candidateSnap.data() || {};
+        const amount = calculatePayoutAmount(jobData, appData);
+        const employerBalance = Number(employerData.balance ?? 0);
+        if (amount <= 0) {
+            throw new https_1.HttpsError('failed-precondition', 'Không thể xác định số tiền thanh toán cho đơn này.');
+        }
+        if (employerBalance < amount) {
+            const deficit = amount - employerBalance;
+            throw new https_1.HttpsError('failed-precondition', `Số dư không đủ để thanh toán. Bạn cần nạp thêm ${deficit.toLocaleString('vi-VN')}đ.`);
+        }
+        const employerTxRef = db.collection('transactions').doc(normalizeDocumentId(`debit_${input.applicationId}`));
+        const candidateTxRef = db.collection('transactions').doc(normalizeDocumentId(`credit_${input.applicationId}`));
+        const jobTitle = String(jobData.title ?? 'Công việc');
+        tx.set(employerRef, {
+            balance: employerBalance - amount,
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        tx.set(candidateRef, {
+            balance: Number(candidateData.balance ?? 0) + amount,
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        tx.set(applicationRef, {
+            status: 'COMPLETED',
+            payment_status: 'PAID',
+            payment_method: 'APP',
+            paid_at: firestore_1.FieldValue.serverTimestamp(),
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        tx.set(employerTxRef, {
+            userId: employerId,
+            user_id: employerId,
+            type: 'PAYMENT',
+            entry_type: 'DEBIT',
+            amount: -amount,
+            description: `Thanh toán lương cho "${jobTitle}"`,
+            related_application_id: input.applicationId,
+            related_job_id: jobId,
+            status: 'COMPLETED',
+            created_at: firestore_1.FieldValue.serverTimestamp(),
+            createdAt: firestore_1.FieldValue.serverTimestamp(),
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        });
+        tx.set(candidateTxRef, {
+            userId: candidateId,
+            user_id: candidateId,
+            type: 'PAYMENT',
+            entry_type: 'CREDIT',
+            amount,
+            description: `Nhận lương từ "${jobTitle}"`,
+            related_application_id: input.applicationId,
+            related_job_id: jobId,
+            status: 'COMPLETED',
+            created_at: firestore_1.FieldValue.serverTimestamp(),
+            createdAt: firestore_1.FieldValue.serverTimestamp(),
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        });
+        await createNotification(tx, candidateId, 'PAYMENT_RECEIVED', 'Bạn đã nhận lương', `Bạn đã nhận ${amount.toLocaleString('vi-VN')}đ từ công việc "${jobTitle}".`, { applicationId: input.applicationId, jobId }, 'PAYMENT');
+        const employerRole = getUserRoleFromData(employerData);
+        if (employerRole === 'EMPLOYER') {
+            await (0, reputation_1.applyReputationAction)({
+                tx,
+                db,
+                userId: employerId,
+                userRole: employerRole,
+                userData: employerData,
+                actionCode: 'E_PAID_ONTIME',
+                dedupeKey: input.applicationId,
+                jobId,
+                applicationId: input.applicationId,
+                shiftId: String(appData.shift_id ?? appData.shiftId ?? ''),
+                actorId: employerId,
+                metadata: { source: 'processPayment' },
+            });
+        }
+        return { amount, candidateId, employerId, jobTitle };
+    });
+    return result;
+});
+exports.deleteJobPosting = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    const uid = assertAuth(request);
+    const input = request.data;
+    if (!input.jobId) {
+        throw new https_1.HttpsError('invalid-argument', 'Thiếu jobId.');
+    }
+    const jobRef = db.collection('jobs').doc(input.jobId);
+    await db.runTransaction(async (tx) => {
+        const jobSnap = await tx.get(jobRef);
+        if (!jobSnap.exists) {
+            throw new https_1.HttpsError('not-found', 'Tin tuyển dụng không tồn tại.');
+        }
+        const jobData = jobSnap.data() || {};
+        const employerId = String(jobData.employer_id ?? jobData.employerId ?? '');
+        if (employerId !== uid) {
+            throw new https_1.HttpsError('permission-denied', 'Bạn không có quyền xóa tin tuyển dụng này.');
+        }
+        const employerRef = db.collection('users').doc(employerId);
+        const employerSnap = await tx.get(employerRef);
+        const employerRole = getUserRoleFromData(employerSnap.data());
+        const applicationsSnap = await tx.get(db.collection('applications')
+            .where('job_id', '==', input.jobId)
+            .where('status', 'in', ['NEW', 'PENDING', 'APPROVED', 'CHECKED_IN']));
+        let actionCode = null;
+        if (!applicationsSnap.empty) {
+            let hasLateCancellation = false;
+            for (const docSnap of applicationsSnap.docs) {
+                const appData = docSnap.data();
+                const hoursUntilShift = await getHoursUntilShift(jobRef, jobData, String(appData.shift_id ?? appData.shiftId ?? ''), new Date(), tx);
+                if (hoursUntilShift !== null && hoursUntilShift < 2) {
+                    hasLateCancellation = true;
+                    break;
+                }
+            }
+            actionCode = hasLateCancellation ? 'E_CANCEL_L2' : 'E_CANCEL_POST';
+        }
+        applicationsSnap.docs.forEach((docSnap) => {
+            const appData = docSnap.data();
+            tx.set(docSnap.ref, {
+                status: 'CANCELLED',
+                updated_at: firestore_1.FieldValue.serverTimestamp(),
+            }, { merge: true });
+        });
+        for (const docSnap of applicationsSnap.docs) {
+            const appData = docSnap.data();
+            const candidateId = String(appData.candidate_id ?? appData.candidateId ?? '');
+            if (!candidateId)
+                continue;
+            await createNotification(tx, candidateId, 'JOB_CANCELLED', 'Tin tuyển dụng đã bị hủy', `Nhà tuyển dụng đã hủy tin "${String(jobData.title ?? 'Công việc')}".`, { applicationId: docSnap.id, jobId: input.jobId }, 'JOB');
+        }
+        if (actionCode && employerRole === 'EMPLOYER') {
+            await (0, reputation_1.applyReputationAction)({
+                tx,
+                db,
+                userId: employerId,
+                userRole: employerRole,
+                userData: employerSnap.data() || {},
+                actionCode,
+                dedupeKey: input.jobId,
+                jobId: input.jobId,
+                actorId: uid,
+                metadata: {
+                    source: 'deleteJobPosting',
+                    impacted_applications: applicationsSnap.size,
+                },
+            });
+        }
+        tx.delete(jobRef);
+    });
+    return { success: true };
+});
+exports.submitReputationAppeal = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    const uid = assertAuth(request);
+    const input = request.data;
+    const reason = String(input.reason ?? '').trim();
+    if (!input.historyId || reason.length < 10) {
+        throw new https_1.HttpsError('invalid-argument', 'Khiếu nại cần chỉ rõ bản ghi và lý do tối thiểu 10 ký tự.');
+    }
+    const historyRef = db.collection('reputation_history').doc(input.historyId);
+    const appealRef = db.collection('reputation_appeals').doc(`${uid}_${input.historyId}`.replace(/[^a-zA-Z0-9_-]/g, '_'));
+    await db.runTransaction(async (tx) => {
+        const [historySnap, appealSnap] = await Promise.all([tx.get(historyRef), tx.get(appealRef)]);
+        if (!historySnap.exists) {
+            throw new https_1.HttpsError('not-found', 'Không tìm thấy biến động uy tín cần khiếu nại.');
+        }
+        if (appealSnap.exists) {
+            throw new https_1.HttpsError('already-exists', 'Bạn đã gửi khiếu nại cho biến động này.');
+        }
+        const historyData = historySnap.data() || {};
+        if (String(historyData.user_id ?? '') !== uid) {
+            throw new https_1.HttpsError('permission-denied', 'Bạn không có quyền khiếu nại biến động này.');
+        }
+        if (Number(historyData.score_change ?? 0) >= 0) {
+            throw new https_1.HttpsError('failed-precondition', 'Chỉ các biến động bị trừ điểm mới có thể khiếu nại.');
+        }
+        const deadline = timestampToDate(historyData.appeal_deadline_at);
+        if (!deadline || deadline.getTime() < Date.now()) {
+            throw new https_1.HttpsError('deadline-exceeded', 'Đã quá thời hạn 24 giờ để gửi khiếu nại.');
+        }
+        tx.set(appealRef, {
+            user_id: uid,
+            reputation_history_id: input.historyId,
+            status: 'PENDING',
+            reason,
+            created_at: firestore_1.FieldValue.serverTimestamp(),
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        });
+        tx.set(historyRef, {
+            appeal_id: appealRef.id,
+            appeal_status: 'PENDING',
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+    });
+    return { success: true };
+});
+exports.markCashPayment = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    const uid = assertAuth(request);
+    const input = request.data;
+    if (uid !== input.employerId) {
+        throw new https_1.HttpsError('permission-denied', 'Bạn không thể xác nhận tiền mặt thay nhà tuyển dụng khác.');
+    }
+    const applicationRef = db.collection('applications').doc(input.applicationId);
+    await db.runTransaction(async (tx) => {
+        const appSnap = await tx.get(applicationRef);
+        if (!appSnap.exists) {
+            throw new https_1.HttpsError('not-found', 'Đơn ứng tuyển không tồn tại.');
+        }
+        const appData = appSnap.data() || {};
+        const employerId = String(appData.employer_id ?? appData.employerId ?? '');
+        const candidateId = String(appData.candidate_id ?? appData.candidateId ?? '');
+        const jobId = String(appData.job_id ?? appData.jobId ?? '');
+        const currentStatus = String(appData.status ?? 'NEW').toUpperCase();
+        const paymentStatus = String(appData.payment_status ?? appData.paymentStatus ?? 'UNPAID').toUpperCase();
+        if (employerId !== uid) {
+            throw new https_1.HttpsError('permission-denied', 'Bạn không có quyền xác nhận thanh toán đơn này.');
+        }
+        if (!['COMPLETED', 'WORK_FINISHED'].includes(currentStatus)) {
+            throw new https_1.HttpsError('failed-precondition', 'Chỉ có thể xác nhận tiền mặt sau khi ca làm đã hoàn thành.');
+        }
+        if (paymentStatus !== 'UNPAID') {
+            throw new https_1.HttpsError('failed-precondition', 'Đơn này không còn ở trạng thái chờ thanh toán.');
+        }
+        const jobSnap = await tx.get(db.collection('jobs').doc(jobId));
+        const jobTitle = String(jobSnap.data()?.title ?? 'Công việc');
+        tx.set(applicationRef, {
+            status: 'CASH_CONFIRMATION',
+            payment_status: 'PROCESSING',
+            payment_method: 'CASH',
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        await createNotification(tx, candidateId, 'PAYMENT_CONFIRM_REQUIRED', 'Xác nhận đã nhận tiền mặt', `Nhà tuyển dụng đã đánh dấu thanh toán tiền mặt cho công việc "${jobTitle}". Vui lòng xác nhận nếu bạn đã nhận đủ tiền.`, { applicationId: input.applicationId, jobId }, 'PAYMENT');
+    });
+    return { success: true };
+});
+exports.confirmCashPaymentReceived = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    const uid = assertAuth(request);
+    const input = request.data;
+    if (uid !== input.candidateId) {
+        throw new https_1.HttpsError('permission-denied', 'Bạn không thể xác nhận tiền thay ứng viên khác.');
+    }
+    const applicationRef = db.collection('applications').doc(input.applicationId);
+    await db.runTransaction(async (tx) => {
+        const appSnap = await tx.get(applicationRef);
+        if (!appSnap.exists) {
+            throw new https_1.HttpsError('not-found', 'Đơn ứng tuyển không tồn tại.');
+        }
+        const appData = appSnap.data() || {};
+        const candidateId = String(appData.candidate_id ?? appData.candidateId ?? '');
+        if (candidateId !== uid) {
+            throw new https_1.HttpsError('permission-denied', 'Bạn không có quyền xác nhận thanh toán cho đơn này.');
+        }
+        const paymentStatus = String(appData.payment_status ?? appData.paymentStatus ?? 'UNPAID').toUpperCase();
+        if (paymentStatus !== 'PROCESSING') {
+            throw new https_1.HttpsError('failed-precondition', 'Đơn này không ở trạng thái chờ xác nhận tiền mặt.');
+        }
+        tx.set(applicationRef, {
+            status: 'COMPLETED',
+            payment_status: 'PAID',
+            paid_at: firestore_1.FieldValue.serverTimestamp(),
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+    });
+    return { success: true };
+});
+exports.processDeposit = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    const uid = assertAuth(request);
+    const input = request.data;
+    if (uid !== input.userId) {
+        throw new https_1.HttpsError('permission-denied', 'Bạn không thể nạp tiền thay người dùng khác.');
+    }
+    if (Number(input.amount) <= 0) {
+        throw new https_1.HttpsError('invalid-argument', 'Số tiền nạp phải lớn hơn 0.');
+    }
+    const transactionId = normalizeDocumentId(input.externalRef ? `deposit_${input.externalRef}` : `deposit_${uid}_${Date.now()}`);
+    const userRef = db.collection('users').doc(uid);
+    const txRef = db.collection('transactions').doc(transactionId);
+    await db.runTransaction(async (tx) => {
+        const [userSnap, existingTxSnap] = await Promise.all([tx.get(userRef), tx.get(txRef)]);
+        if (!userSnap.exists) {
+            throw new https_1.HttpsError('not-found', 'Người dùng không tồn tại.');
+        }
+        if (existingTxSnap.exists) {
+            return;
+        }
+        const currentBalance = Number(userSnap.data()?.balance ?? 0);
+        tx.set(userRef, {
+            balance: currentBalance + Number(input.amount),
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        tx.set(txRef, {
+            userId: uid,
+            user_id: uid,
+            type: 'DEPOSIT',
+            amount: Number(input.amount),
+            description: `Nạp tiền qua ${input.method}`,
+            external_ref: input.externalRef ?? null,
+            status: 'COMPLETED',
+            created_at: firestore_1.FieldValue.serverTimestamp(),
+            createdAt: firestore_1.FieldValue.serverTimestamp(),
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        });
+    });
+    return { success: true };
+});
+exports.processWithdrawal = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    const uid = assertAuth(request);
+    const input = request.data;
+    if (uid !== input.userId) {
+        throw new https_1.HttpsError('permission-denied', 'Bạn không thể rút tiền thay người dùng khác.');
+    }
+    if (Number(input.amount) <= 0) {
+        throw new https_1.HttpsError('invalid-argument', 'Số tiền rút phải lớn hơn 0.');
+    }
+    const transactionId = normalizeDocumentId(input.externalRef ? `withdraw_${input.externalRef}` : `withdraw_${uid}_${Date.now()}`);
+    const userRef = db.collection('users').doc(uid);
+    const txRef = db.collection('transactions').doc(transactionId);
+    await db.runTransaction(async (tx) => {
+        const [userSnap, existingTxSnap] = await Promise.all([tx.get(userRef), tx.get(txRef)]);
+        if (!userSnap.exists) {
+            throw new https_1.HttpsError('not-found', 'Người dùng không tồn tại.');
+        }
+        if (existingTxSnap.exists) {
+            return;
+        }
+        const currentBalance = Number(userSnap.data()?.balance ?? 0);
+        if (currentBalance < Number(input.amount)) {
+            throw new https_1.HttpsError('failed-precondition', 'Số dư không đủ để thực hiện giao dịch.');
+        }
+        tx.set(userRef, {
+            balance: currentBalance - Number(input.amount),
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        tx.set(txRef, {
+            userId: uid,
+            user_id: uid,
+            type: 'WITHDRAW',
+            amount: -Number(input.amount),
+            description: `Rút tiền về ${input.bankAccount}`,
+            external_ref: input.externalRef ?? null,
+            bank_account: input.bankAccount,
+            status: 'COMPLETED',
+            created_at: firestore_1.FieldValue.serverTimestamp(),
+            createdAt: firestore_1.FieldValue.serverTimestamp(),
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        });
+    });
+    return { success: true };
+});
+exports.reviewVerificationRequest = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    const uid = assertAuth(request);
+    const input = request.data;
+    await assertAdmin(uid);
+    const requestRef = db.collection('users_private').doc(input.userId).collection('verification_requests').doc(input.requestId);
+    const userRef = db.collection('users').doc(input.userId);
+    await db.runTransaction(async (tx) => {
+        const [verificationSnap, userSnap] = await Promise.all([tx.get(requestRef), tx.get(userRef)]);
+        if (!verificationSnap.exists) {
+            throw new https_1.HttpsError('not-found', 'Không tìm thấy hồ sơ xác thực.');
+        }
+        if (!userSnap.exists) {
+            throw new https_1.HttpsError('not-found', 'Không tìm thấy người dùng cần xác thực.');
+        }
+        const action = input.action;
+        const nextStatus = action === 'APPROVE' ? 'APPROVED' : 'REJECTED';
+        const rejectionReason = String(input.rejectionReason ?? '').trim();
+        if (action === 'REJECT' && rejectionReason.length < 5) {
+            throw new https_1.HttpsError('invalid-argument', 'Vui lòng nhập lý do từ chối rõ ràng.');
+        }
+        tx.set(requestRef, {
+            status: nextStatus,
+            rejection_reason: action === 'REJECT' ? rejectionReason : firestore_1.FieldValue.delete(),
+            reviewed_by: uid,
+            reviewed_at: firestore_1.FieldValue.serverTimestamp(),
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        tx.set(userRef, {
+            verification_status: action === 'APPROVE' ? 'VERIFIED' : 'UNVERIFIED',
+            reputation_score: Number(userSnap.data()?.reputation_score ?? reputation_1.DEFAULT_REPUTATION_SCORE),
+            current_tier: String(userSnap.data()?.current_tier ?? (0, reputation_1.getReputationTier)(Number(userSnap.data()?.reputation_score ?? reputation_1.DEFAULT_REPUTATION_SCORE))),
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        const userRole = getUserRoleFromData(userSnap.data());
+        const wasVerified = String(userSnap.data()?.verification_status ?? 'UNVERIFIED') === 'VERIFIED';
+        if (action === 'APPROVE' && userRole && !wasVerified) {
+            await (0, reputation_1.applyReputationAction)({
+                tx,
+                db,
+                userId: input.userId,
+                userRole,
+                userData: userSnap.data() || {},
+                actionCode: 'EKYC_VERIFIED',
+                dedupeKey: input.requestId,
+                actorId: uid,
+                metadata: { source: 'reviewVerificationRequest' },
+            });
+        }
+        await createNotification(tx, input.userId, 'VERIFICATION_UPDATE', action === 'APPROVE' ? 'Hồ sơ xác thực đã được duyệt' : 'Hồ sơ xác thực bị từ chối', action === 'APPROVE'
+            ? 'Tài khoản của bạn đã được xác thực thành công.'
+            : `Hồ sơ xác thực của bạn bị từ chối. Lý do: ${rejectionReason}`, { requestId: input.requestId, action }, 'SYSTEM');
+    });
+    return { success: true };
+});
+exports.adminSetUserStatus = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    const uid = assertAuth(request);
+    const input = request.data;
+    await assertAdmin(uid);
+    const statusMap = {
+        LOCK: { status: 'LOCKED', disabled: true, title: 'Tài khoản bị khóa', action: 'LOCK_USER' },
+        UNLOCK: { status: 'ACTIVE', disabled: false, title: 'Tài khoản được mở khóa', action: 'UNLOCK_USER' },
+        BAN: { status: 'BANNED', disabled: true, title: 'Tài khoản bị cấm', action: 'BAN_USER' },
+    };
+    const next = statusMap[input.action];
+    if (!next) {
+        throw new https_1.HttpsError('invalid-argument', 'Hành động cập nhật trạng thái không hợp lệ.');
+    }
+    const reason = String(input.reason ?? '').trim() || 'Cập nhật bởi quản trị viên.';
+    await (0, auth_1.getAuth)().updateUser(input.userId, { disabled: next.disabled });
+    await db.runTransaction(async (tx) => {
+        const userRef = db.collection('users').doc(input.userId);
+        tx.set(userRef, {
+            status: next.status,
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        const auditRef = db.collection('admin_logs').doc();
+        tx.set(auditRef, {
+            admin_id: uid,
+            action: next.action,
+            target_type: 'USER',
+            target_id: input.userId,
+            reason,
+            created_at: firestore_1.FieldValue.serverTimestamp(),
+        });
+        await createNotification(tx, input.userId, 'SYSTEM', next.title, reason, { adminAction: input.action }, 'SYSTEM');
+    });
+    return { success: true, status: next.status };
+});
+exports.getMyJobPostingQuota = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    const uid = assertAuth(request);
+    const quota = await getJobPostingQuota(uid);
+    return quota;
+});
+exports.createJobPosting = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    try {
+        const uid = assertAuth(request);
+        const input = request.data;
+        if (!input.title?.trim() || !input.description?.trim() || !Array.isArray(input.shifts) || input.shifts.length === 0) {
+            throw new https_1.HttpsError('invalid-argument', 'Thiếu thông tin cơ bản để đăng tin.');
+        }
+        const employerRef = db.collection('users').doc(uid);
+        const employerSnap = await employerRef.get();
+        if (!employerSnap.exists) {
+            throw new https_1.HttpsError('not-found', 'Không tìm thấy hồ sơ nhà tuyển dụng.');
+        }
+        const employerData = employerSnap.data() || {};
+        if (String(employerData.role ?? '').toUpperCase() !== 'EMPLOYER') {
+            throw new https_1.HttpsError('permission-denied', 'Chỉ nhà tuyển dụng mới có thể đăng tin.');
+        }
+        const quota = await getJobPostingQuota(uid);
+        const requestedShiftCount = input.shifts.length;
+        if (quota.monthlyUsed >= quota.monthlyLimit) {
+            throw new https_1.HttpsError('failed-precondition', `Bạn đã dùng hết quota ${quota.monthlyLimit} tin trong tháng này.`);
+        }
+        if (quota.activeShiftUsed + requestedShiftCount > quota.activeShiftLimit) {
+            throw new https_1.HttpsError('failed-precondition', `Tài khoản hiện tại chỉ được có tối đa ${quota.activeShiftLimit} ca đang hoạt động cùng lúc.`);
+        }
+        const jobRef = db.collection('jobs').doc();
+        const timestamp = firestore_1.FieldValue.serverTimestamp();
+        const employerName = String(employerData.company_name ??
+            employerData.full_name ??
+            employerData.fullName ??
+            'Nhà tuyển dụng JobNow');
+        const normalizedShifts = input.shifts.map((shift, index) => {
+            const id = String(shift.id ?? normalizeDocumentId(`shift_${Date.now()}_${index + 1}`));
+            return {
+                id,
+                name: String(shift.name ?? `Ca ${index + 1}`),
+                start_time: String(shift.startTime ?? '08:00'),
+                end_time: String(shift.endTime ?? '17:00'),
+                quantity: Math.max(Number(shift.quantity ?? 1), 1),
+                status: 'OPEN',
+            };
+        });
+        const shiftCapacity = normalizedShifts.reduce((acc, shift) => {
+            acc[shift.id] = {
+                total_slots: shift.quantity,
+                remaining_slots: shift.quantity,
+                applied_count: 0,
+            };
+            return acc;
+        }, {});
+        const jobPayload = {
+            employer_id: uid,
+            employer_name: employerName,
+            category_id: String(input.categoryId ?? ''),
+            title: input.title.trim(),
+            description: input.description.trim(),
+            salary: Number(input.salary ?? 0),
+            salary_type: String(input.salaryType ?? 'HOURLY').toUpperCase(),
+            address: String(input.location?.address ?? ''),
+            location: {
+                latitude: Number(input.location?.latitude ?? 0),
+                longitude: Number(input.location?.longitude ?? 0),
+            },
+            geohash: calculateGeohash(Number(input.location?.latitude ?? 0), Number(input.location?.longitude ?? 0)),
+            is_gps_required: Boolean(input.isGpsRequired ?? true),
+            status: 'DRAFT',
+            moderation_status: 'PENDING_REVIEW',
+            shifts: normalizedShifts,
+            shift_capacity: shiftCapacity,
+            vacancies: Number(input.vacancies ?? normalizedShifts.reduce((sum, shift) => sum + shift.quantity, 0)),
+            deadline: input.deadline ?? null,
+            requirements: Array.isArray(input.requirements) ? input.requirements : [],
+            images: Array.isArray(input.images) ? input.images : [],
+            gender_preference: String(input.genderPreference ?? 'ANY').toUpperCase(),
+            start_date: input.startDate ?? null,
+            is_premium: false,
+            is_boosted: false,
+            boost_expires_at: null,
+            created_at: timestamp,
+            updated_at: timestamp,
+        };
+        await db.runTransaction(async (tx) => {
+            tx.set(jobRef, jobPayload);
+            normalizedShifts.forEach((shift) => {
+                tx.set(jobRef.collection('shifts').doc(shift.id), {
+                    ...shift,
+                    job_id: jobRef.id,
+                    employer_id: uid,
+                    created_at: timestamp,
+                    updated_at: timestamp,
+                });
+            });
+        });
+        return {
+            jobId: jobRef.id,
+            moderationStatus: 'PENDING_REVIEW',
+            quota: {
+                ...quota,
+                monthlyUsed: quota.monthlyUsed + 1,
+                monthlyRemaining: Math.max(quota.monthlyRemaining - 1, 0),
+                activeShiftUsed: quota.activeShiftUsed + requestedShiftCount,
+                activeShiftRemaining: Math.max(quota.activeShiftRemaining - requestedShiftCount, 0),
+            },
+        };
+    }
+    catch (error) {
+        console.error('[createJobPosting] Error:', error);
+        if (error instanceof https_1.HttpsError)
+            throw error;
+        throw new https_1.HttpsError('internal', `Lỗi hệ thống: ${error.message || 'Không rõ nguyên nhân'}`);
+    }
+});
+exports.reviewJobModeration = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    const uid = assertAuth(request);
+    const input = request.data;
+    await assertAdmin(uid);
+    const jobRef = db.collection('jobs').doc(input.jobId);
+    await db.runTransaction(async (tx) => {
+        const jobSnap = await tx.get(jobRef);
+        if (!jobSnap.exists) {
+            throw new https_1.HttpsError('not-found', 'Không tìm thấy tin tuyển dụng.');
+        }
+        const jobData = jobSnap.data() || {};
+        const employerId = String(jobData.employer_id ?? jobData.employerId ?? '');
+        const reason = String(input.reason ?? '').trim();
+        const action = input.action;
+        if (action === 'REJECT' && reason.length < 5) {
+            throw new https_1.HttpsError('invalid-argument', 'Vui lòng nhập lý do từ chối rõ ràng.');
+        }
+        tx.set(jobRef, {
+            moderation_status: action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
+            moderation_reason: action === 'APPROVE' ? firestore_1.FieldValue.delete() : reason,
+            status: action === 'APPROVE'
+                ? (String(jobData.status ?? '').toUpperCase() === 'CLOSED' ? 'CLOSED' : 'OPEN')
+                : 'DRAFT',
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        if (employerId) {
+            await createNotification(tx, employerId, 'JOB_MODERATION_UPDATE', action === 'APPROVE' ? 'Tin của bạn đã được phê duyệt' : 'Tin của bạn chưa được phê duyệt', action === 'APPROVE'
+                ? `Tin "${String(jobData.title ?? 'Tin tuyển dụng')}" đã được phê duyệt và sẵn sàng hiển thị.`
+                : `Tin "${String(jobData.title ?? 'Tin tuyển dụng')}" bị từ chối. Lý do: ${reason}`, { jobId: input.jobId, action }, 'JOB');
+        }
+    });
+    return { success: true };
+});
+exports.purchaseBoostPackage = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    const uid = assertAuth(request);
+    const input = request.data;
+    const pack = BOOST_PACKAGE_CONFIG[input.packageCode];
+    if (!pack) {
+        throw new https_1.HttpsError('invalid-argument', 'Gói boost không hợp lệ.');
+    }
+    const jobRef = db.collection('jobs').doc(input.jobId);
+    const userRef = db.collection('users').doc(uid);
+    const packageRef = db.collection('packages').doc(input.packageCode);
+    const result = await db.runTransaction(async (tx) => {
+        const [jobSnap, userSnap, packageSnap] = await Promise.all([
+            tx.get(jobRef),
+            tx.get(userRef),
+            tx.get(packageRef),
+        ]);
+        if (!jobSnap.exists || !userSnap.exists) {
+            throw new https_1.HttpsError('not-found', 'Không tìm thấy tin tuyển dụng hoặc ví nhà tuyển dụng.');
+        }
+        const jobData = jobSnap.data() || {};
+        const userData = userSnap.data() || {};
+        if (String(jobData.employer_id ?? jobData.employerId ?? '') !== uid) {
+            throw new https_1.HttpsError('permission-denied', 'Bạn không thể mua gói cho tin tuyển dụng này.');
+        }
+        if (String(jobData.moderation_status ?? 'APPROVED').toUpperCase() !== 'APPROVED') {
+            throw new https_1.HttpsError('failed-precondition', 'Chỉ có thể đẩy top các tin đã được duyệt.');
+        }
+        if (!['OPEN', 'ACTIVE', 'FULL'].includes(String(jobData.status ?? '').toUpperCase())) {
+            throw new https_1.HttpsError('failed-precondition', 'Chỉ có thể đẩy top các tin đang hoạt động.');
+        }
+        const balance = Number(userData.balance ?? 0);
+        if (balance < pack.price) {
+            throw new https_1.HttpsError('failed-precondition', `Số dư không đủ. Bạn cần nạp thêm ${(pack.price - balance).toLocaleString('vi-VN')}đ.`);
+        }
+        const expiresAt = new Date(Date.now() + pack.durationHours * 60 * 60 * 1000);
+        const purchaseRef = db.collection('purchases').doc(normalizeDocumentId(`${input.jobId}_${input.packageCode}_${Date.now()}`));
+        const transactionRef = db.collection('transactions').doc(normalizeDocumentId(`boost_${input.jobId}_${input.packageCode}_${Date.now()}`));
+        if (!packageSnap.exists) {
+            tx.set(packageRef, {
+                code: input.packageCode,
+                name: pack.name,
+                description: pack.description,
+                price: pack.price,
+                duration_hours: pack.durationHours,
+                active: true,
+                created_at: firestore_1.FieldValue.serverTimestamp(),
+                updated_at: firestore_1.FieldValue.serverTimestamp(),
+            });
+        }
+        tx.set(userRef, {
+            balance: balance - pack.price,
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        tx.set(jobRef, {
+            is_boosted: true,
+            is_premium: true,
+            boost_package_code: input.packageCode,
+            boost_expires_at: firestore_1.Timestamp.fromDate(expiresAt),
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        tx.set(purchaseRef, {
+            user_id: uid,
+            job_id: input.jobId,
+            package_code: input.packageCode,
+            package_name: pack.name,
+            amount: pack.price,
+            status: 'ACTIVE',
+            started_at: firestore_1.FieldValue.serverTimestamp(),
+            expires_at: firestore_1.Timestamp.fromDate(expiresAt),
+            created_at: firestore_1.FieldValue.serverTimestamp(),
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        });
+        tx.set(transactionRef, {
+            userId: uid,
+            user_id: uid,
+            type: 'PAYMENT',
+            entry_type: 'DEBIT',
+            amount: -pack.price,
+            description: `Mua gói ${pack.name} cho tin "${String(jobData.title ?? 'Tin tuyển dụng')}"`,
+            related_job_id: input.jobId,
+            status: 'COMPLETED',
+            created_at: firestore_1.FieldValue.serverTimestamp(),
+            createdAt: firestore_1.FieldValue.serverTimestamp(),
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        });
+        await createNotification(tx, uid, 'BOOST_PURCHASED', 'Đẩy top thành công', `Tin "${String(jobData.title ?? 'Tin tuyển dụng')}" được ưu tiên hiển thị tới ${expiresAt.toLocaleString('vi-VN')}.`, { jobId: input.jobId, packageCode: input.packageCode }, 'JOB');
+        return { expiresAt: expiresAt.toISOString(), price: pack.price };
+    });
+    return { success: true, ...result };
+});
+exports.closeJobSafely = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    const uid = assertAuth(request);
+    const input = request.data;
+    const jobRef = db.collection('jobs').doc(input.jobId);
+    const approvedAppsSnap = await db.collection('applications')
+        .where('job_id', '==', input.jobId)
+        .where('status', 'in', ['APPROVED', 'CHECKED_IN'])
         .get();
-    let total = 0;
-    reviewsSnap.docs.forEach((docSnap) => {
-        total += Number(docSnap.data().rating ?? 0);
+    const jobSnap = await jobRef.get();
+    if (!jobSnap.exists) {
+        throw new https_1.HttpsError('not-found', 'Không tìm thấy tin tuyển dụng.');
+    }
+    const jobData = jobSnap.data() || {};
+    if (String(jobData.employer_id ?? jobData.employerId ?? '') !== uid) {
+        throw new https_1.HttpsError('permission-denied', 'Bạn không có quyền đóng tin này.');
+    }
+    let latePenaltyPossible = false;
+    for (const appDoc of approvedAppsSnap.docs) {
+        const hoursUntilShift = await getHoursUntilShift(jobRef, jobData, String(appDoc.data().shift_id ?? appDoc.data().shiftId ?? ''));
+        if (hoursUntilShift !== null && hoursUntilShift < 2) {
+            latePenaltyPossible = true;
+            break;
+        }
+    }
+    if (approvedAppsSnap.size > 0 && !input.confirmed) {
+        return {
+            requiresConfirmation: true,
+            affectedCandidates: approvedAppsSnap.size,
+            latePenaltyPossible,
+        };
+    }
+    await db.runTransaction(async (tx) => {
+        const freshJobSnap = await tx.get(jobRef);
+        if (!freshJobSnap.exists) {
+            throw new https_1.HttpsError('not-found', 'Không tìm thấy tin tuyển dụng.');
+        }
+        const freshJobData = freshJobSnap.data() || {};
+        const employerRef = db.collection('users').doc(uid);
+        const employerSnap = await tx.get(employerRef);
+        const employerRole = getUserRoleFromData(employerSnap.data());
+        tx.set(jobRef, {
+            status: 'CLOSED',
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        for (const appDoc of approvedAppsSnap.docs) {
+            const appData = appDoc.data();
+            tx.set(appDoc.ref, {
+                status: 'CANCELLED',
+                updated_at: firestore_1.FieldValue.serverTimestamp(),
+            }, { merge: true });
+            if (input.notifyCandidates !== false) {
+                const candidateId = String(appData.candidate_id ?? appData.candidateId ?? '');
+                if (candidateId) {
+                    await createNotification(tx, candidateId, 'JOB_CLOSED', 'Nhà tuyển dụng đã đóng tin', `Tin "${String(freshJobData.title ?? 'Tin tuyển dụng')}" đã được đóng và ca làm của bạn không còn hiệu lực.`, { jobId: input.jobId, applicationId: appDoc.id }, 'JOB');
+                }
+            }
+        }
+        if (!approvedAppsSnap.empty && employerRole === 'EMPLOYER') {
+            await (0, reputation_1.applyReputationAction)({
+                tx,
+                db,
+                userId: uid,
+                userRole: employerRole,
+                userData: employerSnap.data() || {},
+                actionCode: latePenaltyPossible ? 'E_CANCEL_L2' : 'E_CANCEL_POST',
+                dedupeKey: `close_${input.jobId}`,
+                jobId: input.jobId,
+                actorId: uid,
+                metadata: {
+                    source: 'closeJobSafely',
+                    impacted_applications: approvedAppsSnap.size,
+                    notified_candidates: input.notifyCandidates !== false,
+                },
+            });
+        }
     });
-    const average = reviewsSnap.size > 0 ? Number((total / reviewsSnap.size).toFixed(2)) : 0;
-    await db.collection('users').doc(input.revieweeId).set({
-        reputation_score: average,
-        updated_at: firestore_1.FieldValue.serverTimestamp(),
-    }, { merge: true });
     return {
-        reviewId,
-        updatedReputationScore: average,
+        success: true,
+        requiresConfirmation: false,
+        affectedCandidates: approvedAppsSnap.size,
+        latePenaltyPossible,
     };
 });
 /* ── Firestore Triggers ────────────────────────── */
@@ -701,4 +2026,152 @@ exports.onApplicationCreated = (0, firestore_2.onDocumentCreated)({
     };
     await notifRef.set(notificationPayload);
     console.log(`[onApplicationCreated] Notification created for employer ${employerId} on application ${event.params.applicationId}`, notificationPayload);
+});
+exports.onNotificationCreated = (0, firestore_2.onDocumentCreated)({
+    document: 'notifications/{notificationId}',
+    region: 'asia-southeast1',
+}, async (event) => {
+    const snapshot = event.data;
+    if (!snapshot)
+        return;
+    try {
+        await sendPushForNotification(snapshot.data());
+    }
+    catch (error) {
+        console.error(`[onNotificationCreated] Failed to send push for ${event.params.notificationId}:`, error);
+    }
+});
+exports.onJobCreated = (0, firestore_2.onDocumentCreated)({
+    document: 'jobs/{jobId}',
+    region: 'asia-southeast1',
+}, async (event) => {
+    const snapshot = event.data;
+    if (!snapshot)
+        return;
+    const jobData = snapshot.data();
+    const employerId = String(jobData.employer_id ?? jobData.employerId ?? '').trim();
+    const jobTitle = String(jobData.title ?? 'Công việc mới').trim();
+    if (!employerId)
+        return;
+    const followSnap = await db.collection('follows').where('employer_id', '==', employerId).get();
+    if (followSnap.empty)
+        return;
+    await Promise.all(followSnap.docs.map(async (followDoc) => {
+        const followerId = String(followDoc.data().follower_id ?? '').trim();
+        if (!followerId)
+            return;
+        await createNotificationDoc(followerId, 'JOB_RECOMMENDATION', 'Nhà tuyển dụng bạn theo dõi vừa đăng tin mới', `${jobTitle}`, { jobId: event.params.jobId, employerId }, 'JOB');
+    }));
+});
+exports.sendShiftReminders = (0, scheduler_1.onSchedule)({
+    schedule: 'every 30 minutes',
+    region: 'asia-southeast1',
+    timeZone: 'Asia/Ho_Chi_Minh',
+}, async () => {
+    const now = new Date();
+    const approvedAppsSnap = await db.collection('applications').where('status', '==', 'APPROVED').get();
+    await Promise.all(approvedAppsSnap.docs.map(async (appDoc) => {
+        const appData = appDoc.data();
+        if (appData.shift_reminder_sent_at)
+            return;
+        const candidateId = String(appData.candidate_id ?? appData.candidateId ?? '').trim();
+        const employerId = String(appData.employer_id ?? appData.employerId ?? '').trim();
+        const jobId = String(appData.job_id ?? appData.jobId ?? '').trim();
+        const shiftId = String(appData.shift_id ?? appData.shiftId ?? '').trim();
+        if (!candidateId || !jobId || !shiftId)
+            return;
+        const jobSnap = await db.collection('jobs').doc(jobId).get();
+        if (!jobSnap.exists)
+            return;
+        const jobData = jobSnap.data() || {};
+        const shiftWindow = await getShiftWindow(jobSnap.ref, jobData, shiftId);
+        if (!shiftWindow)
+            return;
+        const minutesUntilShift = Math.round((shiftWindow.start.getTime() - now.getTime()) / (1000 * 60));
+        if (minutesUntilShift < 0 || minutesUntilShift > 120)
+            return;
+        await createNotificationDoc(candidateId, 'SHIFT_REMINDER', 'Nhắc ca làm sắp bắt đầu', `Ca làm tại ${String(jobData.employer_name ?? jobData.employerName ?? employerId)} bắt đầu lúc ${shiftWindow.startTime}. Đừng quên!`, { applicationId: appDoc.id, jobId, shiftId }, 'SHIFT');
+        await appDoc.ref.set({
+            shift_reminder_sent_at: firestore_1.FieldValue.serverTimestamp(),
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+    }));
+});
+exports.expireBoostedJobs = (0, scheduler_1.onSchedule)({
+    schedule: 'every 60 minutes',
+    region: 'asia-southeast1',
+    timeZone: 'Asia/Ho_Chi_Minh',
+}, async () => {
+    const now = firestore_1.Timestamp.now();
+    const boostedJobsSnap = await db.collection('jobs')
+        .where('is_boosted', '==', true)
+        .where('boost_expires_at', '<=', now)
+        .get();
+    await Promise.all(boostedJobsSnap.docs.map(async (jobDoc) => {
+        await jobDoc.ref.set({
+            is_boosted: false,
+            boost_package_code: firestore_1.FieldValue.delete(),
+            boost_expires_at: firestore_1.FieldValue.delete(),
+            updated_at: firestore_1.FieldValue.serverTimestamp(),
+        }, { merge: true });
+    }));
+});
+exports.penalizeNoShowCandidates = (0, scheduler_1.onSchedule)({
+    schedule: 'every 60 minutes',
+    region: 'asia-southeast1',
+    timeZone: 'Asia/Ho_Chi_Minh',
+}, async () => {
+    const approvedAppsSnap = await db.collection('applications').where('status', '==', 'APPROVED').get();
+    await Promise.all(approvedAppsSnap.docs.map(async (appDoc) => {
+        const appData = appDoc.data();
+        if (appData.no_show_penalized_at)
+            return;
+        const candidateId = String(appData.candidate_id ?? appData.candidateId ?? '').trim();
+        const shiftId = String(appData.shift_id ?? appData.shiftId ?? '').trim();
+        const jobId = String(appData.job_id ?? appData.jobId ?? '').trim();
+        if (!candidateId || !shiftId || !jobId)
+            return;
+        const jobSnap = await db.collection('jobs').doc(jobId).get();
+        if (!jobSnap.exists)
+            return;
+        const shiftWindow = await getShiftWindow(jobSnap.ref, jobSnap.data() || {}, shiftId);
+        if (!shiftWindow)
+            return;
+        if ((Date.now() - shiftWindow.start.getTime()) < (30 * 60 * 1000))
+            return;
+        await db.runTransaction(async (tx) => {
+            const [freshAppSnap, candidateSnap] = await Promise.all([
+                tx.get(appDoc.ref),
+                tx.get(db.collection('users').doc(candidateId)),
+            ]);
+            if (!freshAppSnap.exists)
+                return;
+            const freshAppData = freshAppSnap.data() || {};
+            if (String(freshAppData.status ?? '').toUpperCase() !== 'APPROVED' || freshAppData.no_show_penalized_at) {
+                return;
+            }
+            const candidateRole = getUserRoleFromData(candidateSnap.data());
+            if (candidateRole !== 'CANDIDATE')
+                return;
+            await (0, reputation_1.applyReputationAction)({
+                tx,
+                db,
+                userId: candidateId,
+                userRole: candidateRole,
+                userData: candidateSnap.data() || {},
+                actionCode: 'C_NOSHOW',
+                dedupeKey: appDoc.id,
+                jobId,
+                applicationId: appDoc.id,
+                shiftId,
+                actorId: candidateId,
+                metadata: { source: 'penalizeNoShowCandidates' },
+            });
+            tx.set(appDoc.ref, {
+                no_show_penalized_at: firestore_1.FieldValue.serverTimestamp(),
+                updated_at: firestore_1.FieldValue.serverTimestamp(),
+            }, { merge: true });
+            await createNotification(tx, candidateId, 'NO_SHOW_PENALTY', 'Bạn bị đánh dấu bỏ ca', `Bạn bị trừ điểm uy tín do không check-in đúng giờ cho công việc "${String(jobSnap.data()?.title ?? 'Công việc')}".`, { applicationId: appDoc.id, jobId, shiftId }, 'SHIFT');
+        });
+    }));
 });

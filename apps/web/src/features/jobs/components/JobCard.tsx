@@ -1,8 +1,8 @@
 import { useNavigate } from '@tanstack/react-router';
-import { Heart } from 'lucide-react';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useIsJobWishlisted, useToggleWishlist } from '@/features/jobs/hooks/useWishlistJobs';
 import { MouseEvent } from 'react';
+import { toast } from 'sonner';
 
 export interface JobCardProps {
     id: string;
@@ -13,6 +13,7 @@ export interface JobCardProps {
     shift: string;
     logoUrl: string;
     hasVerifiedBadge?: boolean;
+    detailVariant?: 'candidate' | 'public';
 }
 
 export function JobCard({
@@ -23,7 +24,8 @@ export function JobCard({
     distance,
     shift,
     logoUrl,
-    hasVerifiedBadge
+    hasVerifiedBadge,
+    detailVariant = 'candidate',
 }: JobCardProps) {
     const navigate = useNavigate();
     const { userProfile } = useAuth();
@@ -34,7 +36,8 @@ export function JobCard({
     const handleToggleWishlist = async (e: MouseEvent) => {
         e.stopPropagation();
         if (!userProfile?.uid) {
-            // Optional: Redirect to login or show toast
+            toast.error('Vui lòng đăng nhập để lưu việc làm');
+            navigate({ to: '/login' });
             return;
         }
 
@@ -52,47 +55,61 @@ export function JobCard({
     return (
         <div
             onClick={() => {
-                navigate({ to: '/candidate/jobs/$jobId', params: { jobId: id } });
+                navigate({
+                    to: detailVariant === 'public' ? '/jobs/$jobId' : '/candidate/jobs/$jobId',
+                    params: { jobId: id },
+                } as any);
             }}
-            className="bg-white rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:bg-slate-50 transition-colors shadow-sm border border-slate-100"
+            className="bg-white rounded-xl p-5 flex flex-col gap-4 relative overflow-hidden group hover:translate-y-[-2px] transition-transform cursor-pointer shadow-[0_4px_24px_-2px_rgba(124,131,155,0.04)]"
         >
-            <div className="relative">
-                <div className="w-[60px] h-[60px] rounded-full overflow-hidden shrink-0 border border-slate-200">
-                    <img src={logoUrl} alt={companyName} className="w-full h-full object-cover bg-slate-50" />
+            {/* Top Section: Logo + Title + Company + Badge */}
+            <div className="flex items-start justify-between">
+                <div className="flex gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-[#ECEEF0] overflow-hidden flex-shrink-0">
+                        <img src={logoUrl} alt={companyName} className="w-full h-full object-cover" />
+                    </div>
+                    <div>
+                        <h3 className="font-headline font-bold text-lg text-[#191C1E] leading-tight">{title}</h3>
+                        <p className="text-[#45464D] text-sm mt-1 font-medium flex items-center gap-1">
+                            {companyName}
+                            {hasVerifiedBadge && (
+                                <span className="text-amber-500 flex items-center">
+                                    <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                                    4.8
+                                </span>
+                            )}
+                        </p>
+                    </div>
                 </div>
-                {hasVerifiedBadge && (
-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full"></div>
-                )}
             </div>
 
-            <div className="flex-1 min-w-0 py-1">
-                <div className="flex justify-between items-start mb-0.5">
-                    <h3 className="font-bold text-[16px] text-slate-900 truncate pr-2">{title}</h3>
-                    <button
-                        type="button"
-                        onClick={handleToggleWishlist}
-                        disabled={toggleWishlistMutation.isPending}
-                        className={`transition-colors shrink-0 p-1.5 rounded-full ${isWishlisted
-                                ? 'bg-red-50 text-red-500 hover:bg-red-100'
-                                : 'bg-slate-50 text-slate-400 hover:text-red-500 hover:bg-slate-100'
-                            }`}
+            {/* Bottom Section: Salary + Meta + Bookmark */}
+            <div className="flex items-center justify-between border-t border-[#F2F4F6] pt-4">
+                <div className="flex flex-col">
+                    <span className="text-[#006399] font-bold text-lg">{wage}</span>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className="text-[#45464D] text-xs">{distance}</span>
+                        <span className="w-1 h-1 rounded-full bg-[#C6C6CD]" />
+                        <span className="text-[#45464D] text-xs">{shift}</span>
+                    </div>
+                </div>
+                <button
+                    type="button"
+                    onClick={handleToggleWishlist}
+                    disabled={toggleWishlistMutation.isPending}
+                    className={`p-2.5 rounded-full transition-colors ${
+                        isWishlisted
+                            ? 'bg-[#006399]/20 text-[#006399]'
+                            : 'bg-[#006399]/10 text-[#006399] hover:bg-[#006399]/20'
+                    }`}
+                >
+                    <span
+                        className="material-symbols-outlined"
+                        style={{ fontVariationSettings: isWishlisted ? "'FILL' 1" : "'FILL' 0" }}
                     >
-                        <Heart className={`w-4 h-4 ${isWishlisted ? 'fill-current' : ''}`} />
-                    </button>
-                </div>
-
-                <p className="text-[13px] text-slate-500 mb-2 truncate">
-                    {companyName} <span className="text-slate-300">•</span> {distance}
-                </p>
-
-                <div className="flex flex-wrap items-center gap-2">
-                    <div className="bg-blue-50 border border-blue-100 text-blue-600 text-[12px] px-2.5 py-1 rounded-md font-medium">
-                        {shift}
-                    </div>
-                    <div className="bg-emerald-50 border border-emerald-100 text-emerald-600 text-[12px] px-2.5 py-1 rounded-md font-medium">
-                        {wage}
-                    </div>
-                </div>
+                        bookmark
+                    </span>
+                </button>
             </div>
         </div>
     );

@@ -1,8 +1,8 @@
-import { collection, getDocs, query, where, limit, doc, getDoc, updateDoc, addDoc, serverTimestamp, onSnapshot, type Unsubscribe } from 'firebase/firestore';
-import { db } from '@/config/firebase';
+import { collection, getDocs, query, where, limit, doc, getDoc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '@/config/firebase';
 import type { Application, ApplicationStatus } from '@jobnow/types';
 import { mapApplicationDocToApplication } from './adapters';
-import { processAppPayment } from '@/features/wallet/services/walletService';
 
 function dedupeById(items: Application[]): Application[] {
     const map = new Map<string, Application>();
@@ -216,59 +216,12 @@ export async function updateApplicationStatus(
     status: ApplicationStatus
 ): Promise<Application> {
     try {
-        const applicationRef = doc(db, 'applications', applicationId);
-        const appSnap = await getDoc(applicationRef);
-        
-        if (!appSnap.exists()) {
-            throw new Error('Đơn ứng tuyển không tồn tại.');
-        }
-
-        const appData = appSnap.data() as Record<string, unknown>;
-        
-        await updateDoc(applicationRef, {
-            status: status,
-            updated_at: serverTimestamp()
-        });
-
-        const updatedData = { ...appData, status };
-
-        if (status === 'APPROVED' || status === 'REJECTED') {
-            const candidateId = String(appData.candidate_id || appData.candidateId || '');
-            const jobId = String(appData.job_id || appData.jobId || '');
-            
-            let jobTitle = 'Công việc';
-            if (jobId) {
-                const jobRef = doc(db, 'jobs', jobId);
-                const jobSnap = await getDoc(jobRef);
-                if (jobSnap.exists()) {
-                     jobTitle = String(jobSnap.data()?.title || 'Công việc');
-                }
-            }
-
-            const title = status === 'APPROVED' ? 'Ứng tuyển thành công' : 'Kết quả ứng tuyển';
-            const body = status === 'APPROVED' 
-                ? `Đơn ứng tuyển của bạn cho công việc "${jobTitle}" đã được duyệt.`
-                : `Rất tiếc, đơn ứng tuyển của bạn cho công việc "${jobTitle}" không được duyệt lần này.`;
-
-            await addDoc(collection(db, 'notifications'), {
-                userId: candidateId,
-                user_id: candidateId,
-                type: `APPLICATION_${status}`,
-                category: 'APPLICATION',
-                title: title,
-                body: body,
-                data: {
-                    applicationId: applicationId,
-                    jobId: jobId,
-                    status: status
-                },
-                isRead: false,
-                is_read: false,
-                created_at: serverTimestamp(),
-            });
-        }
-
-        return mapApplicationDocToApplication(appSnap.id, updatedData);
+        const callable = httpsCallable<
+            { applicationId: string; status: ApplicationStatus },
+            { application: Record<string, unknown> }
+        >(functions, 'updateApplicationStatus');
+        const { data } = await callable({ applicationId, status });
+        return mapApplicationDocToApplication(applicationId, data.application as Record<string, unknown>);
     } catch (error: any) {
         console.error('Lỗi chi tiết khi updateApplicationStatus:', error);
         if (error?.code) {
@@ -287,92 +240,24 @@ export async function completeApplicationWithPayment(
     employerId: string
 ): Promise<Application> {
     try {
-        const appRef = doc(db, 'applications', applicationId);
-        const appSnap = await getDoc(appRef);
-        
-        if (!appSnap.exists()) {
-            throw new Error('Đơn ứng tuyển không tồn tại.');
-        }
-
-        const data = appSnap.data();
-        const candidateId = String(data.candidate_id || data.candidateId || '');
-        const jobId = String(data.job_id || data.jobId || '');
-
-        // 1. Update Application status and payment info
-        const newStatus = paymentMethod === 'CASH' ? 'CASH_CONFIRMATION' : 'COMPLETED';
-        const newPaymentStatus = paymentMethod === 'CASH' ? 'PROCESSING' : 'PAID';
-
-        await updateDoc(appRef, {
-            status: newStatus,
-            payment_status: newPaymentStatus,
-            payment_method: paymentMethod,
-            employerId: employerId, // Ensure employer info is on the app doc if not already
-            updated_at: serverTimestamp()
-        });
-
-        // 2. Handle Wallet transaction (simulation)
         if (paymentMethod === 'APP') {
-            // Get salary from job
-            let amount = 0;
-            let jobTitle = 'Công việc';
-            if (jobId) {
-                const jobSnap = await getDoc(doc(db, 'jobs', jobId));
-                if (jobSnap.exists()) {
-                    const jobData = jobSnap.data();
-                    const salary = Number(jobData.salary || 0);
-                    // Critical: salary_type is stored in snake_case in Firestore
-                    const sTypeRaw = jobData.salary_type || jobData.salaryType || 'HOURLY';
-                    jobTitle = String(jobData.title || 'Công việc');
-
-                    if (sTypeRaw === 'HOURLY') {
-                        // Calculate actual hours worked
-                        const checkInMillis = timestampToMillis(data.check_in_time || data.checkInTime);
-                        const checkOutMillis = timestampToMillis(data.check_out_time || data.checkOutTime || Date.now());
-
-                        if (checkInMillis > 0 && checkOutMillis > checkInMillis) {
-                            const hoursWorked = (checkOutMillis - checkInMillis) / (1000 * 60 * 60);
-                            // Round to 2 decimal places or as per business rules
-                            amount = Math.round(hoursWorked * salary);
-                            console.log(`[applicationService] Hourly calc for ${applicationId}: ${hoursWorked.toFixed(2)}h * ${salary} = ${amount}`);
-                        } else {
-                            // Fallback if timings are missing
-                            amount = salary; 
-                            console.warn(`[applicationService] Missing timings for ${applicationId}, paying flat rate: ${amount}`);
-                        }
-                    } else {
-                        amount = salary;
-                        console.log(`[applicationService] Flat pay for ${applicationId} (${sTypeRaw}): ${amount}`);
-                    }
-                }
-            }
-
-            if (amount > 0) {
-                await processAppPayment(employerId, candidateId, amount, jobTitle, applicationId);
-                console.log(`[applicationService] Processed APP payment of ${amount} to ${candidateId} from ${employerId}`);
-            }
+            const callable = httpsCallable<
+                { applicationId: string; employerId: string },
+                { amount: number; candidateId: string; employerId: string; jobTitle: string }
+            >(functions, 'processPayment');
+            await callable({ applicationId, employerId });
+        } else {
+            const callable = httpsCallable<
+                { applicationId: string; employerId: string },
+                { success: boolean }
+            >(functions, 'markCashPayment');
+            await callable({ applicationId, employerId });
         }
 
-        // 3. Notify candidate
-        let jobTitle = 'Công việc';
-        if (jobId) {
-            const jobSnap = await getDoc(doc(db, 'jobs', jobId));
-            if (jobSnap.exists()) jobTitle = jobSnap.data().title;
+        const refreshed = await getDoc(doc(db, 'applications', applicationId));
+        if (!refreshed.exists()) {
+            throw new Error('Không tìm thấy đơn ứng tuyển sau khi cập nhật thanh toán.');
         }
-
-        await addDoc(collection(db, 'notifications'), {
-            userId: candidateId,
-            user_id: candidateId,
-            type: paymentMethod === 'CASH' ? 'PAYMENT_CONFIRM_REQUIRED' : 'PAYMENT_RECEIVED',
-            category: 'SYSTEM',
-            title: paymentMethod === 'CASH' ? 'Nhà tuyển dụng đã thanh toán' : 'Thanh toán thành công',
-            body: paymentMethod === 'CASH' 
-                ? `Nhà tuyển dụng đã đánh dấu thanh toán TIỀN MẶT cho "${jobTitle}". Vui lòng xác nhận nếu bạn đã nhận đủ tiền.`
-                : `Bạn đã được thanh toán cho công việc "${jobTitle}" qua hình thức Ứng dụng.`,
-            isRead: false,
-            created_at: serverTimestamp(),
-        });
-
-        const refreshed = await getDoc(appRef);
         return mapApplicationDocToApplication(refreshed.id, refreshed.data() as any);
     } catch (error: any) {
         console.error('Error in completeApplicationWithPayment:', error);
@@ -387,14 +272,16 @@ export async function confirmPaymentReceived(applicationId: string): Promise<App
     try {
         const appRef = doc(db, 'applications', applicationId);
         const appSnap = await getDoc(appRef);
-        
         if (!appSnap.exists()) throw new Error('Đơn ứng tuyển không tồn tại.');
 
-        await updateDoc(appRef, {
-            status: 'COMPLETED',
-            payment_status: 'PAID',
-            updated_at: serverTimestamp()
-        });
+        const appData = appSnap.data();
+        const candidateId = String(appData.candidate_id || appData.candidateId || '');
+
+        const callable = httpsCallable<
+            { applicationId: string; candidateId: string },
+            { success: boolean }
+        >(functions, 'confirmCashPaymentReceived');
+        await callable({ applicationId, candidateId });
 
         const refreshed = await getDoc(appRef);
         return mapApplicationDocToApplication(refreshed.id, refreshed.data() as any);

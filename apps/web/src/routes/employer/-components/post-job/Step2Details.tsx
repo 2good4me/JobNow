@@ -1,4 +1,5 @@
 import { CalendarClock, LocateFixed, MapPin, Navigation, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 import { genderOptions, type JobFormState } from '../../post-job';
 
 interface Step2DetailsProps {
@@ -21,12 +22,12 @@ export default function Step2Details({ form, setForm, errors, locationGpsError }
         },
         (error) => {
           console.error('Geolocation error:', error);
-          alert('Không thể lấy vị trí GPS. Vui lòng kiểm tra quyền truy cập.');
+          toast.error('Không thể lấy vị trí GPS. Vui lòng kiểm tra quyền truy cập.');
         },
         { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
       );
     } else {
-      alert('Trình duyệt của bạn không hỗ trợ Geolocation API.');
+      toast.error('Trình duyệt của bạn không hỗ trợ Geolocation API.');
     }
   };
 

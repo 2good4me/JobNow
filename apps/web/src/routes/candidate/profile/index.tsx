@@ -1,29 +1,11 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useState } from 'react';
-import {
-    BadgeCheck,
-    Briefcase,
-    ChevronRight,
-    FileCheck2,
-    Heart,
-    LifeBuoy,
-    LogOut,
-    MapPin,
-    Pencil,
-    Phone,
-    Wallet,
-    GraduationCap,
-    ExternalLink,
-    Settings,
-    ShieldCheck,
-} from 'lucide-react';
 import { useMyApplicationsRealtime } from '@/features/jobs/hooks/useMyApplicationsRealtime';
-import { ReputationStatsCard } from '@/features/auth/components/ReputationStatsCard';
+import { getProgressToNextTier, getReputationTier } from '@/features/auth/helpers/reputationHelper';
+import { getFollowingCount } from '@/features/auth/services/followService';
 import { AchievementBadges, CANDIDATE_ACHIEVEMENTS } from '@/features/auth/components/AchievementBadges';
-import { getFollowerCount, getFollowingCount } from '@/features/auth/services/followService';
 import { useEffect } from 'react';
-import { FollowListDialog } from '@/components/ui/FollowListDialog';
 
 export const Route = createFileRoute('/candidate/profile/')({
     component: CandidateProfilePage,
@@ -31,45 +13,23 @@ export const Route = createFileRoute('/candidate/profile/')({
 
 function ProfileSkeleton() {
     return (
-        <div className="animate-pulse pb-24">
-            <div className="bg-gradient-to-br from-[#1e3a5f] to-[#0f172a] pt-14 pb-16 px-5 rounded-b-[2.5rem]">
-                <div className="h-6 w-40 bg-white/20 rounded-lg mb-6" />
-                <div className="flex flex-col items-center gap-3">
-                    <div className="w-24 h-24 bg-white/20 rounded-full" />
-                    <div className="h-6 w-44 bg-white/20 rounded-lg" />
-                    <div className="h-5 w-32 bg-white/10 rounded-full" />
+        <div className="animate-pulse pb-24 min-h-[100dvh] bg-slate-50">
+            <div className="bg-white px-5 pt-14 pb-6 border-b border-slate-100 flex justify-between items-center">
+                <div className="space-y-3">
+                    <div className="h-7 w-40 bg-slate-200 rounded-lg" />
+                    <div className="h-4 w-32 bg-slate-100 rounded-md" />
                 </div>
+                <div className="w-16 h-16 bg-slate-200 rounded-full" />
             </div>
-            <div className="px-5 -mt-6 space-y-4">
-                <div className="h-20 bg-white rounded-2xl" />
-                <div className="h-40 bg-white rounded-2xl" />
-                <div className="h-48 bg-white rounded-2xl" />
-            </div>
-        </div>
-    );
-}
-
-/* ── Inline Skeleton for data sections ── */
-function StatsSkeleton() {
-    return (
-        <div className="animate-pulse bg-white/90 backdrop-blur-md rounded-2xl p-4 shadow-sm border border-slate-100 grid grid-cols-3 divide-x divide-slate-100">
-            {[1, 2, 3].map(i => (
-                <div key={i} className="text-center px-2 space-y-2">
-                    <div className="h-3 w-10 bg-slate-200 rounded mx-auto" />
-                    <div className="h-6 w-8 bg-slate-200 rounded mx-auto" />
+            <div className="px-5 py-6 space-y-6">
+                <div className="h-24 bg-slate-200 rounded-2xl" />
+                <div className="h-20 bg-slate-200 rounded-xl" />
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="h-20 bg-slate-200 rounded-2xl" />
+                    <div className="h-20 bg-slate-200 rounded-2xl" />
                 </div>
-            ))}
-        </div>
-    );
-}
-
-function ListSkeleton() {
-    return (
-        <div className="animate-pulse bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-3">
-            <div className="h-4 w-28 bg-slate-200 rounded" />
-            {[1, 2].map(i => (
-                <div key={i} className="h-14 bg-slate-100 rounded-xl" />
-            ))}
+                <div className="h-64 bg-slate-200 rounded-[24px]" />
+            </div>
         </div>
     );
 }
@@ -78,38 +38,23 @@ function CandidateProfilePage() {
     const { userProfile, signOut } = useAuth();
     const navigate = useNavigate();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
-    const [followerCount, setFollowerCount] = useState(0);
     const [followingCount, setFollowingCount] = useState(0);
-    const [followDialog, setFollowDialog] = useState<{ isOpen: boolean; type: 'followers' | 'following' }>({
-        isOpen: false,
-        type: 'followers'
-    });
 
-    useEffect(() => {
-        if (userProfile?.uid) {
-            getFollowerCount(userProfile.uid).then(setFollowerCount);
-            getFollowingCount(userProfile.uid).then(setFollowingCount);
-        }
-    }, [userProfile?.uid]);
-
-    // Fetch real applications data
-    const { data: applications = [], isLoading: isAppsLoading } = useMyApplicationsRealtime({
+    // Fetch real applications data just for counts
+    const { data: applications = [] } = useMyApplicationsRealtime({
         candidateId: userProfile?.uid,
         limit: 100,
     });
 
-    const activeShiftsCount = applications.filter((app) => app.status === 'APPROVED' || app.status === 'CHECKED_IN').length;
-    const completedShiftsCount = applications.filter((app) => app.status === 'COMPLETED').length;
+    const activeApplications = applications.filter(
+        (app) => app.status === 'PENDING' || app.status === 'APPROVED' || app.status === 'CHECKED_IN'
+    ).length;
 
-    // Dynamic data for Rating
-    const avgRating = userProfile?.average_rating || 0;
-    const ratingText = avgRating > 0 ? avgRating.toFixed(1) : 'Mới';
-
-    const stats = {
-        rating: ratingText,
-        activeShifts: activeShiftsCount,
-        completedShifts: completedShiftsCount
-    };
+    useEffect(() => {
+        if (userProfile?.uid) {
+            getFollowingCount(userProfile.uid).then(setFollowingCount).catch(console.error);
+        }
+    }, [userProfile?.uid]);
 
     const handleLogout = async () => {
         try {
@@ -127,347 +72,195 @@ function CandidateProfilePage() {
         return <ProfileSkeleton />;
     }
 
-    const verificationStatus = userProfile.verification_status || 'UNVERIFIED';
-    const verificationBadge = verificationStatus === 'VERIFIED'
-        ? { color: 'bg-emerald-500', text: 'Đã xác minh' }
-        : verificationStatus === 'PENDING'
-            ? { color: 'bg-amber-500', text: 'Đang xét duyệt' }
-            : { color: 'bg-slate-400', text: 'Chưa xác minh' };
-
     const displayName = userProfile.full_name || 'Ứng viên';
     const avatarInitial = (userProfile.full_name?.[0] || 'U').toUpperCase();
+    const reputationScore = userProfile.reputation_score || 0;
+    const tierInfo = getReputationTier(reputationScore);
+    const tierProgress = getProgressToNextTier(reputationScore);
 
     return (
-        <div className="flex flex-col min-h-[100dvh] bg-slate-50 pb-24 max-w-lg mx-auto w-full relative shadow-sm">
-            {/* ── Navy Header ── */}
-            <div className="bg-gradient-to-br from-[#1e3a5f] to-[#0f172a] pt-12 pb-16 px-5 rounded-b-[2.5rem] shadow-xl relative overflow-hidden">
-                <div className="absolute -top-20 -right-20 w-64 h-64 bg-blue-400/10 rounded-full blur-3xl" />
-                <div className="absolute top-24 -left-12 w-40 h-40 bg-cyan-400/15 rounded-full blur-3xl" />
-
-                <div className="relative z-10">
-                    <div className="flex items-center justify-between mb-8">
-                        <h1 className="text-lg font-bold text-white/90 tracking-tight">Tài khoản</h1>
+        <div className="min-h-[100dvh] bg-slate-50 pb-24">
+            {/* Header Section */}
+            <div className="bg-white px-5 pt-14 pb-6 border-b border-slate-100/60 shadow-sm shadow-slate-100/50">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="text-[22px] font-headline font-bold text-slate-900 leading-tight">
+                            {displayName}
+                        </h2>
+                        <p className="text-[13px] font-medium text-slate-500 mt-1 flex items-center gap-1.5">
+                            Lao động tự do
+                            {userProfile.address_text && (
+                                <>
+                                    <span className="text-slate-300">•</span>
+                                    <span className="truncate max-w-[120px] inline-block align-bottom">{userProfile.address_text}</span>
+                                </>
+                            )}
+                        </p>
                     </div>
-
-                    <div className="flex flex-col items-center">
-                        <div className="relative mb-4">
-                            <div className="w-[88px] h-[88px] bg-white rounded-2xl p-1 shadow-xl">
-                                {userProfile.avatar_url ? (
-                                    <img
-                                        src={userProfile.avatar_url}
-                                        alt="Avatar"
-                                        className="w-full h-full rounded-xl object-cover bg-slate-100"
-                                        loading="lazy"
-                                    />
-                                ) : (
-                                    <div className="w-full h-full rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center">
-                                        <span className="text-3xl font-bold text-white">{avatarInitial}</span>
-                                    </div>
-                                )}
-                            </div>
-                            <div className={`absolute -bottom-1.5 -right-1.5 ${verificationBadge.color} text-white p-1.5 rounded-full border-2 border-[#1e3a5f] shadow-md`}>
-                                <BadgeCheck className="w-4 h-4" />
-                            </div>
-                        </div>
-
-                        <h2 className="text-xl font-bold text-white mb-1.5">{displayName}</h2>
-                        <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${verificationBadge.color} text-white`}>
-                            {verificationBadge.text}
-                        </span>
-
-                        <div className="flex items-center gap-4 mt-4 text-white/80">
-                            <button
-                                onClick={() => setFollowDialog({ isOpen: true, type: 'followers' })}
-                                className="flex flex-col items-center hover:opacity-80 transition-opacity"
-                            >
-                                <span className="text-lg font-bold text-white">{followerCount}</span>
-                                <span className="text-[11px] font-medium uppercase tracking-wider">Người theo dõi</span>
-                            </button>
-                            <div className="w-px h-8 bg-white/20" />
-                            <button
-                                onClick={() => setFollowDialog({ isOpen: true, type: 'following' })}
-                                className="flex flex-col items-center hover:opacity-80 transition-opacity"
-                            >
-                                <span className="text-lg font-bold text-white">{followingCount}</span>
-                                <span className="text-[11px] font-medium uppercase tracking-wider">Đang theo dõi</span>
-                            </button>
+                    <div className="relative shrink-0">
+                        <div className="w-16 h-16 rounded-full overflow-hidden border border-slate-100 shadow-sm bg-slate-50">
+                            {userProfile.avatar_url ? (
+                                <img
+                                    src={userProfile.avatar_url}
+                                    alt="Avatar"
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50/50 text-blue-600 font-headline font-bold text-xl">
+                                    {avatarInitial}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* ── Content ── */}
-            <div className="px-5 -mt-7 relative z-20 space-y-4">
-
-                {/* Trust + Rating card */}
-                {isAppsLoading ? <StatsSkeleton /> : (
-                    <ReputationStatsCard
-                        reputationScore={userProfile.reputation_score || 0}
-                        averageRating={userProfile.average_rating || 0}
-                        statValue={stats.completedShifts}
-                        statLabel="Ca Làm"
-                        statIcon={Briefcase}
-                        onViewDetails={() => navigate({ to: '/candidate/profile/reputation' })}
-                    />
-                )}
-
-                {/* Achievement Badges Section */}
-                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-                    <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-[13px] font-bold text-slate-400 uppercase tracking-wider">
-                            Huy Hiệu & Thành Tựu
-                        </h3>
-                        <Link
-                            to="/candidate/profile/settings"
-                            className="text-xs font-semibold text-blue-600"
-                        >
-                            Xem tất cả
-                        </Link>
-                    </div>
-                    <AchievementBadges
-                        achievements={CANDIDATE_ACHIEVEMENTS.map(item => ({
-                            ...item,
-                            unlocked: userProfile.achievements?.includes(item.id) ?? false,
-                        }))}
-                        maxDisplay={6}
-                        size="md"
-                    />
-                </div>
-
-                {/* Verification badges & Info */}
-                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-                    <div className="flex flex-wrap gap-2 mb-3">
-                        {verificationStatus === 'VERIFIED' && (
-                            <span className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-                                <FileCheck2 className="h-3.5 w-3.5" /> CCCD đã xác minh
-                            </span>
-                        )}
-                        {verificationStatus === 'PENDING' && (
-                            <span className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
-                                <FileCheck2 className="h-3.5 w-3.5" /> Đang xét duyệt CCCD
-                            </span>
-                        )}
-                        {verificationStatus === 'UNVERIFIED' && (
-                            <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
-                                <FileCheck2 className="h-3.5 w-3.5" /> Chưa xác minh CCCD
-                            </span>
-                        )}
-                        <span className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
-                            <ShieldCheck className="h-3.5 w-3.5" /> eKYC cá nhân
-                        </span>
-                    </div>
-
-                    <Link
-                        to="/candidate/verification"
-                        className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50 to-cyan-50 px-3.5 py-3 transition-colors hover:from-indigo-100 hover:to-cyan-100"
-                    >
-                        <div className="flex items-center gap-2.5">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm">
-                                <ShieldCheck className="h-4 w-4" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-bold text-slate-800">Trung tâm xác thực</p>
-                                <p className="text-xs text-slate-500">Gửi hồ sơ e-KYC và theo dõi trạng thái realtime</p>
-                            </div>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-indigo-500" />
-                    </Link>
-
-                    <div className="space-y-2.5 text-sm text-slate-700">
-                        {userProfile.address_text && (
-                            <div className="flex items-center gap-2.5">
-                                <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
-                                <span className="truncate">{userProfile.address_text}</span>
-                            </div>
-                        )}
-                        {userProfile.phone_number && (
-                            <div className="flex items-center gap-2.5">
-                                <Phone className="w-4 h-4 text-slate-400 shrink-0" />
-                                {userProfile.phone_number}
-                            </div>
-                        )}
-                        {userProfile.resume_url && (
-                            <a
-                                href={userProfile.resume_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2.5 text-blue-600 font-bold hover:underline"
-                            >
-                                <FileCheck2 className="w-4 h-4 shrink-0" />
-                                Xem CV / Hồ sơ năng lực
-                                <ExternalLink className="w-3 h-3" />
-                            </a>
-                        )}
-                    </div>
-                </div>
-
-                {/* Education Section */}
-                {userProfile.education && userProfile.education.length > 0 && (
-                    <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-                        <h3 className="text-[13px] font-bold text-slate-400 uppercase tracking-wider mb-3">
-                            Học vấn
-                        </h3>
-                        <div className="space-y-4">
-                            {userProfile.education.map((edu, index) => (
-                                <div key={index} className="flex gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-                                        <GraduationCap className="w-5 h-5 text-blue-600" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-slate-800">{edu.school}</p>
-                                        <p className="text-xs text-slate-500 font-medium">
-                                            {edu.degree} {edu.field ? `• ${edu.field}` : ''}
-                                        </p>
-                                        <p className="text-[11px] text-slate-400 mt-0.5">
-                                            Bắt đầu: {edu.start_date || 'N/A'}
-                                        </p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Active Jobs / Shifts */}
-                {isAppsLoading ? <ListSkeleton /> : (
-                    <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-                        <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-[13px] font-bold text-slate-400 uppercase tracking-wider">
-                                Hoạt động của tôi
-                            </h3>
-                            <Link to="/candidate/shifts" className="text-xs font-semibold text-blue-600">
-                                Xem lịch làm
-                            </Link>
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <Link
-                                to="/candidate/applications"
-                                className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 text-slate-700 transition-all font-semibold"
-                            >
-                                <div className="flex items-center gap-2.5">
-                                    <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
-                                        <Briefcase className="w-4 h-4 text-indigo-500" />
-                                    </div>
-                                    <span className="text-sm">Việc làm đã ứng tuyển</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    {stats.activeShifts > 0 && (
-                                        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-500 px-1.5 text-[10px] font-bold text-white">
-                                            {stats.activeShifts}
-                                        </span>
-                                    )}
-                                    <ChevronRight className="w-4 h-4 text-slate-400" />
-                                </div>
-                            </Link>
-
-                            <Link
-                                to="/candidate/wishlist"
-                                className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 text-slate-700 transition-all font-semibold"
-                            >
-                                <div className="flex items-center gap-2.5">
-                                    <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
-                                        <Heart className="w-4 h-4 text-red-500" />
-                                    </div>
-                                    <span className="text-sm">Việc làm đã lưu</span>
-                                </div>
-                                <ChevronRight className="w-4 h-4 text-slate-400" />
-                            </Link>
-                        </div>
-                    </div>
-                )}
-
-                {/* Wallet & Personal */}
-                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-                    <h3 className="text-[13px] font-bold text-slate-400 uppercase tracking-wider mb-3">Tài chính & Cá nhân</h3>
-                    <div className="space-y-1.5">
-                        <Link
-                            to="/candidate/wallet"
-                            className="w-full flex items-center justify-between p-3 rounded-xl border border-indigo-50 bg-gradient-to-r from-indigo-50/50 to-blue-50/50 hover:from-indigo-100/50 hover:to-blue-100/50 text-slate-700 transition-colors"
-                        >
-                            <div className="flex items-center gap-2.5">
-                                <div className="w-9 h-9 rounded-xl bg-white shadow-sm flex items-center justify-center text-indigo-600">
-                                    <Wallet className="w-4 h-4" />
-                                </div>
-                                <div className="text-left">
-                                    <p className="text-sm font-bold">Ví JobNow</p>
-                                    <p className="text-[11px] text-indigo-600 font-bold">{(userProfile.balance || 0).toLocaleString()}đ</p>
-                                </div>
-                            </div>
-                            <ChevronRight className="w-4 h-4 text-indigo-400" />
-                        </Link>
-
-                        <div className="h-px bg-slate-50 my-1" />
-
-                        <Link
-                            to="/candidate/profile/edit"
-                            className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 text-slate-700 transition-colors"
-                        >
-                            <span className="flex items-center gap-2.5 text-sm font-semibold">
-                                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                                    <Pencil className="w-4 h-4 text-blue-500" />
-                                </div>
-                                Chỉnh sửa hồ sơ
-                            </span>
-                            <ChevronRight className="w-4 h-4 text-slate-400" />
-                        </Link>
-                    </div>
-                </div>
-
-                {/* Settings & Support */}
-                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-                    <h3 className="text-[13px] font-bold text-slate-400 uppercase tracking-wider mb-3">Ứng dụng</h3>
-                    <div className="space-y-1.5">
-                        <Link
-                            to="/candidate/profile/settings"
-                            className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 text-slate-700 transition-colors"
-                        >
-                            <span className="flex items-center gap-2.5 text-sm font-semibold">
-                                <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center">
-                                    <Settings className="w-4 h-4 text-slate-500" />
-                                </div>
-                                Cài đặt & Bảo mật
-                            </span>
-                            <ChevronRight className="w-4 h-4 text-slate-400" />
-                        </Link>
-                        <Link
-                            to="/support-center"
-                            className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 text-slate-700 transition-colors"
-                        >
-                            <span className="flex items-center gap-2.5 text-sm font-semibold">
-                                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
-                                    <LifeBuoy className="w-4 h-4 text-emerald-500" />
-                                </div>
-                                Trung tâm hỗ trợ
-                            </span>
-                            <ChevronRight className="w-4 h-4 text-slate-400" />
-                        </Link>
-                    </div>
-                </div>
-
-                {/* Logout */}
-                <button
-                    type="button"
-                    onClick={handleLogout}
-                    disabled={isLoggingOut}
-                    className="w-full flex items-center justify-center gap-2 p-4 bg-white rounded-2xl shadow-sm border border-red-100 active:scale-[0.98] transition-all hover:bg-red-50 text-red-600 disabled:cursor-not-allowed disabled:opacity-70"
+            <main className="px-5 py-6 space-y-7">
+                {/* Reputation Banner */}
+                <Link
+                    to="/candidate/profile/reputation"
+                    className="block w-full text-left bg-gradient-to-r from-emerald-50 to-sky-50/70 rounded-[24px] p-4 border border-emerald-100/70 relative overflow-hidden active:scale-[0.98] transition-transform shadow-[0_10px_30px_rgba(16,185,129,0.08)]"
                 >
-                    <LogOut className="w-5 h-5" />
-                    <span className="font-semibold text-[15px]">{isLoggingOut ? 'Đang đăng xuất...' : 'Đăng xuất'}</span>
-                </button>
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+                    
+                    <div className="relative z-10 flex items-center gap-4">
+                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-4 ring-emerald-100/80">
+                            <div className="text-center leading-none">
+                                <p className="text-[24px] font-black tracking-tight text-emerald-600">{reputationScore}</p>
+                                <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-400">Điểm</p>
+                            </div>
+                        </div>
 
-                <p className="text-center text-xs text-slate-400 mt-6 mb-4 font-medium">
-                    JobNow v1.0.0
-                </p>
-            </div>
+                        <div className="min-w-0 flex-1">
+                            <h3 className="font-headline font-bold text-slate-900 flex items-center gap-1.5 text-sm">
+                                <span className="material-symbols-outlined text-[18px] text-emerald-500" style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
+                                Điểm uy tín
+                            </h3>
+                            <p className="text-[15px] font-semibold text-slate-900 mt-1">
+                                {tierInfo.labelVi} {tierProgress.nextTier ? `— còn ${tierProgress.pointsNeeded} điểm để lên ${tierProgress.nextTier.labelVi}` : '— đang ở hạng cao nhất'}
+                            </p>
+                            <p className="text-[13px] text-slate-600 mt-0.5">
+                                {tierInfo.descriptionVi}
+                            </p>
 
-            <FollowListDialog
-                isOpen={followDialog.isOpen}
-                onClose={() => setFollowDialog(prev => ({ ...prev, isOpen: false }))}
-                userId={userProfile.uid}
-                type={followDialog.type}
-                title={followDialog.type === 'followers' ? 'Người đang theo dõi bạn' : 'Những người bạn đang theo dõi'}
-            />
+                            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-white/80">
+                                <div
+                                    className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-sky-500 transition-all"
+                                    style={{ width: `${tierProgress.progressPercent}%` }}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="w-8 h-8 rounded-full bg-white/60 flex items-center justify-center shadow-sm">
+                            <span className="material-symbols-outlined text-emerald-600 text-[18px]">chevron_right</span>
+                        </div>
+                    </div>
+                </Link>
+
+                {/* Giới thiệu */}
+                <section>
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-headline font-bold text-slate-800">Giới thiệu</h3>
+                        <Link to="/candidate/profile/edit" className="text-[13px] font-semibold text-blue-600 active:text-blue-700 transition-colors">
+                            Chỉnh sửa
+                        </Link>
+                    </div>
+                    <p className="text-[15px] leading-relaxed text-slate-600">
+                        {userProfile.bio || "Chưa có thông tin giới thiệu. Hãy cập nhật để nhà tuyển dụng hiểu rõ hơn về bạn."}
+                    </p>
+                </section>
+
+                {/* Follow Stats */}
+                <section className="flex items-center gap-6 pb-2">
+                    <div>
+                        <span className="font-black text-lg text-slate-900">{followingCount}</span>
+                        <span className="text-sm font-medium text-slate-500 ml-1.5">Đang theo dõi</span>
+                    </div>
+                    {/* Danh hiệu (Badges) */}
+                    <div className="flex-1 bg-white border border-slate-100/60 rounded-[20px] px-4 py-3 shadow-[0_4px_24px_-2px_rgba(124,131,155,0.04)]">
+                        <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Danh hiệu nổi bật</h4>
+                            <Link to="/candidate/profile/reputation" className="text-xs font-semibold text-blue-600">Xem tất cả</Link>
+                        </div>
+                        <AchievementBadges achievements={CANDIDATE_ACHIEVEMENTS} maxDisplay={4} size="md" />
+                    </div>
+                </section>
+
+                {/* Quick Actions Grid */}
+                <div className="grid grid-cols-2 gap-3">
+                    <Link
+                        to="/candidate/chat"
+                        search={{ applicationId: undefined, jobId: undefined, employerId: undefined }}
+                        className="flex items-center gap-3 bg-white border border-slate-100 p-4 rounded-[20px] shadow-sm shadow-slate-200/20 active:bg-slate-50 transition-colors"
+                    >
+                        <div className="w-11 h-11 rounded-full bg-slate-50 flex items-center justify-center text-slate-700 shrink-0 border border-slate-100/50">
+                            <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>chat_bubble</span>
+                        </div>
+                        <span className="font-medium text-[14px] text-slate-800 leading-tight">Tin nhắn</span>
+                    </Link>
+                    <Link
+                        to="/candidate/applications"
+                        className="flex items-center gap-3 bg-white border border-slate-100 p-4 rounded-[20px] shadow-sm shadow-slate-200/20 active:bg-slate-50 transition-colors"
+                    >
+                        <div className="w-11 h-11 rounded-full bg-slate-50 flex items-center justify-center text-slate-700 shrink-0 border border-slate-100/50 relative">
+                            <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>assignment</span>
+                            {activeApplications > 0 && (
+                                <span className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-blue-600 px-[5px] text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
+                                    {activeApplications > 99 ? '99+' : activeApplications}
+                                </span>
+                            )}
+                        </div>
+                        <span className="font-medium text-[14px] text-slate-800 leading-tight">Đơn ứng tuyển</span>
+                    </Link>
+                </div>
+
+                {/* Menu List */}
+                <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm shadow-slate-200/20 overflow-hidden divide-y divide-slate-50">
+                    {[
+                        { icon: 'favorite', label: 'Việc đã lưu', href: '/candidate/wishlist', fill: false },
+                        { icon: 'stars', label: 'Điểm uy tín', href: '/candidate/profile/reputation', fill: true },
+                        { icon: 'help', label: 'Trung tâm trợ giúp & FAQ', href: '/support-center', fill: false },
+                        { icon: 'settings', label: 'Cài đặt', href: '/candidate/profile/settings', fill: false },
+                    ].map((item) => (
+                        <Link
+                            key={item.label}
+                            to={item.href}
+                            className="flex items-center justify-between p-4 px-5 active:bg-slate-50 transition-colors group"
+                        >
+                            <div className="flex items-center gap-4">
+                                <span 
+                                    className={`material-symbols-outlined text-[22px] ${item.fill ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600 transition-colors'}`}
+                                    style={item.fill ? { fontVariationSettings: "'FILL' 1" } : undefined}
+                                >
+                                    {item.icon}
+                                </span>
+                                <span className="font-medium text-[15px] text-slate-700 group-hover:text-slate-900 transition-colors">
+                                    {item.label}
+                                </span>
+                            </div>
+                            <span className="material-symbols-outlined text-slate-300 text-[20px] group-hover:text-slate-400 transition-colors">
+                                chevron_right
+                            </span>
+                        </Link>
+                    ))}
+                    
+                    {/* Logout Button */}
+                    <button
+                        onClick={handleLogout}
+                        disabled={isLoggingOut}
+                        className="flex items-center justify-between p-4 px-5 w-full active:bg-red-50/50 transition-colors disabled:opacity-50"
+                    >
+                        <div className="flex items-center gap-4">
+                            <span className="material-symbols-outlined text-[22px] text-red-400">
+                                logout
+                            </span>
+                            <span className="font-medium text-[15px] text-red-600">
+                                {isLoggingOut ? 'Đang xử lý...' : 'Đăng xuất'}
+                            </span>
+                        </div>
+                    </button>
+                </div>
+            </main>
         </div>
     );
 }

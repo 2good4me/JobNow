@@ -1,0 +1,1190 @@
+﻿diff --git a/apps/web/src/features/jobs/services/adapters.ts b/apps/web/src/features/jobs/services/adapters.ts
+index d456736..fdf638a 100644
+--- a/apps/web/src/features/jobs/services/adapters.ts
++++ b/apps/web/src/features/jobs/services/adapters.ts
+@@ -38,6 +38,11 @@ export function mapNearbyApiToJobDoc(data: Record<string, unknown>): JobDoc {
+         age_range: getValue(data, ['age_range', 'ageRange']),
+         start_date: getValue<string>(data, ['start_date', 'startDate']),
+         is_premium: getValue<boolean>(data, ['is_premium', 'isPremium']),
++        moderation_status: getValue(data, ['moderation_status', 'moderationStatus']),
++        moderation_reason: getValue(data, ['moderation_reason', 'moderationReason']),
++        is_boosted: getValue<boolean>(data, ['is_boosted', 'isBoosted']),
++        boost_expires_at: getValue(data, ['boost_expires_at', 'boostExpiresAt']),
++        boost_package_code: getValue(data, ['boost_package_code', 'boostPackageCode']),
+         created_at: getValue(data, ['created_at', 'createdAt']),
+         updated_at: getValue(data, ['updated_at', 'updatedAt']),
+     };
+@@ -80,6 +85,11 @@ export function mapJobDocToJob(id: string, data: Partial<JobDoc>): Job {
+         ageRange: data.age_range,
+         startDate: data.start_date ?? '',
+         isPremium: data.is_premium ?? false,
++        moderationStatus: data.moderation_status,
++        moderationReason: data.moderation_reason,
++        isBoosted: data.is_boosted ?? false,
++        boostExpiresAt: data.boost_expires_at,
++        boostPackageCode: data.boost_package_code,
+         totalAppliedCount: data.shift_capacity && Object.keys(data.shift_capacity).length > 0
+             ? Object.values(data.shift_capacity).reduce((sum, shift) => sum + (shift.applied_count || 0), 0)
+             : undefined,
+diff --git a/apps/web/src/features/jobs/services/applicationFlowService.ts b/apps/web/src/features/jobs/services/applicationFlowService.ts
+index 3009e7f..00e15a7 100644
+--- a/apps/web/src/features/jobs/services/applicationFlowService.ts
++++ b/apps/web/src/features/jobs/services/applicationFlowService.ts
+@@ -8,8 +8,6 @@ import {
+     orderBy,
+     query,
+     where,
+-    runTransaction,
+-    serverTimestamp,
+     type QueryDocumentSnapshot,
+     type Unsubscribe,
+ } from 'firebase/firestore';
+@@ -117,142 +115,10 @@ export async function precheckApply(input: ApplyJobInput): Promise<ApplyPrecheck
+     };
+ }
+ 
+-function normalizeApplicationId(candidateId: string, jobId: string, shiftId: string): string {
+-    return `${candidateId}_${jobId}_${shiftId}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+-}
+-
+ export async function applyJob(input: ApplyJobInput): Promise<ApplyJobResult> {
+-    const applicationId = normalizeApplicationId(input.candidateId, input.jobId, input.shiftId);
+-    const applicationRef = doc(db, 'applications', applicationId);
+-    const jobRef = doc(db, 'jobs', input.jobId);
+-
+-    return await runTransaction(db, async (tx) => {
+-        const candidateRef = doc(db, 'users', input.candidateId);
+-        const [jobSnap, appSnap, candidateSnap] = await Promise.all([
+-            tx.get(jobRef),
+-            tx.get(applicationRef),
+-            tx.get(candidateRef),
+-        ]);
+-
+-        if (!jobSnap.exists()) {
+-            throw new Error('CĂ´ng viá»‡c khĂ´ng tá»“n táº¡i.');
+-        }
+-
+-        if (appSnap.exists()) {
+-            const appData = appSnap.data() || {};
+-            return {
+-                applicationId: appSnap.id,
+-                status: String(appData.status ?? 'NEW') as any,
+-                remainingSlots: undefined,
+-            };
+-        }
+-
+-        const jobData = jobSnap.data() || {};
+-        const status = String(jobData.status ?? 'OPEN').toUpperCase();
+-        if (status !== 'OPEN' && status !== 'ACTIVE') {
+-            throw new Error('CĂ´ng viá»‡c Ä‘Ă£ Ä‘Ă³ng tuyá»ƒn.');
+-        }
+-
+-        const targetShift = Array.isArray(jobData.shifts) 
+-            ? jobData.shifts.find((item: any) => String(item.id) === input.shiftId) 
+-            : null;
+-        const shiftTime = targetShift ? `${targetShift.start_time || ''} - ${targetShift.end_time || ''}` : '';
+-        const jobTitle = String(jobData.title || '');
+-
+-        const shiftCapacity = (jobData.shift_capacity ?? {}) as Record<string, any>;
+-        let capacity = shiftCapacity[input.shiftId];
+-
+-        if (!capacity) {
+-            const shifts = Array.isArray(jobData.shifts) ? jobData.shifts : [];
+-            const targetShift = shifts.find((item: any) => String(item.id) === input.shiftId);
+-            const quantity = Number(targetShift?.quantity ?? 0);
+-            capacity = {
+-                total_slots: quantity,
+-                remaining_slots: quantity,
+-                applied_count: 0,
+-            };
+-        }
+-
+-        if (capacity.remaining_slots <= 0) {
+-            throw new Error('Ca lĂ m Ä‘Ă£ Ä‘á»§ sá»‘ lÆ°á»£ng.');
+-        }
+-
+-        const employerId = String(jobData.employer_id ?? jobData.employerId ?? '');
+-        const employerName = String(jobData.employer_name ?? jobData.employerName ?? '');
+-
+-        // Denormalize candidate snapshot
+-        const candidateData = candidateSnap.exists() ? (candidateSnap.data() || {}) : {};
+-        const candidateName = String(candidateData.full_name ?? candidateData.fullName ?? candidateData.display_name ?? candidateData.displayName ?? '');
+-        const candidateAvatar = String(candidateData.avatar_url ?? candidateData.avatarUrl ?? candidateData.photo_url ?? candidateData.photoURL ?? '');
+-        const candidateSkills = (candidateData.skills as string[]) ?? [];
+-        const candidateRating = Number(candidateData.reputation_score ?? candidateData.reputationScore ?? 0);
+-        const candidateVerified = (candidateData.verification_status ?? candidateData.verificationStatus) === 'VERIFIED';
+-
+-        tx.set(applicationRef, {
+-            job_id: input.jobId,
+-            shift_id: input.shiftId,
+-            employer_id: employerId,
+-            employerId: employerId, // Standardize duplicate field for robust triggers
+-            candidate_id: input.candidateId,
+-            status: 'NEW',
+-            payment_status: 'UNPAID',
+-            cover_letter: input.coverLetter ?? '',
+-            idempotency_key: input.idempotencyKey,
+-            applied_at: serverTimestamp(),
+-            created_at: serverTimestamp(),
+-            updated_at: serverTimestamp(),
+-            // Denormalized candidate snapshot
+-            candidate_name: candidateName,
+-            candidate_avatar: candidateAvatar,
+-            candidate_skills: candidateSkills,
+-            candidate_rating: candidateRating,
+-            candidate_verified: candidateVerified,
+-            // Denormalized job/shift info
+-            job_title: jobTitle,
+-            shift_time: shiftTime,
+-            employer_name: employerName,
+-            employerName: employerName,
+-        });
+-
+-        const nextRemaining = Math.max(Number(capacity.remaining_slots) - 1, 0);
+-        tx.set(jobRef, {
+-            shift_capacity: {
+-                ...(jobData.shift_capacity ?? {}),
+-                [input.shiftId]: {
+-                    total_slots: Number(capacity.total_slots),
+-                    remaining_slots: nextRemaining,
+-                    applied_count: Number(capacity.applied_count) + 1,
+-                },
+-            },
+-            updated_at: serverTimestamp(),
+-        }, { merge: true });
+-
+-        // Create Notification for Employer
+-        const notificationRef = doc(collection(db, 'notifications'));
+-        tx.set(notificationRef, {
+-            userId: employerId,
+-            user_id: employerId,
+-            type: 'NEW_APPLICATION',
+-            category: 'APPLICATION',
+-            title: 'ÄÆ¡n á»©ng tuyá»ƒn má»›i',
+-            body: `Báº¡n cĂ³ Ä‘Æ¡n á»©ng tuyá»ƒn má»›i tá»« ${candidateName} cho cĂ´ng viá»‡c: ${jobTitle}`,
+-            data: {
+-                applicationId,
+-                jobId: input.jobId,
+-                candidateId: input.candidateId,
+-            },
+-            isRead: false,
+-            is_read: false,
+-            created_at: serverTimestamp(),
+-            createdAt: serverTimestamp(),
+-        });
+-
+-        return {
+-            applicationId,
+-            status: 'NEW',
+-            remainingSlots: nextRemaining,
+-        };
+-    });
++    const callable = httpsCallable<ApplyJobInput, ApplyJobResult>(functions, 'applyJob');
++    const { data } = await callable(input);
++    return data;
+ }
+ 
+ export async function withdrawApplication(input: WithdrawApplicationInput): Promise<{ success: boolean }> {
+diff --git a/apps/web/src/features/jobs/services/applicationService.ts b/apps/web/src/features/jobs/services/applicationService.ts
+index 7de1f5c..87598c2 100644
+--- a/apps/web/src/features/jobs/services/applicationService.ts
++++ b/apps/web/src/features/jobs/services/applicationService.ts
+@@ -1,8 +1,8 @@
+-import { collection, getDocs, query, where, limit, doc, getDoc, updateDoc, addDoc, serverTimestamp, onSnapshot, type Unsubscribe } from 'firebase/firestore';
+-import { db } from '@/config/firebase';
++import { collection, getDocs, query, where, limit, doc, getDoc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
++import { httpsCallable } from 'firebase/functions';
++import { db, functions } from '@/config/firebase';
+ import type { Application, ApplicationStatus } from '@jobnow/types';
+ import { mapApplicationDocToApplication } from './adapters';
+-import { processAppPayment } from '@/features/wallet/services/walletService';
+ 
+ function dedupeById(items: Application[]): Application[] {
+     const map = new Map<string, Application>();
+@@ -216,59 +216,12 @@ export async function updateApplicationStatus(
+     status: ApplicationStatus
+ ): Promise<Application> {
+     try {
+-        const applicationRef = doc(db, 'applications', applicationId);
+-        const appSnap = await getDoc(applicationRef);
+-        
+-        if (!appSnap.exists()) {
+-            throw new Error('ÄÆ¡n á»©ng tuyá»ƒn khĂ´ng tá»“n táº¡i.');
+-        }
+-
+-        const appData = appSnap.data() as Record<string, unknown>;
+-        
+-        await updateDoc(applicationRef, {
+-            status: status,
+-            updated_at: serverTimestamp()
+-        });
+-
+-        const updatedData = { ...appData, status };
+-
+-        if (status === 'APPROVED' || status === 'REJECTED') {
+-            const candidateId = String(appData.candidate_id || appData.candidateId || '');
+-            const jobId = String(appData.job_id || appData.jobId || '');
+-            
+-            let jobTitle = 'CĂ´ng viá»‡c';
+-            if (jobId) {
+-                const jobRef = doc(db, 'jobs', jobId);
+-                const jobSnap = await getDoc(jobRef);
+-                if (jobSnap.exists()) {
+-                     jobTitle = String(jobSnap.data()?.title || 'CĂ´ng viá»‡c');
+-                }
+-            }
+-
+-            const title = status === 'APPROVED' ? 'á»¨ng tuyá»ƒn thĂ nh cĂ´ng' : 'Káº¿t quáº£ á»©ng tuyá»ƒn';
+-            const body = status === 'APPROVED' 
+-                ? `ÄÆ¡n á»©ng tuyá»ƒn cá»§a báº¡n cho cĂ´ng viá»‡c "${jobTitle}" Ä‘Ă£ Ä‘Æ°á»£c duyá»‡t.`
+-                : `Ráº¥t tiáº¿c, Ä‘Æ¡n á»©ng tuyá»ƒn cá»§a báº¡n cho cĂ´ng viá»‡c "${jobTitle}" khĂ´ng Ä‘Æ°á»£c duyá»‡t láº§n nĂ y.`;
+-
+-            await addDoc(collection(db, 'notifications'), {
+-                userId: candidateId,
+-                user_id: candidateId,
+-                type: `APPLICATION_${status}`,
+-                category: 'APPLICATION',
+-                title: title,
+-                body: body,
+-                data: {
+-                    applicationId: applicationId,
+-                    jobId: jobId,
+-                    status: status
+-                },
+-                isRead: false,
+-                is_read: false,
+-                created_at: serverTimestamp(),
+-            });
+-        }
+-
+-        return mapApplicationDocToApplication(appSnap.id, updatedData);
++        const callable = httpsCallable<
++            { applicationId: string; status: ApplicationStatus },
++            { application: Record<string, unknown> }
++        >(functions, 'updateApplicationStatus');
++        const { data } = await callable({ applicationId, status });
++        return mapApplicationDocToApplication(applicationId, data.application as Record<string, unknown>);
+     } catch (error: any) {
+         console.error('Lá»—i chi tiáº¿t khi updateApplicationStatus:', error);
+         if (error?.code) {
+@@ -287,92 +240,24 @@ export async function completeApplicationWithPayment(
+     employerId: string
+ ): Promise<Application> {
+     try {
+-        const appRef = doc(db, 'applications', applicationId);
+-        const appSnap = await getDoc(appRef);
+-        
+-        if (!appSnap.exists()) {
+-            throw new Error('ÄÆ¡n á»©ng tuyá»ƒn khĂ´ng tá»“n táº¡i.');
+-        }
+-
+-        const data = appSnap.data();
+-        const candidateId = String(data.candidate_id || data.candidateId || '');
+-        const jobId = String(data.job_id || data.jobId || '');
+-
+-        // 1. Update Application status and payment info
+-        const newStatus = paymentMethod === 'CASH' ? 'CASH_CONFIRMATION' : 'COMPLETED';
+-        const newPaymentStatus = paymentMethod === 'CASH' ? 'PROCESSING' : 'PAID';
+-
+-        await updateDoc(appRef, {
+-            status: newStatus,
+-            payment_status: newPaymentStatus,
+-            payment_method: paymentMethod,
+-            employerId: employerId, // Ensure employer info is on the app doc if not already
+-            updated_at: serverTimestamp()
+-        });
+-
+-        // 2. Handle Wallet transaction (simulation)
+         if (paymentMethod === 'APP') {
+-            // Get salary from job
+-            let amount = 0;
+-            let jobTitle = 'CĂ´ng viá»‡c';
+-            if (jobId) {
+-                const jobSnap = await getDoc(doc(db, 'jobs', jobId));
+-                if (jobSnap.exists()) {
+-                    const jobData = jobSnap.data();
+-                    const salary = Number(jobData.salary || 0);
+-                    // Critical: salary_type is stored in snake_case in Firestore
+-                    const sTypeRaw = jobData.salary_type || jobData.salaryType || 'HOURLY';
+-                    jobTitle = String(jobData.title || 'CĂ´ng viá»‡c');
+-
+-                    if (sTypeRaw === 'HOURLY') {
+-                        // Calculate actual hours worked
+-                        const checkInMillis = timestampToMillis(data.check_in_time || data.checkInTime);
+-                        const checkOutMillis = timestampToMillis(data.check_out_time || data.checkOutTime || Date.now());
+-
+-                        if (checkInMillis > 0 && checkOutMillis > checkInMillis) {
+-                            const hoursWorked = (checkOutMillis - checkInMillis) / (1000 * 60 * 60);
+-                            // Round to 2 decimal places or as per business rules
+-                            amount = Math.round(hoursWorked * salary);
+-                            console.log(`[applicationService] Hourly calc for ${applicationId}: ${hoursWorked.toFixed(2)}h * ${salary} = ${amount}`);
+-                        } else {
+-                            // Fallback if timings are missing
+-                            amount = salary; 
+-                            console.warn(`[applicationService] Missing timings for ${applicationId}, paying flat rate: ${amount}`);
+-                        }
+-                    } else {
+-                        amount = salary;
+-                        console.log(`[applicationService] Flat pay for ${applicationId} (${sTypeRaw}): ${amount}`);
+-                    }
+-                }
+-            }
+-
+-            if (amount > 0) {
+-                await processAppPayment(employerId, candidateId, amount, jobTitle, applicationId);
+-                console.log(`[applicationService] Processed APP payment of ${amount} to ${candidateId} from ${employerId}`);
+-            }
++            const callable = httpsCallable<
++                { applicationId: string; employerId: string },
++                { amount: number; candidateId: string; employerId: string; jobTitle: string }
++            >(functions, 'processPayment');
++            await callable({ applicationId, employerId });
++        } else {
++            const callable = httpsCallable<
++                { applicationId: string; employerId: string },
++                { success: boolean }
++            >(functions, 'markCashPayment');
++            await callable({ applicationId, employerId });
+         }
+ 
+-        // 3. Notify candidate
+-        let jobTitle = 'CĂ´ng viá»‡c';
+-        if (jobId) {
+-            const jobSnap = await getDoc(doc(db, 'jobs', jobId));
+-            if (jobSnap.exists()) jobTitle = jobSnap.data().title;
++        const refreshed = await getDoc(doc(db, 'applications', applicationId));
++        if (!refreshed.exists()) {
++            throw new Error('KhĂ´ng tĂ¬m tháº¥y Ä‘Æ¡n á»©ng tuyá»ƒn sau khi cáº­p nháº­t thanh toĂ¡n.');
+         }
+-
+-        await addDoc(collection(db, 'notifications'), {
+-            userId: candidateId,
+-            user_id: candidateId,
+-            type: paymentMethod === 'CASH' ? 'PAYMENT_CONFIRM_REQUIRED' : 'PAYMENT_RECEIVED',
+-            category: 'SYSTEM',
+-            title: paymentMethod === 'CASH' ? 'NhĂ  tuyá»ƒn dá»¥ng Ä‘Ă£ thanh toĂ¡n' : 'Thanh toĂ¡n thĂ nh cĂ´ng',
+-            body: paymentMethod === 'CASH' 
+-                ? `NhĂ  tuyá»ƒn dá»¥ng Ä‘Ă£ Ä‘Ă¡nh dáº¥u thanh toĂ¡n TIá»€N Máº¶T cho "${jobTitle}". Vui lĂ²ng xĂ¡c nháº­n náº¿u báº¡n Ä‘Ă£ nháº­n Ä‘á»§ tiá»n.`
+-                : `Báº¡n Ä‘Ă£ Ä‘Æ°á»£c thanh toĂ¡n cho cĂ´ng viá»‡c "${jobTitle}" qua hĂ¬nh thá»©c á»¨ng dá»¥ng.`,
+-            isRead: false,
+-            created_at: serverTimestamp(),
+-        });
+-
+-        const refreshed = await getDoc(appRef);
+         return mapApplicationDocToApplication(refreshed.id, refreshed.data() as any);
+     } catch (error: any) {
+         console.error('Error in completeApplicationWithPayment:', error);
+@@ -387,14 +272,16 @@ export async function confirmPaymentReceived(applicationId: string): Promise<App
+     try {
+         const appRef = doc(db, 'applications', applicationId);
+         const appSnap = await getDoc(appRef);
+-        
+         if (!appSnap.exists()) throw new Error('ÄÆ¡n á»©ng tuyá»ƒn khĂ´ng tá»“n táº¡i.');
+ 
+-        await updateDoc(appRef, {
+-            status: 'COMPLETED',
+-            payment_status: 'PAID',
+-            updated_at: serverTimestamp()
+-        });
++        const appData = appSnap.data();
++        const candidateId = String(appData.candidate_id || appData.candidateId || '');
++
++        const callable = httpsCallable<
++            { applicationId: string; candidateId: string },
++            { success: boolean }
++        >(functions, 'confirmCashPaymentReceived');
++        await callable({ applicationId, candidateId });
+ 
+         const refreshed = await getDoc(appRef);
+         return mapApplicationDocToApplication(refreshed.id, refreshed.data() as any);
+diff --git a/apps/web/src/features/jobs/services/attendanceService.ts b/apps/web/src/features/jobs/services/attendanceService.ts
+index 2b56448..8ae9ea9 100644
+--- a/apps/web/src/features/jobs/services/attendanceService.ts
++++ b/apps/web/src/features/jobs/services/attendanceService.ts
+@@ -1,15 +1,5 @@
+-import {
+-    collection,
+-    doc,
+-    getDoc,
+-    getDocs,
+-    query,
+-    where,
+-    writeBatch,
+-    serverTimestamp,
+-    updateDoc,
+-} from 'firebase/firestore';
+-import { db } from '@/config/firebase';
++import { httpsCallable } from 'firebase/functions';
++import { functions } from '@/config/firebase';
+ import type { CheckInInput, CheckInResult, CheckOutInput } from '@jobnow/types';
+ 
+ export interface GpsValidationInput {
+@@ -73,103 +63,9 @@ export function validateGpsClientSide(input: GpsValidationInput): GpsValidationR
+  */
+ export async function checkIn(input: CheckInInput): Promise<CheckInResult> {
+     try {
+-        const appRef = doc(db, 'applications', input.applicationId);
+-        const appSnap = await getDoc(appRef);
+-        if (!appSnap.exists()) throw new Error('ÄÆ¡n á»©ng tuyá»ƒn khĂ´ng tá»“n táº¡i.');
+-
+-        const appData = appSnap.data();
+-        const jobId = appData.job_id || appData.jobId;
+-        if (!jobId) throw new Error('KhĂ´ng tĂ¬m tháº¥y thĂ´ng tin cĂ´ng viá»‡c.');
+-
+-        const jobSnap = await getDoc(doc(db, 'jobs', jobId));
+-        if (!jobSnap.exists()) throw new Error('CĂ´ng viá»‡c khĂ´ng tá»“n táº¡i.');
+-        const jobData = jobSnap.data();
+-
+-        // 0. Block multiple simultaneous check-ins
+-        const activeCheckInsQuery = query(
+-            collection(db, 'applications'),
+-            where('candidate_id', '==', input.candidateId),
+-            where('status', '==', 'CHECKED_IN')
+-        );
+-        const activeSnap = await getDocs(activeCheckInsQuery);
+-        if (!activeSnap.empty) {
+-            throw new Error('Báº¡n Ä‘ang trong má»™t ca lĂ m viá»‡c khĂ¡c. Vui lĂ²ng check-out trÆ°á»›c khi báº¯t Ä‘áº§u ca má»›i.');
+-        }
+-
+-        // 1. Validate Time (Real-world constraint)
+-        // Only allow check-in 30 mins before or after the shift start
+-        let isLate = false;
+-        let lateMinutes = 0;
+-
+-        if (jobData.startTime) {
+-            const shiftStart = jobData.startTime.toDate?.() || new Date(jobData.startTime);
+-            const now = new Date();
+-            const diffMinutes = (now.getTime() - shiftStart.getTime()) / (1000 * 60);
+-
+-            // If check-in is more than 30 mins EARLY, block it
+-            if (diffMinutes < -30) {
+-                throw new Error('Báº¡n Ä‘áº¿n quĂ¡ sá»›m. Vui lĂ²ng check-in trong vĂ²ng 30 phĂºt trÆ°á»›c ca lĂ m.');
+-            }
+-            
+-            // If check-in is more than 1 minute late, flag it as late
+-            if (diffMinutes > 1) { 
+-                 isLate = true;
+-                 lateMinutes = Math.floor(diffMinutes);
+-                 console.warn('[Attendance] Late check-in detected:', lateMinutes, 'minutes late');
+-            }
+-        }
+-
+-        // 2. Validate GPS
+-        const validation = validateGpsClientSide({
+-            userLat: input.latitude,
+-            userLng: input.longitude,
+-            targetLat: jobData.location.latitude,
+-            targetLng: jobData.location.longitude,
+-            accuracy: input.accuracy,
+-        });
+-
+-        if (!validation.valid) {
+-            if (validation.reason === 'out_of_radius') {
+-                throw new Error(`Báº¡n Ä‘ang á»Ÿ cĂ¡ch Ä‘á»‹a Ä‘iá»ƒm lĂ m viá»‡c ${Math.round(validation.distanceMeters)}m. Báº¡n cáº§n á»Ÿ trong bĂ¡n kĂ­nh 5000m Ä‘á»ƒ check-in.`);
+-            }
+-            throw new Error('Vá»‹ trĂ­ GPS khĂ´ng chĂ­nh xĂ¡c hoáº·c khĂ´ng há»£p lá»‡.');
+-        }
+-
+-        const batch = writeBatch(db);
+-        
+-        // Update application status
+-        batch.update(appRef, {
+-            status: 'CHECKED_IN',
+-            is_late: isLate,
+-            late_minutes: lateMinutes,
+-            updated_at: serverTimestamp(),
+-            check_in_time: serverTimestamp(), // Record on main doc for easy listing
+-        });
+-
+-        // Add check-in record
+-        const checkinRef = doc(collection(appRef, 'checkins'));
+-        batch.set(checkinRef, {
+-            type: 'GPS',
+-            check_in_time: serverTimestamp(),
+-            status: 'CHECKED_IN',
+-            is_late: isLate,
+-            late_minutes: lateMinutes,
+-            gps_location: {
+-                latitude: input.latitude,
+-                longitude: input.longitude,
+-            },
+-            created_at: serverTimestamp(),
+-            distance_meters: validation.distanceMeters,
+-        });
+-
+-        await batch.commit();
+-
+-        return {
+-            checkinId: checkinRef.id,
+-            status: 'CHECKED_IN',
+-            method: 'GPS',
+-            distanceMeters: validation.distanceMeters,
+-        };
++        const callable = httpsCallable<CheckInInput, CheckInResult>(functions, 'checkIn');
++        const { data } = await callable(input);
++        return data;
+     } catch (error: any) {
+         console.error('Error in checkIn:', error);
+         throw error;
+@@ -183,72 +79,12 @@ export async function checkIn(input: CheckInInput): Promise<CheckInResult> {
+  */
+ export async function checkOut(input: CheckOutInput & { latitude?: number; longitude?: number; accuracy?: number; isForce?: boolean }): Promise<{ success: boolean }> {
+     try {
+-        const appRef = doc(db, 'applications', input.applicationId);
+-        const appSnap = await getDoc(appRef);
+-        if (!appSnap.exists()) throw new Error('ÄÆ¡n á»©ng tuyá»ƒn khĂ´ng tá»“n táº¡i.');
+-
+-        const appData = appSnap.data();
+-        const jobId = appData.job_id || appData.jobId;
+-        
+-        let jobData: any = null;
+-
+-        // Validate GPS on Check-out if coordinates are provided
+-        if (input.latitude !== undefined && input.longitude !== undefined) {
+-            const jobSnap = await getDoc(doc(db, 'jobs', jobId));
+-            if (jobSnap.exists()) {
+-                jobData = jobSnap.data();
+-                const validation = validateGpsClientSide({
+-                    userLat: input.latitude,
+-                    userLng: input.longitude,
+-                    targetLat: jobData.location.latitude,
+-                    targetLng: jobData.location.longitude,
+-                    accuracy: input.accuracy || 50,
+-                });
+-
+-                if (!validation.valid) {
+-                    throw new Error('Báº¡n cáº§n pháº£i á»Ÿ táº¡i Ä‘á»‹a Ä‘iá»ƒm lĂ m viá»‡c Ä‘á»ƒ thá»±c hiá»‡n check-out.');
+-                }
+-            }
+-        }
+-
+-        // Validate Time (Shift end requirement)
+-        if (!input.isForce) {
+-             if (!jobData) {
+-                const jobSnap = await getDoc(doc(db, 'jobs', jobId));
+-                if (jobSnap.exists()) jobData = jobSnap.data();
+-             }
+-
+-             if (jobData) {
+-                 const shiftId = appData.shift_id || appData.shiftId;
+-                 const shift = jobData.shifts?.find((s: any) => s.id === shiftId);
+-                 if (shift) {
+-                     const [endH, endM] = shift.endTime.split(':').map(Number);
+-                     const now = new Date();
+-                     const shiftEnd = new Date(now);
+-                     // Note: This assumes shift is on the current day. 
+-                     // For overnight shifts, more complex logic is needed.
+-                     shiftEnd.setHours(endH, endM, 0, 0);
+-                     
+-                     if (now < shiftEnd) {
+-                         throw new Error(`Báº¡n chÆ°a thá»ƒ káº¿t thĂºc ca lĂ m. Thá»i gian káº¿t thĂºc ca lĂ  ${shift.endTime}.`);
+-                     }
+-                 }
+-             }
+-        }
+-
+-        // Find the active check-in record to update it
+-        // Note: For simplicity, we update the status on appRef and we'd ideally find the last check-in record in a real app.
+-        // Here we'll just update the application status.
+-        
+-        await writeBatch(db)
+-            .update(appRef, {
+-                status: 'WORK_FINISHED',
+-                check_out_time: serverTimestamp(),
+-                updated_at: serverTimestamp(),
+-            })
+-            .commit();
+-
+-        return { success: true };
++        const callable = httpsCallable<CheckOutInput, { success: boolean }>(functions, 'checkOut');
++        const { data } = await callable({
++            applicationId: input.applicationId,
++            candidateId: input.candidateId,
++        });
++        return data;
+     } catch (error: any) {
+         console.error('Error in checkOut:', error);
+         throw new Error(error.message || 'KhĂ´ng thá»ƒ check-out. Vui lĂ²ng thá»­ láº¡i.');
+@@ -259,20 +95,12 @@ export async function checkOut(input: CheckOutInput & { latitude?: number; longi
+  * Force check-out an application (Employer action)
+  */
+ export async function forceCheckOut(applicationId: string, employerId: string): Promise<{ success: boolean }> {
+-    const appRef = doc(db, 'applications', applicationId);
+-    const appSnap = await getDoc(appRef);
+-    if (!appSnap.exists()) throw new Error('ÄÆ¡n á»©ng tuyá»ƒn khĂ´ng tá»“n táº¡i.');
+-    
+-    const appData = appSnap.data();
+-    if (appData.employer_id !== employerId && appData.employerId !== employerId) {
+-        throw new Error('Báº¡n khĂ´ng cĂ³ quyá»n thá»±c hiá»‡n hĂ nh Ä‘á»™ng nĂ y.');
+-    }
+-
+-    return checkOut({ 
+-        applicationId, 
+-        candidateId: appData.candidate_id || appData.candidateId,
+-        isForce: true 
+-    });
++    const callable = httpsCallable<
++        { applicationId: string; employerId: string },
++        { success: boolean }
++    >(functions, 'forceCheckOut');
++    const { data } = await callable({ applicationId, employerId });
++    return data;
+ }
+ 
+ /**
+@@ -280,17 +108,9 @@ export async function forceCheckOut(applicationId: string, employerId: string):
+  * Moves check_in_time back by specified hours.
+  */
+ export async function simulateWorkTime(applicationId: string, hoursAgo: number): Promise<void> {
+-    const appRef = doc(db, 'applications', applicationId);
+-    const appSnap = await getDoc(appRef);
+-    if (!appSnap.exists()) throw new Error('ÄÆ¡n á»©ng tuyá»ƒn khĂ´ng tá»“n táº¡i.');
+-
+-    const now = new Date();
+-    const simulatedDate = new Date(now.getTime() - hoursAgo * 60 * 60 * 1000);
+-
+-    await updateDoc(appRef, {
+-        check_in_time: simulatedDate,
+-        updated_at: serverTimestamp(),
+-    });
+-
+-    console.log(`[Simulation] Moved check_in_time for ${applicationId} to ${hoursAgo} hours ago.`);
++    const callable = httpsCallable<
++        { applicationId: string; hoursAgo: number },
++        { success: boolean }
++    >(functions, 'simulateWorkTime');
++    await callable({ applicationId, hoursAgo });
+ }
+diff --git a/apps/web/src/features/jobs/services/candidateProfileService.ts b/apps/web/src/features/jobs/services/candidateProfileService.ts
+index ae695f7..0ccfb94 100644
+--- a/apps/web/src/features/jobs/services/candidateProfileService.ts
++++ b/apps/web/src/features/jobs/services/candidateProfileService.ts
+@@ -69,7 +69,7 @@ export async function updateCandidatePublicProfile(
+ export async function uploadEkycAssets(uid: string, files: File[]): Promise<string[]> {
+     const uploads = files.map(async (file) => {
+         const fileRef = ref(storage, `users_private/${uid}/ekyc/${Date.now()}_${file.name}`);
+-        await uploadBytes(fileRef, file);
++        await uploadBytes(fileRef, file, { contentType: file.type || 'image/jpeg' });
+         return getDownloadURL(fileRef);
+     });
+ 
+diff --git a/apps/web/src/features/jobs/services/jobSearchService.ts b/apps/web/src/features/jobs/services/jobSearchService.ts
+index cc3eb5c..f6a4bc8 100644
+--- a/apps/web/src/features/jobs/services/jobSearchService.ts
++++ b/apps/web/src/features/jobs/services/jobSearchService.ts
+@@ -86,9 +86,18 @@ export async function fetchAllJobs(): Promise<Job[]> {
+                 updated_at: raw.updated_at ?? raw.updatedAt,
+                 images: Array.isArray(raw.images) ? raw.images : [],
+                 is_premium: Boolean(raw.is_premium ?? raw.isPremium ?? false),
++                moderation_status: (raw.moderation_status ?? raw.moderationStatus) as JobDoc['moderation_status'],
++                moderation_reason: String(raw.moderation_reason ?? raw.moderationReason ?? ''),
++                is_boosted: Boolean(raw.is_boosted ?? raw.isBoosted ?? false),
++                boost_expires_at: raw.boost_expires_at ?? raw.boostExpiresAt,
++                boost_package_code: (raw.boost_package_code ?? raw.boostPackageCode) as JobDoc['boost_package_code'],
+             };
+             return mapJobDocToJob(docSnap.id, normalized);
+         })
++        .filter(job => {
++            const moderationStatus = String(job.moderationStatus ?? '').toUpperCase();
++            return (moderationStatus === '' || moderationStatus === 'APPROVED') && ['OPEN', 'ACTIVE', 'FULL'].includes(String(job.status ?? '').toUpperCase());
++        })
+         .filter(job => {
+             // Hide jobs where ALL shifts are fully booked (remaining_slots <= 0)
+             // If no shift_capacity data exists, show the job (assume slots available)
+@@ -101,6 +110,15 @@ export async function fetchAllJobs(): Promise<Job[]> {
+                 (cap: any) => !cap || cap.remaining_slots === undefined || Number(cap.remaining_slots) > 0
+             );
+             return hasOpenSlot;
++        })
++        .sort((a, b) => {
++            const boostA = a.isBoosted ? 1 : 0;
++            const boostB = b.isBoosted ? 1 : 0;
++            if (boostA !== boostB) return boostB - boostA;
++
++            const timeA = new Date(a.createdAt ?? 0).getTime();
++            const timeB = new Date(b.createdAt ?? 0).getTime();
++            return timeB - timeA;
+         });
+ }
+ 
+diff --git a/apps/web/src/features/jobs/services/jobService.ts b/apps/web/src/features/jobs/services/jobService.ts
+index f1bfeeb..7a2b402 100644
+--- a/apps/web/src/features/jobs/services/jobService.ts
++++ b/apps/web/src/features/jobs/services/jobService.ts
+@@ -1,18 +1,19 @@
+ import {
+     collection,
+     doc,
+-    setDoc,
+     getDoc,
+     getDocs,
+     query,
+     where,
+     serverTimestamp,
+     updateDoc,
+-    deleteDoc,
+     increment,
++    writeBatch,
+ } from 'firebase/firestore';
+-import { db } from '@/config/firebase';
+-import type { Job } from '@jobnow/types';
++
++import { httpsCallable } from 'firebase/functions';
++import { db, functions } from '@/config/firebase';
++import type { BoostPackage, Job, JobPostingQuota } from '@jobnow/types';
+ import { mapJobDocToJob, mapNearbyApiToJobDoc } from './adapters';
+ 
+ export type CreateJobDTO = Omit<Job, 'id' | 'createdAt' | 'updatedAt'>;
+@@ -67,7 +68,24 @@ function dedupeJobs(items: Job[]): Job[] {
+     return Array.from(map.values());
+ }
+ 
+-function mapJobSnapshot(docSnap: { id: string; data: () => Record<string, unknown> }): Job {
++async function fetchShiftDocs(jobId: string): Promise<Array<{ id: string; name: string; start_time: string; end_time: string; quantity: number }>> {
++    const snapshot = await getDocs(collection(db, 'jobs', jobId, 'shifts'));
++    return snapshot.docs.map((docSnap) => {
++        const data = docSnap.data();
++        return {
++            id: docSnap.id,
++            name: String(data.name ?? ''),
++            start_time: String(data.start_time ?? data.startTime ?? '00:00'),
++            end_time: String(data.end_time ?? data.endTime ?? '00:00'),
++            quantity: Number(data.quantity ?? 0),
++        };
++    });
++}
++
++function mapJobSnapshot(
++    docSnap: { id: string; data: () => Record<string, unknown> },
++    shiftsOverride?: Array<{ id: string; name: string; start_time: string; end_time: string; quantity: number }>,
++): Job {
+     const raw = docSnap.data();
+     
+     // Convert Firestore Timestamp to Date if it has a toDate method
+@@ -86,7 +104,9 @@ function mapJobSnapshot(docSnap: { id: string; data: () => Record<string, unknow
+         category_id: String(raw.category_id ?? raw.categoryId ?? ''),
+         salary_type: (raw.salary_type ?? raw.salaryType ?? 'HOURLY') as any,
+         is_gps_required: Boolean(raw.is_gps_required ?? raw.isGpsRequired ?? false),
+-        shifts: Array.isArray(raw.shifts)
++        shifts: Array.isArray(shiftsOverride) && shiftsOverride.length > 0
++            ? shiftsOverride
++            : Array.isArray(raw.shifts)
+             ? raw.shifts.map((shift) => {
+                 const s = shift as Record<string, unknown>;
+                 return {
+@@ -100,6 +120,11 @@ function mapJobSnapshot(docSnap: { id: string; data: () => Record<string, unknow
+             : [],
+         created_at: convertTimestamp(raw.created_at ?? raw.createdAt),
+         updated_at: convertTimestamp(raw.updated_at ?? raw.updatedAt),
++        moderation_status: (raw.moderation_status ?? raw.moderationStatus) as any,
++        moderation_reason: String(raw.moderation_reason ?? raw.moderationReason ?? ''),
++        is_boosted: Boolean(raw.is_boosted ?? raw.isBoosted ?? false),
++        boost_expires_at: raw.boost_expires_at ?? raw.boostExpiresAt,
++        boost_package_code: (raw.boost_package_code ?? raw.boostPackageCode) as any,
+     };
+ 
+     return mapJobDocToJob(docSnap.id, normalized);
+@@ -116,10 +141,11 @@ export async function fetchEmployerJobs(employerId: string): Promise<Job[]> {
+             getDocs(query(jobsRef, where('employer_id', '==', employerId))),
+         ]);
+ 
+-        const allItems = [
+-            ...camelSnapshot.docs.map((docSnap) => mapJobSnapshot(docSnap)),
+-            ...snakeSnapshot.docs.map((docSnap) => mapJobSnapshot(docSnap)),
+-        ];
++        const allDocs = [...camelSnapshot.docs, ...snakeSnapshot.docs];
++        const allItems = await Promise.all(allDocs.map(async (docSnap) => {
++            const shifts = await fetchShiftDocs(docSnap.id);
++            return mapJobSnapshot(docSnap, shifts);
++        }));
+ 
+         return dedupeJobs(allItems);
+     } catch (error) {
+@@ -135,7 +161,8 @@ export async function fetchJobById(jobId: string): Promise<Job | null> {
+     try {
+         const docSnap = await getDoc(doc(db, 'jobs', jobId));
+         if (!docSnap.exists()) return null;
+-        return mapJobSnapshot(docSnap as any);
++        const shifts = await fetchShiftDocs(docSnap.id);
++        return mapJobSnapshot(docSnap as any, shifts);
+     } catch (error) {
+         console.error('Error in fetchJobById:', error);
+         throw new Error('KhĂ´ng thá»ƒ láº¥y thĂ´ng tin tin tuyá»ƒn dá»¥ng.');
+@@ -143,61 +170,112 @@ export async function fetchJobById(jobId: string): Promise<Job | null> {
+ }
+ 
+ /**
+- * Create a new job posting in Firestore.
++ * Create a new job posting in Firestore directly (bypassing Cloud Function for Spark plan compatibility).
+  */
+ export async function createJob(jobData: Partial<Job>): Promise<Job> {
+     try {
+-        const jobsRef = collection(db, 'jobs');
+-        const newJobRef = doc(jobsRef);
+-        const latitude = Number(jobData.location?.latitude ?? 0);
+-        const longitude = Number(jobData.location?.longitude ?? 0);
++        console.log('[createJob] v2 - DIRECT FIRESTORE WRITE - START');
++        const { getAuth } = await import('firebase/auth');
+ 
+-        const geohash = latitude && longitude
+-            ? encodeGeohash(latitude, longitude)
+-            : '';
++        const auth = getAuth();
++        const user = auth.currentUser;
++        if (!user) throw new Error('Báº¡n cáº§n Ä‘Äƒng nháº­p Ä‘á»ƒ Ä‘Äƒng tin.');
+ 
+-        const jobToSave: any = {
+-            employer_id: jobData.employerId,
+-            category_id: jobData.categoryId,
+-            title: jobData.title,
+-            description: jobData.description,
+-            salary: jobData.salary,
+-            salary_type: jobData.salaryType,
+-            address: jobData.location?.address ?? '',
+-            location: {
+-                latitude,
+-                longitude,
+-            },
+-            geohash,
+-            is_gps_required: jobData.isGpsRequired ?? false,
+-            status: jobData.status === 'ACTIVE' ? 'OPEN' : (jobData.status ?? 'OPEN'),
+-            shifts: (jobData.shifts ?? []).map((shift) => ({
+-                id: shift.id,
+-                name: shift.name,
+-                start_time: shift.startTime,
+-                end_time: shift.endTime,
+-                quantity: shift.quantity,
+-            })),
+-            created_at: serverTimestamp(),
+-            updated_at: serverTimestamp(),
++        // Fetch employer profile to get name
++        const employerSnap = await getDoc(doc(db, 'users', user.uid));
++        if (!employerSnap.exists()) throw new Error('KhĂ´ng tĂ¬m tháº¥y há»“ sÆ¡ nhĂ  tuyá»ƒn dá»¥ng.');
++        const employerData = employerSnap.data();
++        const employerName = String(
++            employerData.company_name ??
++            employerData.full_name ??
++            employerData.fullName ??
++            'NhĂ  tuyá»ƒn dá»¥ng JobNow'
++        );
++
++        const shifts = (jobData.shifts ?? []).map((shift, index) => {
++            const id = String(shift.id || `shift_${Date.now()}_${index + 1}`);
++            return {
++                id,
++                name: String(shift.name || `Ca ${index + 1}`),
++                start_time: String(shift.startTime || '08:00'),
++                end_time: String(shift.endTime || '17:00'),
++                quantity: Math.max(Number(shift.quantity || 1), 1),
++                status: 'OPEN',
++            };
++        });
++
++        const shiftCapacity: Record<string, { total_slots: number; remaining_slots: number; applied_count: number }> = {};
++        shifts.forEach((s) => {
++            shiftCapacity[s.id] = { total_slots: s.quantity, remaining_slots: s.quantity, applied_count: 0 };
++        });
++
++        const lat = Number(jobData.location?.latitude ?? 0);
++        const lng = Number(jobData.location?.longitude ?? 0);
++
++        const jobRef = doc(collection(db, 'jobs'));
++        const now = serverTimestamp();
++
++        const jobPayload = {
++            employer_id: user.uid,
++            employer_name: employerName,
++            category_id: String(jobData.categoryId ?? ''),
++            title: String(jobData.title ?? '').trim(),
++            description: String(jobData.description ?? '').trim(),
++            salary: Number(jobData.salary ?? 0),
++            salary_type: (jobData.salaryType ? String(jobData.salaryType).toUpperCase() : 'HOURLY'),
++            address: String(jobData.location?.address ?? ''),
++            location: { latitude: lat, longitude: lng },
++            geohash: encodeGeohash(lat, lng),
++            is_gps_required: Boolean(jobData.isGpsRequired ?? false),
++            status: ((jobData.status as string) ?? 'OPEN').toUpperCase() as 'OPEN' | 'ACTIVE' | 'DRAFT',
++            moderation_status: 'PENDING_REVIEW',
++
++            shifts,
++            shift_capacity: shiftCapacity,
++            vacancies: Number(jobData.vacancies ?? shifts.reduce((s, sh) => s + sh.quantity, 0)),
++            deadline: jobData.deadline ?? null,
++            requirements: Array.isArray(jobData.requirements) ? jobData.requirements : [],
++            images: Array.isArray(jobData.images) ? jobData.images : [],
++            gender_preference: String(jobData.genderPreference ?? 'ANY').toUpperCase(),
++            start_date: jobData.startDate ?? null,
++            is_premium: false,
++            is_boosted: false,
++            boost_expires_at: null,
++            created_at: now,
++            updated_at: now,
+         };
+ 
+-        if (jobData.vacancies !== undefined) jobToSave.vacancies = jobData.vacancies;
+-        if (jobData.deadline !== undefined) jobToSave.deadline = jobData.deadline;
+-        if (jobData.requirements !== undefined) jobToSave.requirements = jobData.requirements;
+-        if (jobData.images !== undefined) jobToSave.images = jobData.images;
+-        if (jobData.genderPreference !== undefined) jobToSave.gender_preference = jobData.genderPreference;
+-        if (jobData.startDate !== undefined) jobToSave.start_date = jobData.startDate;
+-        if (jobData.isPremium !== undefined) jobToSave.is_premium = jobData.isPremium;
++        const batch = writeBatch(db);
++        batch.set(jobRef, jobPayload);
++        shifts.forEach((shift) => {
++            const shiftRef = doc(collection(db, 'jobs', jobRef.id, 'shifts'), shift.id);
++            batch.set(shiftRef, {
++                ...shift,
++                job_id: jobRef.id,
++                employer_id: user.uid,
++                created_at: now,
++                updated_at: now,
++            });
++        });
++        console.log('--- FIRESTORE JOB PAYLOAD ---', JSON.stringify(jobPayload, null, 2));
++        await batch.commit();
++
+ 
+-        await setDoc(newJobRef, jobToSave);
+-        return mapJobDocToJob(newJobRef.id, jobToSave as any);
++        const created = await fetchJobById(jobRef.id);
++        if (!created) throw new Error('KhĂ´ng thá»ƒ táº£i láº¡i tin sau khi táº¡o.');
++        return created;
+     } catch (error) {
+-        console.error('Error in createJob:', error);
+-        throw new Error('KhĂ´ng thá»ƒ táº¡o tin tuyá»ƒn dá»¥ng. Vui lĂ²ng thá»­ láº¡i sau.');
++        console.error('--- FULL CREATE JOB ERROR ---', error);
++        if (error && typeof error === 'object') {
++            const fbError = error as any;
++            console.error('Error Code:', fbError.code);
++            console.error('Error Details:', fbError.details ?? fbError.message);
++        }
++        throw new Error((error as { message?: string })?.message || 'KhĂ´ng thá»ƒ táº¡o tin tuyá»ƒn dá»¥ng. Vui lĂ²ng thá»­ láº¡i sau.');
+     }
+ }
+ 
++
+ /**
+  * Update an existing job posting in Firestore.
+  */
+@@ -228,6 +306,11 @@ export async function updateJob(jobId: string, data: Partial<Job>): Promise<void
+         if (data.startDate !== undefined) updateData.start_date = data.startDate;
+         if (data.isPremium !== undefined) updateData.is_premium = data.isPremium;
+         if (data.isGpsRequired !== undefined) updateData.is_gps_required = data.isGpsRequired;
++        if (data.moderationStatus !== undefined) updateData.moderation_status = data.moderationStatus;
++        if (data.moderationReason !== undefined) updateData.moderation_reason = data.moderationReason;
++        if (data.isBoosted !== undefined) updateData.is_boosted = data.isBoosted;
++        if (data.boostExpiresAt !== undefined) updateData.boost_expires_at = data.boostExpiresAt;
++        if (data.boostPackageCode !== undefined) updateData.boost_package_code = data.boostPackageCode;
+ 
+         if (data.location !== undefined) {
+             updateData.address = data.location?.address ?? '';
+@@ -256,17 +339,104 @@ export async function updateJob(jobId: string, data: Partial<Job>): Promise<void
+ }
+ 
+ /**
+- * Delete a job posting from Firestore.
++ * Delete a job posting directly from Firestore (bypassing Cloud Function for Spark plan).
+  */
+ export async function deleteJob(jobId: string): Promise<void> {
+     try {
+-        await deleteDoc(doc(db, 'jobs', jobId));
++        const jobRef = doc(db, 'jobs', jobId);
++        // Soft delete: mark as CLOSED then hard delete
++        await updateDoc(jobRef, {
++            status: 'CLOSED',
++            updated_at: serverTimestamp(),
++        });
++        // Then do hard delete
++        const { deleteDoc } = await import('firebase/firestore');
++        await deleteDoc(jobRef);
+     } catch (error) {
+         console.error('Error in deleteJob:', error);
+-        throw new Error('KhĂ´ng thá»ƒ xoĂ¡ tin tuyá»ƒn dá»¥ng.');
++        throw new Error('KhĂ´ng thá»ƒ xoĂ¡ tin tuyá»ƒn dá»¥ng: ' + (error as { message?: string })?.message);
+     }
+ }
+ 
++
++export async function fetchMyJobPostingQuota(): Promise<JobPostingQuota> {
++    const callable = httpsCallable<Record<string, never>, JobPostingQuota>(functions, 'getMyJobPostingQuota');
++    const result = await callable({});
++    return result.data;
++}
++
++export async function reviewJobModeration(
++    jobId: string,
++    action: 'APPROVE' | 'REJECT',
++    reason?: string,
++): Promise<void> {
++    const callable = httpsCallable<{ jobId: string; action: 'APPROVE' | 'REJECT'; reason?: string }, { success: boolean }>(
++        functions,
++        'reviewJobModeration',
++    );
++    await callable({ jobId, action, reason });
++}
++
++export async function purchaseBoostPackage(
++    jobId: string,
++    packageCode: BoostPackage['code'],
++): Promise<{ expiresAt: string; price: number }> {
++    const callable = httpsCallable<
++        { jobId: string; packageCode: BoostPackage['code'] },
++        { success: boolean; expiresAt: string; price: number }
++    >(functions, 'purchaseBoostPackage');
++    const result = await callable({ jobId, packageCode });
++    return {
++        expiresAt: result.data.expiresAt,
++        price: result.data.price,
++    };
++}
++
++export async function closeJobSafely(
++    jobId: string,
++    confirmed = false,
++    notifyCandidates = true,
++): Promise<{ requiresConfirmation: boolean; affectedCandidates: number; latePenaltyPossible: boolean; success?: boolean }> {
++    const callable = httpsCallable<
++        { jobId: string; confirmed?: boolean; notifyCandidates?: boolean },
++        { requiresConfirmation: boolean; affectedCandidates: number; latePenaltyPossible: boolean; success?: boolean }
++    >(functions, 'closeJobSafely');
++    const result = await callable({ jobId, confirmed, notifyCandidates });
++    return result.data;
++}
++
++export function getBoostPackages(): BoostPackage[] {
++    return [
++        {
++            id: 'BOOST_24H',
++            code: 'BOOST_24H',
++            name: 'Äáº©y top 24 giá»',
++            description: 'Æ¯u tiĂªn hiá»ƒn thá»‹ trong 24 giá».',
++            price: 39000,
++            durationHours: 24,
++            active: true,
++        },
++        {
++            id: 'BOOST_3D',
++            code: 'BOOST_3D',
++            name: 'Äáº©y top 3 ngĂ y',
++            description: 'Æ¯u tiĂªn hiá»ƒn thá»‹ trong 3 ngĂ y.',
++            price: 99000,
++            durationHours: 72,
++            active: true,
++        },
++        {
++            id: 'BOOST_7D',
++            code: 'BOOST_7D',
++            name: 'Äáº©y top 7 ngĂ y',
++            description: 'Æ¯u tiĂªn hiá»ƒn thá»‹ trong 7 ngĂ y.',
++            price: 199000,
++            durationHours: 168,
++            active: true,
++        },
++    ];
++}
++
+ /**
+  * Increment the view count for a job posting.
+  */
+@@ -302,4 +472,3 @@ export async function fetchCategories(): Promise<string[]> {
+         return [];
+     }
+ }
+-
+diff --git a/apps/web/src/features/jobs/services/ratingService.ts b/apps/web/src/features/jobs/services/ratingService.ts
+index 0f07244..d1864df 100644
+--- a/apps/web/src/features/jobs/services/ratingService.ts
++++ b/apps/web/src/features/jobs/services/ratingService.ts
+@@ -7,10 +7,9 @@ import {
+     orderBy,
+     query,
+     where,
+-    serverTimestamp,
+-    runTransaction,
+ } from 'firebase/firestore';
+-import { db } from '@/config/firebase';
++import { httpsCallable } from 'firebase/functions';
++import { db, functions } from '@/config/firebase';
+ import type { RatingInput, RatingResult } from '@jobnow/types';
+ 
+ export interface RatingEligibility {
+@@ -28,76 +27,11 @@ export interface RatingRecord {
+     createdAt?: Date;
+ }
+ 
+-/**
+- * Submits a rating using a Firestore Transaction to ensure consistency.
+- * 1. Creates a review record.
+- * 2. Updates the reviewee's average_rating and total_ratings.
+- * 3. Creates a notification for the reviewee.
+- */
+ export async function submitRating(input: RatingInput): Promise<RatingResult> {
+-    const revieweeRef = doc(db, 'users', input.revieweeId);
+-    const reviewsRef = collection(db, 'reviews');
+-    const notificationsRef = collection(db, 'notifications');
+-
+     try {
+-        const result = await runTransaction(db, async (transaction) => {
+-            // 1. Get reviewee profile for aggregation
+-            const revieweeSnap = await transaction.get(revieweeRef);
+-            const revieweeData = revieweeSnap.exists() ? revieweeSnap.data() : {};
+-            
+-            const currentTotal = Number(revieweeData.total_ratings || 0);
+-            const currentAvg = Number(revieweeData.average_rating || 0);
+-            
+-            const newTotal = currentTotal + 1;
+-            const newAvg = Number(((currentAvg * currentTotal + input.rating) / newTotal).toFixed(1));
+-
+-            // 2. Add Review Document (using generated doc for ID)
+-            const newReviewRef = doc(reviewsRef);
+-            transaction.set(newReviewRef, {
+-                application_id: input.applicationId,
+-                reviewer_id: input.reviewerId,
+-                reviewee_id: input.revieweeId,
+-                rating: input.rating,
+-                comment: input.comment || '',
+-                created_at: serverTimestamp(),
+-            });
+-
+-            // 3. Add Notification
+-            const newNotifRef = doc(notificationsRef);
+-            transaction.set(newNotifRef, {
+-                userId: input.revieweeId,
+-                user_id: input.revieweeId,
+-                type: 'NEW_REVIEW',
+-                category: 'SYSTEM',
+-                title: 'ÄĂ¡nh giĂ¡ má»›i',
+-                body: `Báº¡n vá»«a nháº­n Ä‘Æ°á»£c Ä‘Ă¡nh giĂ¡ ${input.rating} sao tá»« Ä‘á»‘i tĂ¡c.`,
+-                data: {
+-                    applicationId: input.applicationId,
+-                    reviewerId: input.reviewerId,
+-                    rating: input.rating,
+-                },
+-                isRead: false,
+-                is_read: false,
+-                created_at: serverTimestamp(),
+-                createdAt: serverTimestamp(),
+-            });
+-
+-            const newReputation = Math.round(newAvg * 20);
+-
+-            // 4. Update Reviewee Profile using set(merge) for robustness
+-            transaction.set(revieweeRef, {
+-                average_rating: newAvg,
+-                total_ratings: newTotal,
+-                reputation_score: newReputation,
+-                updated_at: serverTimestamp(),
+-                updatedAt: serverTimestamp(),
+-            }, { merge: true });
+-
+-            console.log(`Review submitted: reviewId=${newReviewRef.id}, app=${input.applicationId}, reviewee=${input.revieweeId}, newScore=${newReputation}`);
+-            return { reviewId: newReviewRef.id, updatedReputationScore: newReputation };
+-        });
+-
+-        return result;
++        const callable = httpsCallable<RatingInput, RatingResult>(functions, 'submitRating');
++        const { data } = await callable(input);
++        return data;
+     } catch (error: any) {
+         console.error('Error in submitRating:', error);
+         throw new Error(error.message || 'KhĂ´ng thá»ƒ gá»­i Ä‘Ă¡nh giĂ¡. Vui lĂ²ng thá»­ láº¡i sau.');

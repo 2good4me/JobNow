@@ -1,10 +1,10 @@
 import {
     collection, query, where, orderBy, limit, getDocs,
-    doc, updateDoc, getDoc, startAfter, getCountFromServer,
-    serverTimestamp, addDoc,
+    doc, getDoc, startAfter, getCountFromServer,
     type QueryConstraint, type DocumentSnapshot,
 } from 'firebase/firestore';
-import { db } from '@/config/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '@/config/firebase';
 import type { UserProfile } from '@/features/auth/types/user';
 
 /* ── Types ─────────────────────────────────────────── */
@@ -139,36 +139,24 @@ export async function fetchUserById(userId: string): Promise<UserProfile | null>
 export async function updateUserStatus(
     userId: string,
     newStatus: 'ACTIVE' | 'LOCKED' | 'BANNED',
-    adminId: string,
+    _adminId: string,
     reason: string,
 ): Promise<void> {
-    const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
-        status: newStatus,
-        updated_at: serverTimestamp(),
-    });
+    const action =
+        newStatus === 'ACTIVE'
+            ? 'UNLOCK'
+            : newStatus === 'LOCKED'
+              ? 'LOCK'
+              : 'BAN';
 
-    // Audit log
-    await addDoc(collection(db, 'admin_logs'), {
-        admin_id: adminId,
-        action: newStatus === 'ACTIVE' ? 'UNLOCK_USER' : newStatus === 'LOCKED' ? 'LOCK_USER' : 'BAN_USER',
-        target_type: 'USER',
-        target_id: userId,
-        reason,
-        created_at: serverTimestamp(),
-    });
+    const callable = httpsCallable<
+        { userId: string; action: 'LOCK' | 'UNLOCK' | 'BAN'; reason?: string },
+        { success: boolean; status: string }
+    >(functions, 'adminSetUserStatus');
 
-    // Notify user
-    await addDoc(collection(db, 'notifications'), {
+    await callable({
         userId,
-        user_id: userId,
-        type: 'SYSTEM',
-        category: 'SYSTEM',
-        title: newStatus === 'BANNED' ? 'Tài khoản bị cấm' : newStatus === 'LOCKED' ? 'Tài khoản bị khóa' : 'Tài khoản được mở khóa',
-        body: reason,
-        isRead: false,
-        is_read: false,
-        created_at: serverTimestamp(),
-        createdAt: serverTimestamp(),
+        action,
+        reason,
     });
 }

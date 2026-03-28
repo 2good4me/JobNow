@@ -35,10 +35,11 @@ service firebase.storage {
     }
 
     match /job-images/{userId}/{fileName} {
-      allow read: if isSignedIn();
-      allow write: if isOwner(userId) && isEmployer() && isImageUpload();
+      allow read: if true;
+      allow write: if isOwner(userId) && isImageUpload();
       allow delete: if isOwner(userId) || isAdmin();
     }
+
 
     match /business-licenses/{userId}/{fileName} {
       allow read: if isOwner(userId) || isAdmin();
