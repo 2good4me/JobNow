@@ -47,6 +47,7 @@ import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminReportsRouteImport } from './routes/admin/reports'
 import { Route as AdminJobsRouteImport } from './routes/admin/jobs'
 import { Route as AdminCategoriesRouteImport } from './routes/admin/categories'
+import { Route as AdminCandidatesRouteImport } from './routes/admin/candidates'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin/analytics'
 import { Route as EmployerVerificationIndexRouteImport } from './routes/employer/verification/index'
 import { Route as EmployerProfileIndexRouteImport } from './routes/employer/profile/index'
@@ -263,6 +264,11 @@ const AdminCategoriesRoute = AdminCategoriesRouteImport.update({
   path: '/categories',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminCandidatesRoute = AdminCandidatesRouteImport.update({
+  id: '/candidates',
+  path: '/candidates',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
@@ -416,6 +422,7 @@ export interface FileRoutesByFullPath {
   '/support-center': typeof SupportCenterRoute
   '/support-center-data': typeof SupportCenterDataRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/candidates': typeof AdminCandidatesRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/jobs': typeof AdminJobsRoute
   '/admin/reports': typeof AdminReportsRoute
@@ -480,6 +487,7 @@ export interface FileRoutesByTo {
   '/support-center': typeof SupportCenterRoute
   '/support-center-data': typeof SupportCenterDataRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/candidates': typeof AdminCandidatesRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/jobs': typeof AdminJobsRoute
   '/admin/reports': typeof AdminReportsRoute
@@ -543,6 +551,7 @@ export interface FileRoutesById {
   '/support-center': typeof SupportCenterRoute
   '/support-center-data': typeof SupportCenterDataRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/candidates': typeof AdminCandidatesRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/jobs': typeof AdminJobsRoute
   '/admin/reports': typeof AdminReportsRoute
@@ -610,6 +619,7 @@ export interface FileRouteTypes {
     | '/support-center'
     | '/support-center-data'
     | '/admin/analytics'
+    | '/admin/candidates'
     | '/admin/categories'
     | '/admin/jobs'
     | '/admin/reports'
@@ -674,6 +684,7 @@ export interface FileRouteTypes {
     | '/support-center'
     | '/support-center-data'
     | '/admin/analytics'
+    | '/admin/candidates'
     | '/admin/categories'
     | '/admin/jobs'
     | '/admin/reports'
@@ -736,6 +747,7 @@ export interface FileRouteTypes {
     | '/support-center'
     | '/support-center-data'
     | '/admin/analytics'
+    | '/admin/candidates'
     | '/admin/categories'
     | '/admin/jobs'
     | '/admin/reports'
@@ -1099,6 +1111,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCategoriesRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/candidates': {
+      id: '/admin/candidates'
+      path: '/candidates'
+      fullPath: '/admin/candidates'
+      preLoaderRoute: typeof AdminCandidatesRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/analytics': {
       id: '/admin/analytics'
       path: '/analytics'
@@ -1291,6 +1310,7 @@ const AdminUsersRouteWithChildren = AdminUsersRoute._addFileChildren(
 
 interface AdminRouteChildren {
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
+  AdminCandidatesRoute: typeof AdminCandidatesRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
   AdminJobsRoute: typeof AdminJobsRoute
   AdminReportsRoute: typeof AdminReportsRoute
@@ -1302,6 +1322,7 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAnalyticsRoute: AdminAnalyticsRoute,
+  AdminCandidatesRoute: AdminCandidatesRoute,
   AdminCategoriesRoute: AdminCategoriesRoute,
   AdminJobsRoute: AdminJobsRoute,
   AdminReportsRoute: AdminReportsRoute,
