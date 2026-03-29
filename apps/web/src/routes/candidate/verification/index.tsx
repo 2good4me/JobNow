@@ -1,6 +1,5 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
 import { useState, useRef } from 'react';
-import { useAuth } from '@/features/auth/context/AuthContext';
 import { useSubmitCandidateVerification } from '@/features/candidate/verification/hooks/useVerification';
 import {
     ArrowLeft, ShieldCheck, Zap,
@@ -16,7 +15,6 @@ export const Route = createFileRoute('/candidate/verification/')({
 type Step = 'OVERVIEW' | 'ID_UPLOAD' | 'PORTRAIT_UPLOAD' | 'OCR_CONFIRM' | 'SUCCESS';
 
 function CandidateVerificationPage() {
-    const { userProfile } = useAuth();
     const navigate = useNavigate();
     const [step, setStep] = useState<Step>('OVERVIEW');
     const [frontFile, setFrontFile] = useState<File | null>(null);
@@ -33,15 +31,34 @@ function CandidateVerificationPage() {
 
     const submitVerification = useSubmitCandidateVerification();
 
-    const handleIdUpload = (file: File) => {
+    const handleIdUpload = async (file: File) => {
         setFrontFile(file);
-        // Simulate OCR extraction logic here
-        // In reality, Step 1 UPLOAD will call the API to pre-fill
-        setOcrData({
-            cccd_number: '0012010xxxxx',
-            full_name: userProfile?.full_name || '',
-            dob: '01/01/1990'
-        });
+        
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const response = await fetch('http://localhost:8000/api/verify-cccd', {
+                method: 'POST',
+                body: formData,
+            });
+            
+            if (!response.ok) throw new Error('API failed');
+            
+            const result = await response.json();
+            if (result?.success && result?.data) {
+                setOcrData({
+                    cccd_number: result.data.cccd_number || '',
+                    full_name: result.data.full_name || '',
+                    dob: result.data.dob || ''
+                });
+            } else {
+                toast.error(result?.error || 'Không thể trích xuất CCCD. Vui lòng thử lại ảnh rõ nét hơn.');
+            }
+        } catch (error) {
+            console.warn('OCR service unavailable', error);
+            toast.error('Hệ thống nhận diện tạm thời gián đoạn. Vui lòng nhập tay.');
+        }
+
         setStep('PORTRAIT_UPLOAD');
     };
 
@@ -205,19 +222,22 @@ function UploadView({
 }: { 
     title: string;
     description: string;
-    onUpload: (file: File) => void;
+    onUpload: (file: File) => Promise<void> | void;
     icon?: React.ReactNode;
 }) {
     const [isProcessing, setIsProcessing] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
             setIsProcessing(true);
-            setTimeout(() => {
-                onUpload(e.target.files![0]);
+            try {
+                await onUpload(e.target.files![0]);
+            } catch (error) {
+                console.error('Lỗi Upload:', error);
+            } finally {
                 setIsProcessing(false);
-            }, 800);
+            }
         }
     };
 
