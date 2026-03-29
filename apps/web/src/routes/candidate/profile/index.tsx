@@ -5,6 +5,8 @@ import { useMyApplicationsRealtime } from '@/features/jobs/hooks/useMyApplicatio
 import { getProgressToNextTier, getReputationTier } from '@/features/auth/helpers/reputationHelper';
 import { getFollowingCount } from '@/features/auth/services/followService';
 import { AchievementBadges, CANDIDATE_ACHIEVEMENTS } from '@/features/auth/components/AchievementBadges';
+import { ReputationCircle } from '@/features/auth/components/ReputationCircle';
+import { ShieldCheck, ShieldAlert, ChevronRight } from 'lucide-react';
 
 export const Route = createFileRoute('/candidate/profile/')({
     component: CandidateProfilePage,
@@ -77,27 +79,24 @@ function CandidateProfilePage() {
     const tierInfo = getReputationTier(reputationScore);
     const tierProgress = getProgressToNextTier(reputationScore);
 
+    const percentageToText = (pct: number) => {
+        if (pct >= 90) return 'Sắp đạt hạng mới';
+        if (pct >= 50) return 'Đang tiến triển tốt';
+        return `còn ${tierProgress.pointsNeeded} điểm nữa`;
+    };
+
     return (
-        <div className="min-h-[100dvh] bg-slate-50 pb-24">
-            {/* Header Section */}
-            <div className="bg-white px-5 pt-14 pb-6 border-b border-slate-100/60 shadow-sm shadow-slate-100/50">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-[22px] font-headline font-bold text-slate-900 leading-tight">
-                            {displayName}
-                        </h2>
-                        <p className="text-[13px] font-medium text-slate-500 mt-1 flex items-center gap-1.5">
-                            Lao động tự do
-                            {userProfile.address_text && (
-                                <>
-                                    <span className="text-slate-300">•</span>
-                                    <span className="truncate max-w-[120px] inline-block align-bottom">{userProfile.address_text}</span>
-                                </>
-                            )}
-                        </p>
-                    </div>
-                    <div className="relative shrink-0">
-                        <div className="w-16 h-16 rounded-full overflow-hidden border border-slate-100 shadow-sm bg-slate-50">
+        <div className="min-h-[100dvh] bg-[#F8FAFC] pb-24">
+            {/* Header Section with Cover */}
+            <div className="bg-white pb-6 shadow-sm">
+                <div className="h-[100px] w-full bg-gradient-to-r from-slate-100 to-slate-200 relative">
+                    {/* Background decorative elements */}
+                    <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#0369A1 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
+                </div>
+                
+                <div className="px-5 -mt-[40px] flex items-end justify-between relative z-10">
+                    <div className="relative">
+                        <div className="w-[80px] h-[80px] rounded-full overflow-hidden border-4 border-white shadow-md bg-slate-50">
                             {userProfile.avatar_url ? (
                                 <img
                                     src={userProfile.avatar_url}
@@ -105,54 +104,94 @@ function CandidateProfilePage() {
                                     className="w-full h-full object-cover"
                                 />
                             ) : (
-                                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50/50 text-blue-600 font-headline font-bold text-xl">
+                                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50/50 text-blue-600 font-headline font-bold text-2xl">
                                     {avatarInitial}
                                 </div>
                             )}
                         </div>
+                        
+                        {/* Verified Badge on Avatar */}
+                        <div className={`absolute bottom-0 right-0 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center shadow-sm ${userProfile.verification_status === 'VERIFIED' ? 'bg-emerald-500' : 'bg-amber-500'}`}>
+                            {userProfile.verification_status === 'VERIFIED' ? (
+                                <ShieldCheck className="w-3.5 h-3.5 text-white" />
+                            ) : (
+                                <ShieldAlert className="w-3.5 h-3.5 text-white" />
+                            )}
+                        </div>
                     </div>
+
+                    <Link 
+                        to="/candidate/profile/edit"
+                        className="mb-1 px-4 py-2 rounded-xl border border-sky-700 text-sky-700 text-[13px] font-bold active:bg-sky-50 transition-colors"
+                    >
+                        Chỉnh sửa hồ sơ
+                    </Link>
+                </div>
+
+                <div className="px-5 mt-4">
+                    <div className="flex items-center gap-2">
+                        <h2 className="text-[22px] font-headline font-bold text-[#0F172A] leading-tight">
+                            {displayName}
+                        </h2>
+                        <span className="px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 text-[10px] font-bold uppercase tracking-wider">
+                            Ứng viên
+                        </span>
+                    </div>
+                    <p className="text-[13px] font-medium text-slate-500 mt-1 flex items-center gap-1.5">
+                        Lao động tự do
+                        {userProfile.address_text && (
+                            <>
+                                <span className="text-slate-300">•</span>
+                                <span className="truncate max-w-[180px] inline-block align-bottom">{userProfile.address_text}</span>
+                            </>
+                        )}
+                    </p>
                 </div>
             </div>
 
             <main className="px-5 py-6 space-y-7">
-                {/* Reputation Banner */}
+                {/* eKYC Alert Card */}
+                {userProfile.verification_status !== 'VERIFIED' && (
+                    <Link
+                        to="/candidate/verification"
+                        className="block rounded-2xl bg-amber-50 border border-amber-200 p-4 transition-transform active:scale-[0.98]"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                                <ShieldAlert className="w-6 h-6 text-amber-600" />
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="text-[14px] font-bold text-amber-900">Xác thực danh tính</h4>
+                                <p className="text-[12px] text-amber-700 mt-0.5">Mở khóa Premium Jobs và tăng độ tin cậy</p>
+                            </div>
+                            <button className="px-3 py-1.5 bg-amber-500 text-white rounded-xl text-[12px] font-bold">
+                                Xác thực ngay
+                            </button>
+                        </div>
+                    </Link>
+                )}
+
+                {/* Reputation Score Card */}
                 <Link
                     to="/candidate/profile/reputation"
-                    className="block w-full text-left bg-gradient-to-r from-emerald-50 to-sky-50/70 rounded-[24px] p-4 border border-emerald-100/70 relative overflow-hidden active:scale-[0.98] transition-transform shadow-[0_10px_30px_rgba(16,185,129,0.08)]"
+                    className="block w-full bg-white rounded-2xl p-4 shadow-sm border border-slate-100 relative active:scale-[0.98] transition-transform"
                 >
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
-                    
-                    <div className="relative z-10 flex items-center gap-4">
-                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-4 ring-emerald-100/80">
-                            <div className="text-center leading-none">
-                                <p className="text-[24px] font-black tracking-tight text-emerald-600">{reputationScore}</p>
-                                <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-400">Điểm</p>
-                            </div>
-                        </div>
-
+                    <div className="flex items-center gap-5">
+                        <ReputationCircle score={reputationScore} size={72} strokeWidth={6} />
+                        
                         <div className="min-w-0 flex-1">
-                            <h3 className="font-headline font-bold text-slate-900 flex items-center gap-1.5 text-sm">
-                                <span className="material-symbols-outlined text-[18px] text-emerald-500" style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
+                            <h3 className="font-headline font-bold text-slate-900 text-[14px]">
                                 Điểm uy tín
                             </h3>
-                            <p className="text-[15px] font-semibold text-slate-900 mt-1">
-                                {tierInfo.labelVi} {tierProgress.nextTier ? `— còn ${tierProgress.pointsNeeded} điểm để lên ${tierProgress.nextTier.labelVi}` : '— đang ở hạng cao nhất'}
+                            <p className="text-[15px] font-semibold text-sky-700 mt-0.5">
+                                {tierInfo.labelVi} {tierProgress.nextTier ? `— ${percentageToText(tierProgress.progressPercent)}` : '— Hạng cao nhất'}
                             </p>
-                            <p className="text-[13px] text-slate-600 mt-0.5">
-                                {tierInfo.descriptionVi}
+                            <p className="text-[12px] text-slate-500 mt-1 line-clamp-1">
+                                {activeApplications} ca hoàn thành • {userProfile.canceled_count || 0} lần hủy
                             </p>
-
-                            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-white/80">
-                                <div
-                                    className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-sky-500 transition-all"
-                                    style={{ width: `${tierProgress.progressPercent}%` }}
-                                />
-                            </div>
                         </div>
 
-                        <div className="w-8 h-8 rounded-full bg-white/60 flex items-center justify-center shadow-sm">
-                            <span className="material-symbols-outlined text-emerald-600 text-[18px]">chevron_right</span>
-                        </div>
+                        <ChevronRight className="w-5 h-5 text-slate-300" />
                     </div>
                 </Link>
 

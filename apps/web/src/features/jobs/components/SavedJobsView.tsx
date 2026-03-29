@@ -1,6 +1,6 @@
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useWishlistJobs } from '@/features/jobs/hooks/useWishlistJobs';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link } from '@tanstack/react-router';
 import { SavedJobCard } from './SavedJobCard';
 
 export function SavedJobsView() {

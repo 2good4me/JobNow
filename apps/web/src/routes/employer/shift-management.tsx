@@ -275,8 +275,8 @@ function ShiftManagementPage() {
                     <button
                       type="button"
                       onClick={() => navigate({
-                        to: '/employer/qr-display',
-                        search: { jobId: selectedJobId, shiftIndex: index.toString() }
+                        to: '/employer/qr-display' as any,
+                        search: { jobId: selectedJobId || '', shiftIndex: index.toString() } as any
                       })}
                       className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-200 hover:bg-blue-700 transition cursor-pointer"
                     >

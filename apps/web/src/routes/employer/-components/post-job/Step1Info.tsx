@@ -1,4 +1,4 @@
-import { DollarSign, Tag, UsersRound, X, ChevronDown, Info } from 'lucide-react';
+import { DollarSign, Tag, X, ChevronDown, Info } from 'lucide-react';
 import { payTypes, type JobFormState, type PayType } from '../../post-job';
 import { getSalaryLabel, getSalaryExplanation } from '../../-utils/budgetCalculations';
 

@@ -61,8 +61,10 @@ function FloatingChat({ open, onClose }: { open: boolean; onClose: () => void })
     });
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
-    const [sessionId, setSessionId] = useState(() => {
-        return localStorage.getItem(CHAT_SESSION_KEY) || crypto.randomUUID();
+    const [sessionId] = useState(() => {
+        const saved = localStorage.getItem(CHAT_SESSION_KEY);
+        if (saved) return saved;
+        return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
     });
     const containerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);

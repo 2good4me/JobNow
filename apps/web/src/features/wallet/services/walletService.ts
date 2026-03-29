@@ -123,10 +123,10 @@ export async function requestPayment(
     applicationId: string
 ): Promise<void> {
     const callable = httpsCallable<
-        { applicationId: string; employerId: string },
-        { amount: number; candidateId: string; employerId: string; jobTitle: string }
+        { applicationId: string; employerId: string; candidateId: string; amount: number; jobId: string; jobTitle: string },
+        { success: boolean }
     >(functions, 'processPayment');
-    await callable({ applicationId, employerId });
+    await callable({ applicationId, employerId, candidateId, amount, jobId, jobTitle: 'Payment Request' });
 }
 
 /**

@@ -18,7 +18,6 @@ function CandidateVerificationPage() {
   const { userProfile } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>('OVERVIEW');
-  const [, setFile] = useState<File | null>(null);
   const submitVerification = useSubmitCandidateVerification();
   const isMutationActive = submitVerification.isPending;
 
@@ -62,13 +61,11 @@ function CandidateVerificationPage() {
     }
 
     try {
-      setFile(selectedFile);
-      await submitVerification.mutateAsync(selectedFile);
+      await submitVerification.mutateAsync({ frontFile: selectedFile });
       setStep('SUCCESS');
       toast.success('Gửi hồ sơ thành công!');
     } catch (e) {
       // Lỗi đã được xử lý trong hook bằng toast.error
-      setFile(null);
     }
   };
 

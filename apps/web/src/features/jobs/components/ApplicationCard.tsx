@@ -53,8 +53,8 @@ export function ApplicationCard({ application: app }: ApplicationCardProps) {
   const canCancel = app.status === 'NEW' || app.status === 'PENDING';
 
   // Format salary
-  const wage = app.salary
-    ? `${app.salary.toLocaleString('vi-VN')}đ/${(app as any).salaryType === 'PER_HOUR' ? 'h' : 'ca'}`
+  const wage = (app as any).salary
+    ? `${(app as any).salary.toLocaleString('vi-VN')}đ/${(app as any).salaryType === 'PER_HOUR' ? 'h' : 'ca'}`
     : 'Thỏa thuận';
 
   // Format shift time with date

@@ -10,7 +10,7 @@ import { useAuth } from '@/features/auth/context/AuthContext';
 import { useMyApplicationsRealtime } from '@/features/jobs/hooks/useMyApplicationsRealtime';
 import { useWishlistJobs } from '@/features/jobs/hooks/useWishlistJobs';
 import { DistrictPicker } from '@/features/jobs/components/DistrictPicker';
-import { Briefcase, CalendarClock, ChevronRight, Heart, Wallet } from 'lucide-react';
+import { Briefcase, CalendarClock, ChevronRight, Heart, Wallet, ShieldCheck, ShieldAlert } from 'lucide-react';
 
 export const Route = createFileRoute('/candidate/')({ component: CandidateDashboard });
 
@@ -41,6 +41,7 @@ function CandidateDashboard() {
   const [mapLocation, setMapLocation] = useState<{ lat: number; lng: number; address?: string } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [isDistrictPickerOpen, setIsDistrictPickerOpen] = useState(false);
 
   // Derived stats
   const activeApplications = applications.filter(app => app.status === 'PENDING' || app.status === 'APPROVED').length;
@@ -89,7 +90,7 @@ function CandidateDashboard() {
         setMapLocation({
           lat: fallbackJob.location.latitude,
           lng: fallbackJob.location.longitude,
-          address: fallbackJob.location.address || fallbackJob.address || 'Khu vực có việc làm',
+          address: fallbackJob.location.address || 'Khu vực có việc làm',
         });
       }
       setLocationError('Thiết bị không hỗ trợ lấy vị trí hiện tại. Đã chuyển sang khu vực có việc làm gần nhất.');
@@ -112,7 +113,7 @@ function CandidateDashboard() {
           setMapLocation({
             lat: fallbackJob.location.latitude,
             lng: fallbackJob.location.longitude,
-            address: fallbackJob.location.address || fallbackJob.address || 'Khu vực có việc làm',
+            address: fallbackJob.location.address || 'Khu vực có việc làm',
           });
         }
         setLocationError('Không lấy được GPS. Bạn vẫn có thể bấm trực tiếp lên bản đồ để xem việc làm quanh đó.');
@@ -167,16 +168,27 @@ function CandidateDashboard() {
               {userFirstName} 👋
             </h1>
           </div>
-          <Link 
-            to="/candidate/profile"
-            className="w-12 h-12 rounded-full border-2 border-white/20 bg-white/10 overflow-hidden flex items-center justify-center shadow-lg active:scale-95 transition-transform"
-          >
-            {userProfile?.avatar_url ? (
-               <img src={userProfile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
-            ) : (
-               <span className="text-white font-bold text-lg">{userFirstName.charAt(0)}</span>
-            )}
-          </Link>
+          <div className="relative">
+            <Link 
+              to="/candidate/profile"
+              className="w-12 h-12 rounded-full border-2 border-white/20 bg-white/10 overflow-hidden flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+            >
+              {userProfile?.avatar_url ? (
+                 <img src={userProfile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                 <span className="text-white font-bold text-lg">{userFirstName.charAt(0)}</span>
+              )}
+            </Link>
+            
+            {/* Verified Badge */}
+            <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-[#1e3a5f] flex items-center justify-center shadow-sm ${userProfile?.verification_status === 'VERIFIED' ? 'bg-emerald-500' : 'bg-amber-500'}`}>
+              {userProfile?.verification_status === 'VERIFIED' ? (
+                <ShieldCheck className="w-3 h-3 text-white" />
+              ) : (
+                <ShieldAlert className="w-3 h-3 text-white" />
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Quick Stats Cards */}
@@ -252,9 +264,22 @@ function CandidateDashboard() {
             </button>
           </div>
 
+          <button
+            onClick={() => setIsDistrictPickerOpen(true)}
+            className="w-full flex items-center justify-between bg-white rounded-2xl px-4 py-3.5 shadow-[0_4px_24px_-2px_rgba(124,131,155,0.04)] active:scale-[0.99] transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <span className="material-symbols-outlined text-[#006399]">location_on</span>
+              <span className="text-sm font-bold text-[#191C1E]">{activeDistrict}</span>
+            </div>
+            <span className="material-symbols-outlined text-[#76777D]">expand_more</span>
+          </button>
+
           <DistrictPicker 
-            activeDistrict={activeDistrict} 
-            onChange={setActiveDistrict} 
+            isOpen={isDistrictPickerOpen}
+            onClose={() => setIsDistrictPickerOpen(false)}
+            selectedDistrict={activeDistrict}
+            onSelect={setActiveDistrict}
           />
         </section>
 

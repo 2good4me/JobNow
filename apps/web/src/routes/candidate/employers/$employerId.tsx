@@ -7,8 +7,7 @@ import {
   MapPin, 
   Phone, 
   UserPlus, 
-  MessageSquare,
-  Clock
+  MessageSquare
 } from 'lucide-react';
 
 export const Route = createFileRoute('/candidate/employers/$employerId')({
