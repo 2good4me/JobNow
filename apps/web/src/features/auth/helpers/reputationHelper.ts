@@ -159,7 +159,8 @@ export function getProgressToNextTier(score: number): TierProgress {
     };
   }
 
-  const previousThreshold = NEXT_TIER_THRESHOLDS.filter((threshold) => threshold < nextThreshold).at(-1) ?? 0;
+  const filteredThresholds = NEXT_TIER_THRESHOLDS.filter((threshold) => threshold < nextThreshold);
+  const previousThreshold = filteredThresholds.length > 0 ? filteredThresholds[filteredThresholds.length - 1] : 0;
   const progressPercent = Math.floor(((safeScore - previousThreshold) / (nextThreshold - previousThreshold)) * 100);
 
   return {
@@ -181,7 +182,7 @@ function toRuleItem(rule: ReputationActionDefinition): ReputationRuleItem {
 }
 
 export function getReputationRulesByRole(role: ReputationActorRole) {
-  const entries = Object.values(REPUTATION_ACTIONS).filter((item) => item.role === role);
+  const entries = (Object.values(REPUTATION_ACTIONS) as any[]).filter((item) => item.role === role);
   return {
     rewards: entries.filter((item) => item.points > 0).map(toRuleItem),
     penalties: entries.filter((item) => item.points < 0).map(toRuleItem),

@@ -61,7 +61,7 @@ export function useUpdateApplicationStatus() {
         mutationFn: async ({ id, status }) => {
             return await updateApplicationStatus(id, status);
         },
-        onSuccess: (updatedApp) => {
+        onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: APPLICATION_KEYS.ALL });
         },
     });
@@ -122,7 +122,7 @@ export function useConfirmPayment() {
         mutationFn: async (id: string) => {
             return await confirmPaymentReceived(id);
         },
-        onSuccess: (updatedApp) => {
+        onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: APPLICATION_KEYS.ALL });
         },
     });

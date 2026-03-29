@@ -7,13 +7,16 @@ import {
   ArrowUpFromLine,
   ChevronRight,
   Clock,
-  History,
   WalletCards,
+  PlusCircle,
+  TrendingUp,
+  CreditCard
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { useState } from 'react';
 import { WithdrawBottomSheet } from './-components/wallet/WithdrawBottomSheet';
+import { toast } from 'sonner';
 
 export const Route = createFileRoute('/candidate/wallet')({
   component: CandidateWalletPage,
@@ -58,9 +61,6 @@ function CandidateWalletPage() {
     return true;
   });
 
-  const scrollToTransactions = () => {
-    document.getElementById('wallet-transactions')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
 
   const formatAmount = (amount: number) => `${amount.toLocaleString('vi-VN')}đ`;
 
@@ -69,63 +69,72 @@ function CandidateWalletPage() {
       <div className="mx-auto w-full max-w-lg px-5 pt-12">
         <div className="mb-5" />
 
-        <section className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-[#0f172a] via-[#15345e] to-[#0369a1] p-6 text-white shadow-[0_24px_80px_rgba(15,23,42,0.22)]">
-          <div className="absolute -right-12 -top-10 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
-          <div className="absolute bottom-0 left-0 h-28 w-28 rounded-full bg-sky-300/10 blur-2xl" />
-          <div className="relative z-10">
-            <div className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.18em] text-white/70">
-              <WalletCards className="h-4 w-4" />
-              <span>Số dư khả dụng</span>
-            </div>
-
-            <div className="mt-4 flex items-end gap-2">
-              <span className="text-[38px] font-black leading-none tracking-[-0.04em]">
-                {balance.toLocaleString('vi-VN')}
-              </span>
-              <span className="pb-1 text-xl font-bold text-white/70">đ</span>
-            </div>
-
-            <p className="mt-3 max-w-[240px] text-[13px] leading-relaxed text-white/70">
-              Theo dõi số dư, trạng thái thanh toán ca làm và rút tiền về tài khoản của bạn.
-            </p>
-
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setShowWithdrawSheet(true)}
-                className="flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3.5 text-sm font-bold text-[#0f172a] shadow-lg shadow-black/10 active:scale-[0.98]"
-              >
-                <ArrowUpFromLine className="h-4 w-4" />
-                Rút tiền
-              </button>
-              <button
-                onClick={scrollToTransactions}
-                className="flex items-center justify-center gap-2 rounded-2xl bg-white/12 px-4 py-3.5 text-sm font-bold text-white backdrop-blur-md active:scale-[0.98]"
-              >
-                <History className="h-4 w-4" />
-                Lịch sử
-              </button>
+        <section className="relative overflow-hidden rounded-[32px] bg-[#0f172a] p-1 shadow-[0_32px_64px_-16px_rgba(15,23,42,0.3)]">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-transparent to-indigo-600/20" />
+          
+          <div className="relative rounded-[31px] bg-gradient-to-br from-[#1e293b] to-[#0f172a] p-7 overflow-hidden">
+            {/* Decorative background elements */}
+            <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-blue-500/10 blur-3xl" />
+            <div className="absolute -left-12 bottom-0 h-32 w-32 rounded-full bg-indigo-500/10 blur-3xl" />
+            
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm">
+                  <WalletCards className="h-4 w-4 text-blue-400" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">Main Balance</span>
+                </div>
+                <CreditCard className="h-6 w-6 text-white/20" />
+              </div>
+  
+              <div className="flex items-baseline gap-2">
+                <span className="text-[44px] font-black leading-none tracking-tight text-white">
+                  {balance.toLocaleString('vi-VN')}
+                </span>
+                <span className="text-xl font-bold text-white/50">VND</span>
+              </div>
+  
+              <div className="mt-8 grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setShowWithdrawSheet(true)}
+                  className="group relative flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-4 text-sm font-black text-[#0f172a] transition-all active:scale-95 overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <ArrowUpFromLine className="relative h-4 w-4" />
+                  <span className="relative">Rút tiền</span>
+                </button>
+                <button
+                  onClick={() => toast.info('Tính năng nạp tiền đang được phát triển')}
+                  className="flex items-center justify-center gap-2 rounded-2xl bg-white/10 border border-white/10 px-4 py-4 text-sm font-bold text-white backdrop-blur-md transition-all active:scale-95"
+                >
+                  <PlusCircle className="h-4 w-4 text-blue-400" />
+                  <span>Nạp tiền</span>
+                </button>
+              </div>
             </div>
           </div>
         </section>
 
         <section className="mt-5 grid grid-cols-3 gap-3">
-          <div className="rounded-[24px] bg-white p-4 text-center shadow-[0_12px_32px_rgba(15,23,42,0.06)]">
-            <p className="whitespace-nowrap text-[9px] font-bold uppercase leading-none tracking-[0.14em] text-slate-400">
-              Tháng này
-            </p>
-            <p className="mt-3 whitespace-nowrap text-[14px] font-black tracking-tight text-emerald-600">+{formatAmount(monthlyIncome)}</p>
+          <div className="rounded-[24px] bg-white p-4 shadow-sm border border-slate-100 flex flex-col items-center">
+            <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center mb-3">
+              <TrendingUp className="w-4 h-4 text-emerald-600" />
+            </div>
+            <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-slate-400">Thu nhập</p>
+            <p className="mt-1 text-[13px] font-black text-emerald-600">+{formatAmount(monthlyIncome)}</p>
           </div>
-          <div className="rounded-[24px] bg-white p-4 text-center shadow-[0_12px_32px_rgba(15,23,42,0.06)]">
-            <p className="whitespace-nowrap text-[9px] font-bold uppercase leading-none tracking-[0.14em] text-slate-400">
-              Đang chờ
-            </p>
-            <p className="mt-3 whitespace-nowrap text-[14px] font-black tracking-tight text-amber-500">{formatAmount(pendingAmount)}</p>
+          <div className="rounded-[24px] bg-white p-4 shadow-sm border border-slate-100 flex flex-col items-center">
+            <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center mb-3">
+              <Clock className="w-4 h-4 text-amber-600" />
+            </div>
+            <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-slate-400">Chờ duyệt</p>
+            <p className="mt-1 text-[13px] font-black text-amber-500">{formatAmount(pendingAmount)}</p>
           </div>
-          <div className="rounded-[24px] bg-white p-4 text-center shadow-[0_12px_32px_rgba(15,23,42,0.06)]">
-            <p className="whitespace-nowrap text-[9px] font-bold uppercase leading-none tracking-[0.14em] text-slate-400">
-              Đã rút
-            </p>
-            <p className="mt-3 whitespace-nowrap text-[14px] font-black tracking-tight text-slate-700">{formatAmount(withdrawnAmount)}</p>
+          <div className="rounded-[24px] bg-white p-4 shadow-sm border border-slate-100 flex flex-col items-center">
+            <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center mb-3">
+              <ArrowUpFromLine className="w-4 h-4 text-slate-600" />
+            </div>
+            <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-slate-400">Đã rút</p>
+            <p className="mt-1 text-[13px] font-black text-slate-700">{formatAmount(withdrawnAmount)}</p>
           </div>
         </section>
 
@@ -193,31 +202,45 @@ function CandidateWalletPage() {
                 return (
                   <div
                     key={tx.id}
-                    className="flex items-center gap-4 rounded-[24px] bg-white p-4 shadow-[0_12px_32px_rgba(15,23,42,0.06)] transition-transform active:scale-[0.99]"
+                    onClick={() => navigate({ 
+                      to: '/candidate/wallet_/transactions/$transactionId' as any, 
+                      params: { transactionId: tx.id } as any
+                    })}
+                    className="group flex items-center gap-4 rounded-[28px] bg-white p-4 shadow-sm border border-slate-100 transition-all active:scale-[0.98] cursor-pointer hover:border-blue-200"
                   >
                     <div
-                      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${
-                        isIncome ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+                      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-colors ${
+                        isIncome ? 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100' : 'bg-rose-50 text-rose-600 group-hover:bg-rose-100'
                       }`}
                     >
-                      {isIncome ? <ArrowDownLeft className="h-5 w-5" /> : <ArrowUpRight className="h-5 w-5" />}
+                      {isIncome ? <ArrowDownLeft className="h-6 w-6" /> : <ArrowUpRight className="h-6 w-6" />}
                     </div>
-
+ 
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[14px] font-bold text-slate-900">{tx.description || 'Giao dịch ví'}</p>
-                      <div className="mt-1 flex items-center gap-2 text-[11px] font-medium text-slate-500">
-                        <span>{format(tx.createdAt, 'HH:mm, dd/MM/yyyy', { locale: vi })}</span>
-                        <span
-                          className={`h-2 w-2 rounded-full ${
-                            isPending ? 'bg-amber-400' : tx.status === 'COMPLETED' ? 'bg-emerald-500' : 'bg-rose-400'
+                      <p className="truncate text-[15px] font-bold text-slate-900 leading-tight">{tx.description || 'Giao dịch ví'}</p>
+                      <div className="mt-1.5 flex items-center gap-2">
+                        <span className="text-[11px] font-medium text-slate-400">
+                          {format(tx.createdAt, 'HH:mm, dd MMM', { locale: vi })}
+                        </span>
+                        <div
+                          className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            isPending ? 'bg-amber-50 text-amber-600' : 
+                            tx.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600' : 
+                            'bg-rose-50 text-rose-600'
                           }`}
-                        />
-                        <span>{isPending ? 'Đang xử lý' : tx.status === 'COMPLETED' ? 'Thành công' : 'Thất bại'}</span>
+                        >
+                           <div className={`w-1.5 h-1.5 rounded-full ${
+                             isPending ? 'bg-amber-500' : 
+                             tx.status === 'COMPLETED' ? 'bg-emerald-500' : 
+                             'bg-rose-500'
+                           }`} />
+                           {isPending ? 'Processing' : tx.status === 'COMPLETED' ? 'Success' : 'Failed'}
+                        </div>
                       </div>
                     </div>
-
+ 
                     <div className="text-right">
-                      <p className={`text-[15px] font-black ${isIncome ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      <p className={`text-[16px] font-black tracking-tight ${isIncome ? 'text-emerald-600' : 'text-slate-900'}`}>
                         {isIncome ? '+' : '-'}{formatAmount(Math.abs(tx.amount))}
                       </p>
                     </div>

@@ -13,7 +13,8 @@ export interface CandidateVerificationRequest {
     user_id: string;
     status: 'PENDING' | 'APPROVED' | 'REJECTED';
     front_image_url: string;
-    document_type: 'ID_CARD_FRONT';
+    portrait_image_url?: string;
+    document_type: 'ID_CARD_FRONT' | 'ID_WITH_PORTRAIT';
     ocr_data?: CandidateVerificationOcrData;
     submitted_at: unknown;
     created_at: unknown;
@@ -43,13 +44,37 @@ export const uploadCandidateID = async (
     return getDownloadURL(snapshot.ref);
 };
 
+export const uploadCandidatePortrait = async (
+    file: File,
+    candidateId: string,
+    requestId: string
+): Promise<string> => {
+    const fileExt = file.name.split('.').pop() || 'jpg';
+    const fileName = `portrait_${requestId}.${fileExt}`;
+    const storageRef = ref(storage, `users_private/${candidateId}/verification_requests/${fileName}`);
+
+    const snapshot = await uploadBytes(storageRef, file, {
+        contentType: file.type,
+        customMetadata: {
+            candidate_id: candidateId,
+            request_id: requestId,
+        },
+    });
+    return getDownloadURL(snapshot.ref);
+};
+
 export const submitCandidateVerification = async (
     candidateId: string,
-    file: File,
+    frontFile: File,
+    portraitFile?: File | null,
     ocrData?: CandidateVerificationOcrData
 ): Promise<CandidateVerificationRequest> => {
     const requestId = buildRequestId(candidateId);
-    const frontImageUrl = await uploadCandidateID(file, candidateId, requestId);
+    
+    const [frontImageUrl, portraitImageUrl] = await Promise.all([
+        uploadCandidateID(frontFile, candidateId, requestId),
+        portraitFile ? uploadCandidatePortrait(portraitFile, candidateId, requestId) : Promise.resolve(undefined)
+    ]);
 
     const requestRef = doc(db, 'users_private', candidateId, 'verification_requests', requestId);
     const requestData: CandidateVerificationRequest = {
@@ -57,7 +82,8 @@ export const submitCandidateVerification = async (
         user_id: candidateId,
         status: 'PENDING',
         front_image_url: frontImageUrl,
-        document_type: 'ID_CARD_FRONT',
+        portrait_image_url: portraitImageUrl,
+        document_type: portraitFile ? 'ID_WITH_PORTRAIT' : 'ID_CARD_FRONT',
         ...(ocrData ? { ocr_data: ocrData } : {}),
         submitted_at: serverTimestamp(),
         created_at: serverTimestamp(),

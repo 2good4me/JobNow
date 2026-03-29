@@ -16,7 +16,7 @@ import {
 import { useCandidateProfile } from '@/features/jobs/hooks/useCandidateProfile';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useQuery } from '@tanstack/react-query';
-import { collection, getDocs, query, where, limit, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, where, limit } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import type { Application } from '@jobnow/types';
 import { mapApplicationDocToApplication } from '@/features/jobs/services/adapters';

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { CalendarDays, Clock, MessageCircle, Timer, CheckCircle2, History, Star, DollarSign, Loader2, AlertCircle, X, LogIn, LogOut, Clock3, MapPin, QrCode } from 'lucide-react';
+import { Clock, MessageCircle, Timer, CheckCircle2, History, Star, DollarSign, Loader2, AlertCircle, X, LogIn, LogOut, Clock3, MapPin, QrCode } from 'lucide-react';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useMyApplicationsRealtime } from '@/features/jobs/hooks/useMyApplicationsRealtime';
 import { useGeolocation } from '@/features/jobs/hooks/useGeolocation';

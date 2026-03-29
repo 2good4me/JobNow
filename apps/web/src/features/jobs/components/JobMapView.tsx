@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
+import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Link } from '@tanstack/react-router';
@@ -17,6 +17,8 @@ const markerIcon = L.icon({
 type JobMapViewProps = {
     jobs: Job[];
     selectedLocation?: { lat: number; lng: number } | null;
+    onSelectLocation?: (location: { lat: number; lng: number }) => void;
+    detailVariant?: 'candidate' | 'public';
 };
 
 function MapViewport({ center }: { center: [number, number] }) {
@@ -29,7 +31,29 @@ function MapViewport({ center }: { center: [number, number] }) {
     return null;
 }
 
-export function JobMapView({ jobs, selectedLocation }: JobMapViewProps) {
+function MapClickHandler({
+    onSelectLocation,
+}: {
+    onSelectLocation?: (location: { lat: number; lng: number }) => void;
+}) {
+    useMapEvents({
+        click(event) {
+            onSelectLocation?.({
+                lat: event.latlng.lat,
+                lng: event.latlng.lng,
+            });
+        },
+    });
+
+    return null;
+}
+
+export function JobMapView({
+    jobs,
+    selectedLocation,
+    onSelectLocation,
+    detailVariant = 'public',
+}: JobMapViewProps) {
     const center = useMemo<[number, number]>(() => {
         if (selectedLocation) {
             return [selectedLocation.lat, selectedLocation.lng];
@@ -52,6 +76,7 @@ export function JobMapView({ jobs, selectedLocation }: JobMapViewProps) {
                         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     />
                     <MapViewport center={center} />
+                    <MapClickHandler onSelectLocation={onSelectLocation} />
                     {jobs
                         .filter((job) => job.location?.latitude && job.location?.longitude)
                         .map((job) => (
@@ -82,7 +107,7 @@ export function JobMapView({ jobs, selectedLocation }: JobMapViewProps) {
                                             )}
                                         </div>
                                         <Link
-                                            to="/jobs/$jobId"
+                                            to={detailVariant === 'candidate' ? '/candidate/jobs/$jobId' : '/jobs/$jobId'}
                                             params={{ jobId: job.id }}
                                             className="block rounded-xl bg-blue-600 px-3 py-2 text-center text-xs font-bold text-white"
                                         >

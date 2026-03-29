@@ -15,6 +15,8 @@ const STATUS_UI_MAP: Record<ApplicationStatus, ApplicationStatusUi> = {
     APPROVED: { label: 'Đã nhận', color: 'emerald' },
     REJECTED: { label: 'Từ chối', color: 'rose' },
     CHECKED_IN: { label: 'Đang làm', color: 'violet' },
+    WORK_FINISHED: { label: 'Chờ thanh toán', color: 'emerald' },
+    CASH_CONFIRMATION: { label: 'Chờ xác nhận TM', color: 'blue' },
     COMPLETED: { label: 'Hoàn thành', color: 'sky' },
     CANCELLED: { label: 'Đã hủy', color: 'slate' },
 };

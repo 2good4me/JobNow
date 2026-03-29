@@ -19,6 +19,8 @@ export interface UserProfile {
     total_ratings?: number;           // Số lượt đánh giá
     skills: string[];
     achievements?: string[];
+    canceled_count?: number;
+    percentage?: number;
     identity_images: string[];
     cccd_number?: string | null;
     cccd_full_name?: string | null;

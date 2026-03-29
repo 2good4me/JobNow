@@ -5,7 +5,7 @@ import { useSubmitCandidateVerification } from '@/features/candidate/verificatio
 import {
     ArrowLeft, ShieldCheck, Zap,
     Clock, Image as ImageIcon, CheckCircle2,
-    Briefcase, Award
+    Briefcase, Award, Camera, Info, User, ArrowRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -13,68 +13,68 @@ export const Route = createFileRoute('/candidate/verification/')({
     component: CandidateVerificationPage,
 });
 
-type Step = 'OVERVIEW' | 'UPLOAD' | 'SUCCESS';
+type Step = 'OVERVIEW' | 'ID_UPLOAD' | 'PORTRAIT_UPLOAD' | 'OCR_CONFIRM' | 'SUCCESS';
 
 function CandidateVerificationPage() {
     const { userProfile } = useAuth();
     const navigate = useNavigate();
     const [step, setStep] = useState<Step>('OVERVIEW');
-    const [, setFile] = useState<File | null>(null);
+    const [frontFile, setFrontFile] = useState<File | null>(null);
+    const [portraitFile, setPortraitFile] = useState<File | null>(null);
+    const [ocrData, setOcrData] = useState<{
+        cccd_number: string;
+        full_name: string;
+        dob: string;
+    }>({
+        cccd_number: '',
+        full_name: '',
+        dob: ''
+    });
 
     const submitVerification = useSubmitCandidateVerification();
 
-    // If already verified or pending, adjust step automatically
-    const verificationStatus = userProfile?.verification_status || 'UNVERIFIED';
+    const handleIdUpload = (file: File) => {
+        setFrontFile(file);
+        // Simulate OCR extraction logic here
+        // In reality, Step 1 UPLOAD will call the API to pre-fill
+        setOcrData({
+            cccd_number: '0012010xxxxx',
+            full_name: userProfile?.full_name || '',
+            dob: '01/01/1990'
+        });
+        setStep('PORTRAIT_UPLOAD');
+    };
 
-    if (!userProfile) return null;
+    const handlePortraitUpload = (file: File) => {
+        setPortraitFile(file);
+        setStep('OCR_CONFIRM');
+    };
 
-    if (verificationStatus === 'PENDING' && step !== 'SUCCESS') {
-        return (
-            <div className="min-h-screen bg-slate-50 flex flex-col pt-12">
-                <div className="px-5">
-                    <button onClick={() => navigate({ to: '/candidate/profile' })} className="mb-6 w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-sm">
-                        <ArrowLeft className="w-5 h-5 text-slate-700" />
-                    </button>
-                    <SuccessView status="PENDING" profile={userProfile} />
-                </div>
-            </div>
-        );
-    }
-
-    if (verificationStatus === 'VERIFIED' && step !== 'UPLOAD') {
-        return (
-            <div className="min-h-screen bg-slate-50 flex flex-col pt-12">
-                <div className="px-5">
-                    <button onClick={() => navigate({ to: '/candidate/profile' })} className="mb-6 w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-sm">
-                        <ArrowLeft className="w-5 h-5 text-slate-700" />
-                    </button>
-                    <SuccessView status="VERIFIED" profile={userProfile} onRetry={() => setStep('UPLOAD')} />
-                </div>
-            </div>
-        );
-    }
-
-    const handleUploadComplete = async (selectedFile: File) => {
+    const handleFinalSubmit = async () => {
+        if (!frontFile) return;
         try {
-            setFile(selectedFile);
-            // Execute upload
-            await submitVerification.mutateAsync(selectedFile);
+            await submitVerification.mutateAsync({
+                frontFile,
+                portraitFile,
+                confirmedOcr: ocrData
+            });
             setStep('SUCCESS');
-            toast.success('Gửi hồ sơ thành công!');
+            toast.success('Hồ sơ đã được gửi để duyệt!');
         } catch (e) {
-            // Toast already handled in hook
-            setFile(null);
+            console.error(e);
         }
     };
 
     return (
         <div className="min-h-[100dvh] bg-slate-50 font-sans">
-            {/* Top Bar for Overview and Upload */}
+            {/* Header Content */}
             {step !== 'SUCCESS' && (
                 <div className="flex items-center p-4 sticky top-0 z-20 bg-slate-50/80 backdrop-blur-md">
                     <button
                         onClick={() => {
-                            if (step === 'UPLOAD') setStep('OVERVIEW');
+                            if (step === 'ID_UPLOAD') setStep('OVERVIEW');
+                            else if (step === 'PORTRAIT_UPLOAD') setStep('ID_UPLOAD');
+                            else if (step === 'OCR_CONFIRM') setStep('PORTRAIT_UPLOAD');
                             else navigate({ to: '/candidate/profile' });
                         }}
                         className="w-10 h-10 flex items-center justify-center -ml-2 rounded-full hover:bg-slate-200/50 transition"
@@ -82,23 +82,43 @@ function CandidateVerificationPage() {
                         <ArrowLeft className="w-6 h-6 text-slate-800" />
                     </button>
                     <h1 className="text-lg font-bold text-slate-900 ml-2">
-                        {step === 'OVERVIEW' ? 'Xác thực tài khoản' : 'Chụp ảnh giấy tờ'}
+                        {step === 'OVERVIEW' ? 'Xác thực tài khoản' : 
+                         step === 'ID_UPLOAD' ? 'Bước 1: Chụp CCCD' :
+                         step === 'PORTRAIT_UPLOAD' ? 'Bước 2: Chụp chân dung' :
+                         'Bước 3: Xác nhận thông tin'}
                     </h1>
                 </div>
             )}
 
-            {/* Main Content Areas */}
-            <div className={step === 'UPLOAD' ? 'h-[calc(100vh-70px)]' : 'px-5 pb-24'}>
-                {step === 'OVERVIEW' && <OverviewView onNext={() => setStep('UPLOAD')} />}
-                {step === 'UPLOAD' && (
+            {/* Content Swapping */}
+            <div className={step === 'ID_UPLOAD' || step === 'PORTRAIT_UPLOAD' ? 'h-[calc(100vh-70px)]' : 'px-5 pb-24'}>
+                {step === 'OVERVIEW' && <OverviewView onNext={() => setStep('ID_UPLOAD')} />}
+                {step === 'ID_UPLOAD' && (
                     <UploadView
-                        isUploading={submitVerification.isPending}
-                        onUpload={handleUploadComplete}
+                        title="Mặt trước CCCD/CMND"
+                        description="Vui lòng tải lên ảnh chụp mặt trước CCCD của bạn."
+                        onUpload={handleIdUpload}
+                    />
+                )}
+                {step === 'PORTRAIT_UPLOAD' && (
+                    <UploadView
+                        title="Ảnh chân dung"
+                        description="Vui lòng chụp ảnh khuôn mặt của bạn để đối chiếu."
+                        icon={<Camera className="w-8 h-8 text-blue-500" />}
+                        onUpload={handlePortraitUpload}
+                    />
+                )}
+                {step === 'OCR_CONFIRM' && (
+                    <ConfirmView 
+                        data={ocrData}
+                        setData={setOcrData}
+                        isSubmitting={submitVerification.isPending}
+                        onSubmit={handleFinalSubmit}
                     />
                 )}
                 {step === 'SUCCESS' && (
                     <div className="pt-20 px-5">
-                        <SuccessView status="PENDING" profile={userProfile} />
+                        <SuccessView status="PENDING" />
                     </div>
                 )}
             </div>
@@ -162,9 +182,10 @@ function OverviewView({ onNext }: { onNext: () => void }) {
 
             <button
                 onClick={onNext}
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-500/30 hover:shadow-xl hover:scale-[1.02] active:scale-95 transition-all"
+                className="w-full h-14 bg-[#0f172a] hover:bg-slate-900 text-white rounded-2xl font-bold transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 group"
             >
-                XÁC THỰC NGAY
+                Bắt đầu ngay
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
 
             <div className="flex items-center gap-2 mt-6 text-slate-500 text-sm">
@@ -175,43 +196,57 @@ function OverviewView({ onNext }: { onNext: () => void }) {
     );
 }
 
-// ── 2. Document Upload Flow ──
-function UploadView({ isUploading, onUpload }: { isUploading: boolean, onUpload: (file: File) => void }) {
+// ── 2. Universal Upload Step ──
+function UploadView({ 
+    title, 
+    description, 
+    onUpload, 
+    icon = <ImageIcon className="w-8 h-8 text-blue-500" /> 
+}: { 
+    title: string;
+    description: string;
+    onUpload: (file: File) => void;
+    icon?: React.ReactNode;
+}) {
+    const [isProcessing, setIsProcessing] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
-            onUpload(e.target.files[0]);
+            setIsProcessing(true);
+            setTimeout(() => {
+                onUpload(e.target.files![0]);
+                setIsProcessing(false);
+            }, 800);
         }
     };
 
     return (
         <div className="h-full flex flex-col items-center justify-center animate-in fade-in duration-300 px-5 relative -mt-5">
-            <h2 className="text-xl font-bold text-slate-800 mb-2">Tải ảnh lên</h2>
+            <h2 className="text-xl font-bold text-slate-800 mb-2">{title}</h2>
             <p className="text-slate-500 text-center text-[15px] mb-8 max-w-sm">
-                Vui lòng tải lên ảnh chụp mặt trước CCCD / CMND của bạn.
+                {description}
             </p>
 
             <div
-                onClick={() => !isUploading && fileInputRef.current?.click()}
-                className={`w-full max-w-md aspect-[1.3] border-2 border-dashed rounded-[2rem] flex flex-col items-center justify-center cursor-pointer transition-all ${isUploading
+                onClick={() => !isProcessing && fileInputRef.current?.click()}
+                className={`w-full max-w-md aspect-[1.3] border-2 border-dashed rounded-[2rem] flex flex-col items-center justify-center cursor-pointer transition-all ${isProcessing
                     ? 'border-slate-300 bg-slate-50 opacity-70'
                     : 'border-blue-300 bg-blue-50/50 hover:bg-blue-50 hover:border-blue-400'
                     }`}
             >
-                {isUploading ? (
+                {isProcessing ? (
                     <div className="flex flex-col items-center">
                         <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4 shadow-sm" />
-                        <span className="text-slate-700 font-bold mb-1">Đang tải lên...</span>
-                        <span className="text-slate-400 text-sm">Vui lòng đợi giây lát</span>
+                        <span className="text-slate-700 font-bold mb-1">Đang xử lý...</span>
                     </div>
                 ) : (
                     <div className="flex flex-col items-center p-6 text-center">
                         <div className="w-16 h-16 bg-white rounded-2xl border border-blue-100 flex items-center justify-center shadow-sm mb-5">
-                            <ImageIcon className="w-8 h-8 text-blue-500" />
+                            {icon}
                         </div>
-                        <span className="text-slate-800 font-bold text-lg mb-1">Nhấn để chọn ảnh</span>
-                        <span className="text-slate-500 text-sm font-medium">Hỗ trợ JPG, PNG (Tối đa 5MB)</span>
+                        <span className="text-slate-800 font-bold text-lg mb-1">Bắt đầu chụp</span>
+                        <span className="text-slate-500 text-sm font-medium">Hoặc nhấn để chọn từ thư viện</span>
                     </div>
                 )}
             </div>
@@ -222,7 +257,7 @@ function UploadView({ isUploading, onUpload }: { isUploading: boolean, onUpload:
                 className="hidden"
                 ref={fileInputRef}
                 onChange={handleFileChange}
-                disabled={isUploading}
+                disabled={isProcessing}
             />
 
             <div className="mt-10 flex gap-6 w-full max-w-sm justify-center bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
@@ -249,8 +284,85 @@ function UploadView({ isUploading, onUpload }: { isUploading: boolean, onUpload:
     );
 }
 
-// ── 3. Success / Pending State ──
-function SuccessView({ status, profile, onRetry }: { status: 'PENDING' | 'VERIFIED', profile: any, onRetry?: () => void }) {
+// ── 3. Confirm & Edit OCR Inform Flow ──
+function ConfirmView({ data, setData, isSubmitting, onSubmit }: { 
+    data: any; 
+    setData: any; 
+    isSubmitting: boolean;
+    onSubmit: () => void;
+}) {
+    return (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 mt-4">
+            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex gap-3 mb-6">
+                <Info className="w-5 h-5 text-blue-600 shrink-0" />
+                <p className="text-sm text-blue-800">
+                    Vui lòng kiểm tra kỹ thông tin được trích xuất từ CCCD của bạn. Bạn có thể chỉnh sửa nếu có sai sót.
+                </p>
+            </div>
+
+            <div className="space-y-4 bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100">
+                <div className="space-y-1.5">
+                    <label className="text-[12px] font-bold text-slate-500 ml-1 uppercase tracking-wider">Họ và tên</label>
+                    <div className="relative">
+                        <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input
+                            type="text"
+                            value={data.full_name}
+                            onChange={(e) => setData({ ...data, full_name: e.target.value })}
+                            className="w-full bg-slate-50 p-4 pl-11 rounded-2xl border-none font-bold text-slate-900 outline-none focus:ring-2 ring-blue-500/20"
+                        />
+                    </div>
+                </div>
+
+                <div className="space-y-1.5">
+                    <label className="text-[12px] font-bold text-slate-500 ml-1 uppercase tracking-wider">Số CCCD / CMND</label>
+                    <div className="relative">
+                        <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input
+                            type="text"
+                            value={data.cccd_number}
+                            onChange={(e) => setData({ ...data, cccd_number: e.target.value })}
+                            className="w-full bg-slate-50 p-4 pl-11 rounded-2xl border-none font-bold text-slate-900 outline-none focus:ring-2 ring-blue-500/20"
+                        />
+                    </div>
+                </div>
+
+                <div className="space-y-1.5">
+                    <label className="text-[12px] font-bold text-slate-500 ml-1 uppercase tracking-wider">Ngày sinh</label>
+                    <div className="relative">
+                        <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input
+                            type="text"
+                            value={data.dob}
+                            onChange={(e) => setData({ ...data, dob: e.target.value })}
+                            className="w-full bg-slate-50 p-4 pl-11 rounded-2xl border-none font-bold text-slate-900 outline-none focus:ring-2 ring-blue-500/20"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <div className="mt-8 space-y-3">
+                <button
+                    onClick={onSubmit}
+                    disabled={isSubmitting}
+                    className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                    {isSubmitting ? (
+                        <>
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            ĐANG GỬI...
+                        </>
+                    ) : (
+                        'XÁC NHẬN & HOÀN TẤT'
+                    )}
+                </button>
+            </div>
+        </div>
+    );
+}
+
+// ── 4. Success / Pending State ──
+function SuccessView({ status, onRetry }: { status: 'PENDING' | 'VERIFIED', onRetry?: () => void }) {
     return (
         <div className="flex flex-col items-center animate-in zoom-in-95 duration-500 pb-12">
 
@@ -297,24 +409,6 @@ function SuccessView({ status, profile, onRetry }: { status: 'PENDING' | 'VERIFI
                     <p className="text-xs text-slate-500 text-center mb-8 px-4">
                         * Huy hiệu Đã xác thực sẽ hiển thị ngay khi được phê duyệt.
                     </p>
-                )}
-
-                {profile?.cccd_number && (
-                    <div className="w-full bg-white rounded-2xl p-5 shadow-sm border border-slate-200 mb-8 text-left space-y-4">
-                        <h3 className="font-bold text-slate-800 border-b border-slate-100 pb-2 mb-3">Thông tin trích xuất</h3>
-                        <div>
-                            <p className="text-xs text-slate-500 mb-1">Họ và tên</p>
-                            <p className="text-[15px] font-semibold text-slate-900">{profile.cccd_full_name || 'Không xác định'}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-slate-500 mb-1">Số CCCD/CMND</p>
-                            <p className="text-[15px] font-semibold text-slate-900">{profile.cccd_number}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-slate-500 mb-1">Ngày sinh</p>
-                            <p className="text-[15px] font-semibold text-slate-900">{profile.cccd_dob || 'Không xác định'}</p>
-                        </div>
-                    </div>
                 )}
 
                 <div className="w-full flex gap-3">
