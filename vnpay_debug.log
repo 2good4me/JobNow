@@ -1,0 +1,15 @@
+
+--- VNPAY VERIFY IPN ---
+Time: 2026-03-27T08:45:40.893Z
+Sign Data: vnp_Amount=500000000&vnp_BankCode=NCB&vnp_BankTranNo=VNP15470816&vnp_CardType=ATM&vnp_OrderInfo=Nap+tien+vao+vi+JobNow+(User%3A+jkltjPdvo9YkvQ9XDjt7Z3No3UK2)&vnp_PayDate=20260327154146&vnp_ResponseCode=00&vnp_TmnCode=RYKLU502&vnp_TransactionNo=15470816&vnp_TransactionStatus=00&vnp_TxnRef=jkltjPdvo9YkvQ9XDjt7Z3No3UK2_1774600869422
+Provided Hash: 319c82adabbcf7b0fe35005d99a3ac72d93118b53bfeff6145b69567d46a022ccc2fec0dbe73a5d22edd703bbee53e472e29b6c906f2f200f2539eca38fe2ebe
+Calculated Hash: ad6fff36393e927dc7680d9ebc0d032577a814377dcf0a20bc4d1284b70a6bcbb2ddc582b7541dcdbcba465625b1678b2e5d7bd8aafa8f0a6564f2846015a118
+Match: false
+------------------------
+
+--- VNPAY CREATE PAYMENT ---
+Time: 2026-03-27T08:52:23.461Z
+Sign Data: vnp_Amount=500000000&vnp_Command=pay&vnp_CreateDate=20260327155223&vnp_CurrCode=VND&vnp_IpAddr=%3A%3A1&vnp_Locale=vn&vnp_OrderInfo=Nap+tien+vao+vi+JobNow+%28User%3A+jkltjPdvo9YkvQ9XDjt7Z3No3UK2%29&vnp_OrderType=topup&vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A3000%2Femployer%2Fvnpay-return&vnp_TmnCode=RYKLU502&vnp_TxnRef=jkltjPdvo9YkvQ9XDjt7Z3No3UK2_1774601543460&vnp_Version=2.1.0
+Hash: 5660d2fa8e03a0a12d17e7f052441514d6a4421f8dc47fab137b226b8d943d568f82185c5d402989ba44418ff05469d9726e15a224d3bdd47d682a3271ad3c18
+Params: {"vnp_Amount":"500000000","vnp_Command":"pay","vnp_CreateDate":"20260327155223","vnp_CurrCode":"VND","vnp_IpAddr":"%3A%3A1","vnp_Locale":"vn","vnp_OrderInfo":"Nap+tien+vao+vi+JobNow+%28User%3A+jkltjPdvo9YkvQ9XDjt7Z3No3UK2%29","vnp_OrderType":"topup","vnp_ReturnUrl":"http%3A%2F%2Flocalhost%3A3000%2Femployer%2Fvnpay-return","vnp_TmnCode":"RYKLU502","vnp_TxnRef":"jkltjPdvo9YkvQ9XDjt7Z3No3UK2_1774601543460","vnp_Version":"2.1.0","vnp_SecureHash":"5660d2fa8e03a0a12d17e7f052441514d6a4421f8dc47fab137b226b8d943d568f82185c5d402989ba44418ff05469d9726e15a224d3bdd47d682a3271ad3c18"}
+---------------------------

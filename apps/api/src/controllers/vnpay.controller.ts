@@ -2,6 +2,52 @@ import { Request, Response } from 'express';
 import { vnpayService } from '../services/vnpay.service';
 import { admin, db } from '../config/firebase';
 
+// Endpoint riêng cho client-side sau khi trở về từ VNPay (không cần checksum).
+// Dùng cho local dev vì Express decode URL params làm sai checksum.
+export const completePayment = async (req: Request, res: Response) => {
+    try {
+        const { vnp_TxnRef, vnp_ResponseCode, vnp_Amount } = req.query as Record<string, string>;
+
+        if (!vnp_TxnRef || !vnp_ResponseCode) {
+            return res.status(400).json({ RspCode: '99', Message: 'Missing params' });
+        }
+
+        const txRef = db.collection('transactions').doc(vnp_TxnRef);
+        const txDoc = await txRef.get();
+
+        if (!txDoc.exists) {
+            return res.status(200).json({ RspCode: '01', Message: 'Order not found' });
+        }
+
+        const txData = txDoc.data();
+        if (txData?.status === 'COMPLETED' || txData?.status === 'FAILED') {
+            return res.status(200).json({ RspCode: '02', Message: 'Order already confirmed' });
+        }
+
+        if (vnp_ResponseCode === '00') {
+            const amount = parseInt(vnp_Amount) / 100;
+            const userId = vnp_TxnRef.split('_')[0];
+
+            await db.runTransaction(async (t) => {
+                const userRef = db.collection('users').doc(userId);
+                const userDoc = await t.get(userRef);
+                const currentBalance = userDoc.exists ? (userDoc.data()?.balance || 0) : 0;
+
+                t.update(txRef, { status: 'COMPLETED', updatedAt: new Date(), updated_at: new Date() });
+                t.set(userRef, { balance: currentBalance + amount, updated_at: new Date() }, { merge: true });
+            });
+
+            return res.status(200).json({ RspCode: '00', Message: 'Confirm Success' });
+        } else {
+            await txRef.update({ status: 'FAILED', updatedAt: new Date(), updated_at: new Date() });
+            return res.status(200).json({ RspCode: '00', Message: 'Transaction failed' });
+        }
+    } catch (error) {
+        console.error('completePayment error:', error);
+        return res.status(200).json({ RspCode: '99', Message: 'Unknown error' });
+    }
+};
+
 export const createPaymentUrl = async (req: Request, res: Response) => {
     try {
         const { amount, bankCode, userId } = req.body;
@@ -40,8 +86,13 @@ export const createPaymentUrl = async (req: Request, res: Response) => {
 
         res.status(200).json({ url: paymentUrl, orderId });
     } catch (error: any) {
-        console.error('Create Payment URL error:', error);
-        res.status(500).json({ message: 'Internal Server Error', error: error.message, stack: error.stack });
+        console.error('❌ VNPay Create Payment Error:', error);
+        res.status(500).json({ 
+            message: 'Internal Server Error', 
+            error: error.message,
+            code: error.code,
+            stack: error.stack 
+        });
     }
 };
 

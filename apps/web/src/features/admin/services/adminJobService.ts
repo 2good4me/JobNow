@@ -1,11 +1,10 @@
 import {
     collection, query, where, orderBy, limit, getDocs,
     doc, updateDoc, getDoc, startAfter, getCountFromServer,
-    serverTimestamp, addDoc,
+    serverTimestamp, addDoc, writeBatch,
     type QueryConstraint, type DocumentSnapshot,
 } from 'firebase/firestore';
 import { db } from '@/config/firebase';
-import { reviewJobModeration as reviewJobModerationCallable } from '@/features/jobs/services/jobService';
 
 /* ── Types ─────────────────────────────────────────── */
 
@@ -145,6 +144,54 @@ export async function hideJob(jobId: string, adminId: string, reason: string): P
     }
 }
 
-export async function reviewJobModeration(jobId: string, action: 'APPROVE' | 'REJECT', reason?: string): Promise<void> {
-    await reviewJobModerationCallable(jobId, action, reason);
+/**
+ * Moderates a job (Approve/Reject) using direct Firestore writes.
+ * This bypasses Cloud Functions to avoid Spark plan & CORS limitations.
+ */
+export async function reviewJobModeration(
+    jobId: string, 
+    action: 'APPROVE' | 'REJECT', 
+    reason?: string
+): Promise<void> {
+    const batch = writeBatch(db);
+    const jobRef = doc(db, 'jobs', jobId);
+    const jobSnap = await getDoc(jobRef);
+    
+    if (!jobSnap.exists()) {
+        throw new Error('Sự cố: Không tìm thấy tin đăng.');
+    }
+
+    const jobData = jobSnap.data();
+    const employerId = jobData.employer_id || jobData.employerId;
+
+    // 1. Update job status
+    batch.update(jobRef, {
+        moderation_status: action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
+        moderation_reason: reason || '',
+        status: action === 'APPROVE' ? 'OPEN' : 'CLOSED', // Ensure it opens if approved
+        updated_at: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+    });
+
+    // 2. Create notification for employer
+    if (employerId) {
+        const notifRef = doc(collection(db, 'notifications'));
+        batch.set(notifRef, {
+            userId: employerId,
+            user_id: employerId,
+            type: action === 'APPROVE' ? 'JOB_APPROVED' : 'JOB_REJECTED',
+            category: 'SYSTEM',
+            title: action === 'APPROVE' ? 'Tin tuyển dụng đã được duyệt' : 'Tin tuyển dụng bị từ chối',
+            body: action === 'APPROVE' 
+                ? `Tin tuyển dụng "${jobData.title}" của bạn đã được phê duyệt và đang hiển thị.`
+                : `Tin tuyển dụng "${jobData.title}" bị từ chối. Lý do: ${reason || 'Không rõ'}`,
+            data: { jobId },
+            isRead: false,
+            is_read: false,
+            created_at: serverTimestamp(),
+            createdAt: serverTimestamp(),
+        });
+    }
+
+    await batch.commit();
 }
