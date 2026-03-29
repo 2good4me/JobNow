@@ -21,17 +21,19 @@ export class VNPayService {
             'vnp_CreateDate': this.formatDate(new Date())
         };
 
+        // Dùng sortObject (encode values) để ký - đây là cách VNPay yêu cầu
         vnp_Params = this.sortObject(vnp_Params);
         
         let signData = Object.keys(vnp_Params)
             .map(key => `${key}=${vnp_Params[key]}`)
             .join('&');
             
-        const hmac = crypto.createHmac("sha512", this.hashSecret);
-        const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest("hex"); 
+        const hmac = crypto.createHmac('sha512', this.hashSecret);
+        const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex'); 
         
         vnp_Params['vnp_SecureHash'] = signed;
         
+        // Xây dựng URL - dùng giá trị đã encode từ sortObject (không encode thêm)
         let vnpUrl = this.vnpUrl + '?' + Object.keys(vnp_Params)
             .map(key => `${key}=${vnp_Params[key]}`)
             .join('&');
@@ -40,30 +42,31 @@ export class VNPayService {
     }
 
     public verifyIpn(query: Record<string, any>): boolean {
-        let vnp_Params = { ...query };
-        let secureHash = vnp_Params['vnp_SecureHash'];
+        const vnp_Params = { ...query };
+        const secureHash = vnp_Params['vnp_SecureHash'];
 
         delete vnp_Params['vnp_SecureHash'];
         delete vnp_Params['vnp_SecureHashType'];
 
-        vnp_Params = this.sortObject(vnp_Params);
-
-        let signData = Object.keys(vnp_Params)
-            .map(key => `${key}=${vnp_Params[key]}`)
+        const sortedParams = this.sortObject(vnp_Params);
+        const signData = Object.keys(sortedParams)
+            .map(key => `${key}=${sortedParams[key]}`)
             .join('&');
             
-        const hmac = crypto.createHmac("sha512", this.hashSecret);
-        const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest("hex"); 
-        
+        const hmac = crypto.createHmac('sha512', this.hashSecret);
+        const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex'); 
+
         return secureHash === signed;
     }
 
+    // Encode values để ký (giống cách VNPay tạo chữ ký)
     private sortObject(obj: Record<string, any>) {
         const sorted: Record<string, any> = {};
         const str = Object.keys(obj).sort();
         for (let i = 0; i < str.length; i++) {
             const val = obj[str[i]]?.toString() || '';
-            sorted[str[i]] = encodeURIComponent(val).replace(/%20/g, "+");
+            if (val === '') continue;
+            sorted[str[i]] = encodeURIComponent(val).replace(/%20/g, '+');
         }
         return sorted;
     }

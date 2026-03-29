@@ -1,5 +1,5 @@
 export type UserRole = 'CANDIDATE' | 'EMPLOYER' | 'ADMIN';
-export type VerificationStatus = 'UNVERIFIED' | 'PENDING' | 'VERIFIED';
+export type VerificationStatus = 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
 import type { ReputationTier } from '@jobnow/types';
 
 export interface UserProfile {

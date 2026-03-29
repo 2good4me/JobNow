@@ -1,13 +1,13 @@
 import { Link, useLocation } from '@tanstack/react-router';
 import {
     LayoutDashboard, Users, Briefcase, AlertTriangle,
-    FolderTree, BarChart3, Settings, Shield,
+    FolderTree, BarChart3, Settings, Shield, ShieldCheck
 } from 'lucide-react';
 
 const navItems = [
     { to: '/admin', icon: LayoutDashboard, label: 'Tổng quan', exact: true },
     { to: '/admin/users', icon: Users, label: 'Người dùng' },
-    { to: '/admin/verifications', icon: Shield, label: 'eKYC' },
+    { to: '/admin/candidates', icon: ShieldCheck, label: 'Xác thực hồ sơ' },
     { to: '/admin/jobs', icon: Briefcase, label: 'Việc làm' },
     { to: '/admin/reports', icon: AlertTriangle, label: 'Báo cáo' },
     { to: '/admin/categories', icon: FolderTree, label: 'Danh mục' },

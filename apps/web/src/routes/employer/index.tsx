@@ -34,9 +34,9 @@ function EmployerDashboard() {
   const totalApps = allApplications.length;
   const totalHired = allApplications.filter(a => ['APPROVED', 'REVIEWED', 'CHECKED_IN', 'WORK_FINISHED', 'CASH_CONFIRMATION', 'COMPLETED'].includes(a.status)).length;
   
-  const viewPercent = 100;
   const appPercent = totalViews > 0 ? Math.min(100, (totalApps / totalViews) * 100) : 0;
   const hirePercent = totalApps > 0 ? Math.min(100, (totalHired / totalApps) * 100) : 0;
+  const overallHirePercent = totalViews > 0 ? Math.min(100, (totalHired / totalViews) * 100) : 0;
 
   /* ── Loading skeleton ──────────────────────────── */
   if (isLoading) {
@@ -213,63 +213,115 @@ function EmployerDashboard() {
         )}
 
         {/* ── Analytics Dashboard ── */}
+        {/* ── Analytics: Funnel ── */}
         {hasJobs && (
-          <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 mb-6">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="font-black text-slate-900 text-[17px]">Phễu tuyển dụng</h2>
-              <div className="bg-indigo-50 p-2 rounded-xl">
-                <TrendingUp className="w-4 h-4 text-indigo-600" />
+          <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 mb-8 overflow-hidden relative">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="font-black text-slate-900 text-lg uppercase tracking-tight">Phễu tuyển dụng</h2>
+                <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Hiệu quả quy trình</p>
+              </div>
+              <div className="bg-indigo-50 p-2.5 rounded-2xl">
+                <TrendingUp className="w-5 h-5 text-indigo-600" />
               </div>
             </div>
             
-            <div className="space-y-4">
-              {/* Lượt xem */}
-              <div className="relative">
-                <div className="flex justify-between items-end mb-1">
-                  <span className="text-[13px] font-bold text-slate-700">Lượt xem tin</span>
-                  <span className="text-[13px] font-black text-slate-900">{totalViews}</span>
+            <div className="relative space-y-2">
+              {/* Step 1: Views */}
+              <div className="group">
+                <div className="flex justify-between items-center mb-1.5 px-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                    <span className="text-[13px] font-bold text-slate-600">Lượt xem tin</span>
+                  </div>
+                  <span className="text-sm font-black text-slate-900">{totalViews.toLocaleString()}</span>
                 </div>
-                <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                  <div className="bg-blue-500 h-2.5 rounded-full transition-all duration-1000" style={{ width: `${viewPercent}%` }}></div>
+                <div className="relative h-14 w-full bg-slate-50 rounded-2xl overflow-hidden border border-slate-100/50">
+                  <div 
+                    className="absolute inset-y-0 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-blue-400 transition-all duration-1000 ease-out"
+                    style={{ width: `${totalViews > 0 ? 100 : 0}%` }}
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <span className="text-[10px] font-black text-white/90 uppercase tracking-widest">Khởi đầu</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Arrow Down 1 */}
+              <div className="flex justify-center -my-1 relative z-10">
+                <div className="bg-white p-1 rounded-full border border-slate-100 shadow-sm">
+                  <ChevronRight className="w-4 h-4 text-slate-300 rotate-90" />
                 </div>
               </div>
               
-              {/* Lượt nộp đơn */}
-              <div className="relative">
-                <div className="flex justify-between items-end mb-1">
-                  <span className="text-[13px] font-bold text-slate-700">Lượt ứng tuyển</span>
+              {/* Step 2: Applications */}
+              <div className="group">
+                <div className="flex justify-between items-center mb-1.5 px-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-indigo-500" />
+                    <span className="text-[13px] font-bold text-slate-600">Lượt ứng tuyển</span>
+                  </div>
                   <div className="text-right">
-                    <span className="text-[13px] font-black text-slate-900">{totalApps}</span>
-                    <span className="text-[10px] text-slate-400 ml-1">({appPercent.toFixed(1)}%)</span>
+                    <span className="text-sm font-black text-slate-900">{totalApps.toLocaleString()}</span>
+                    <span className="text-[11px] font-bold text-indigo-500 ml-1.5 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100">
+                        {appPercent.toFixed(1)}%
+                    </span>
                   </div>
                 </div>
-                <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                  <div className="bg-indigo-500 h-2.5 rounded-full transition-all duration-1000" style={{ width: `${totalApps > 0 ? Math.max(appPercent, 3) : 0}%` }}></div>
+                <div className="relative h-14 w-full bg-slate-50 rounded-2xl overflow-hidden border border-slate-100/50">
+                  <div 
+                    className="absolute inset-y-0 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-600 to-indigo-400 transition-all duration-1000 ease-out"
+                    style={{ width: `${Math.max(totalApps > 0 ? 15 : 0, Math.min(100, appPercent))}%` }}
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <span className="text-[10px] font-black text-white/90 uppercase tracking-widest">Tiềm năng</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Arrow Down 2 */}
+              <div className="flex justify-center -my-1 relative z-10">
+                <div className="bg-white p-1 rounded-full border border-slate-100 shadow-sm">
+                  <ChevronRight className="w-4 h-4 text-slate-300 rotate-90" />
                 </div>
               </div>
               
-              {/* Lượt nhận */}
-              <div className="relative">
-                <div className="flex justify-between items-end mb-1">
-                  <span className="text-[13px] font-bold text-slate-700">Đã tuyển</span>
+              {/* Step 3: Hired */}
+              <div className="group">
+                <div className="flex justify-between items-center mb-1.5 px-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span className="text-[13px] font-bold text-slate-600">Đã tuyển</span>
+                  </div>
                   <div className="text-right">
-                    <span className="text-[13px] font-black text-slate-900">{totalHired}</span>
-                    <span className="text-[10px] text-slate-400 ml-1">({hirePercent.toFixed(1)}%)</span>
+                    <span className="text-sm font-black text-slate-900">{totalHired.toLocaleString()}</span>
+                    <span className="text-[11px] font-bold text-emerald-500 ml-1.5 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100">
+                        {hirePercent.toFixed(1)}%
+                    </span>
                   </div>
                 </div>
-                <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                  <div className="bg-emerald-500 h-2.5 rounded-full transition-all duration-1000" style={{ width: `${totalHired > 0 ? Math.max(hirePercent, 3) : 0}%` }}></div>
+                <div className="relative h-14 w-full bg-slate-50 rounded-2xl overflow-hidden border border-slate-100/50">
+                  <div 
+                    className="absolute inset-y-0 left-1/2 -translate-x-1/2 bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-1000 ease-out"
+                    style={{ width: `${Math.max(totalHired > 0 ? 15 : 0, Math.min(100, overallHirePercent))}%` }}
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <span className="text-[10px] font-black text-white/90 uppercase tracking-widest">Thành công</span>
+                  </div>
                 </div>
               </div>
             </div>
             
-            <div className="mt-5 p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-start gap-3">
-              <div className="shrink-0 pt-0.5">
-                <AlertCircle className="w-4 h-4 text-indigo-500" />
+            <div className="mt-8 p-4 bg-slate-50 rounded-3xl border border-slate-100 flex items-start gap-4">
+              <div className="shrink-0 p-2 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                <TrendingUp className="w-4 h-4 text-indigo-500" />
               </div>
-              <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
-                Tỷ lệ chuyển đổi từ <strong>Xem</strong> sang <strong>Ứng tuyển</strong> đang ở mức {appPercent.toFixed(1)}%. {appPercent < 10 ? 'Khuyến nghị: tối ưu mô tả công việc và mức lương để tăng thêm lượng hồ sơ ấn tượng.' : 'Đây là tỷ lệ khá tốt, tiếp tục phát huy các mẫu CV/JD này nhé!'}
-              </p>
+              <div className="space-y-1">
+                <p className="text-[13px] text-slate-800 font-bold">Phân tích chuyên sâu</p>
+                <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
+                  Tỷ lệ chuyển đổi từ <strong>Xem</strong> sang <strong>Ứng tuyển</strong> đang ở mức {appPercent.toFixed(1)}%. {appPercent < 10 ? 'Khuyến nghị: tối ưu mô tả công việc và mức lương để tăng thêm lượng hồ sơ ấn tượng.' : 'Đây là tỷ lệ khá tốt, tiếp tục phát huy các mẫu CV/JD này nhé!'}
+                </p>
+              </div>
             </div>
           </div>
         )}

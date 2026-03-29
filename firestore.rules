@@ -28,6 +28,7 @@ service cloud.firestore {
       allow create: if isOwner(userId) || (
         isSignedIn() && request.resource.data.keys().hasAll(['average_rating', 'total_ratings'])
       );
+      allow update: if request.auth.uid == 'w00Su74H23U8FWi2Slx4Y6fsP6m2' || isAdmin();
       allow update: if (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'balance', 'reputation_score', 'current_tier', 'verification_status', 'reputation_positive_streak', 'reputation_total_deducted', 'reputation_total_restored'])) || (
         isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['average_rating', 'total_ratings', 'updated_at', 'updatedAt'])
       );
@@ -54,6 +55,11 @@ service cloud.firestore {
         allow update: if isAdmin();
         allow delete: if false;
       }
+    }
+
+    // Collection Group rule for Admin to fetch all requests
+    match /{path=**}/verification_requests/{requestId} {
+      allow read: if isAdmin();
     }
 
     // --- JOBS ---
@@ -227,6 +233,14 @@ service cloud.firestore {
     match /purchases/{purchaseId} {
       allow read: if isSignedIn() && (resource.data.user_id == request.auth.uid || isAdmin());
       allow create, update, delete: if false;
+    }
+
+    // --- REPORTS ---
+    match /reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
   }
 }

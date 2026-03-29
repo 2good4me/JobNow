@@ -14,6 +14,8 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }>
   CLOSED: { bg: 'bg-slate-100 border-slate-200', text: 'text-slate-500', label: 'Đã đóng' },
   DRAFT: { bg: 'bg-amber-50 border-amber-100', text: 'text-amber-700', label: 'Bản nháp' },
   EXPIRED: { bg: 'bg-rose-50 border-rose-100', text: 'text-rose-600', label: 'Hết hạn' },
+  PENDING_REVIEW: { bg: 'bg-amber-50 border-amber-200', text: 'text-amber-700', label: 'Chờ duyệt' },
+  REJECTED: { bg: 'bg-rose-50 border-rose-200', text: 'text-rose-700', label: 'Bị từ chối' },
 };
 
 export function RecentPostedJobs({ jobs, isLoading, onViewAll }: RecentPostedJobsProps) {
@@ -86,7 +88,20 @@ export function RecentPostedJobs({ jobs, isLoading, onViewAll }: RecentPostedJob
         <div className="divide-y divide-slate-100">
           {displayedJobs.map((job) => {
             const timeAgo = getRelativeTimeString(job.createdAt);
-            const statusKey = (job.status || 'ACTIVE').toUpperCase();
+            const status = (job.status || 'OPEN').toUpperCase();
+            const moderationStatus = (job.moderationStatus || 'APPROVED').toUpperCase();
+
+            let statusKey = 'ACTIVE';
+            if (status === 'CLOSED') {
+              statusKey = 'CLOSED';
+            } else if (moderationStatus === 'REJECTED') {
+              statusKey = 'REJECTED';
+            } else if (moderationStatus === 'PENDING_REVIEW' || status === 'DRAFT') {
+              statusKey = 'PENDING_REVIEW';
+            } else {
+              statusKey = 'ACTIVE';
+            }
+
             const style = STATUS_STYLES[statusKey] || STATUS_STYLES['ACTIVE'];
 
             return (
