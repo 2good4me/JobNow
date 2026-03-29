@@ -8,6 +8,8 @@ import {
     orderBy,
     query,
     where,
+    runTransaction,
+    serverTimestamp,
     type QueryDocumentSnapshot,
     type Unsubscribe,
 } from 'firebase/firestore';
@@ -116,9 +118,93 @@ export async function precheckApply(input: ApplyJobInput): Promise<ApplyPrecheck
 }
 
 export async function applyJob(input: ApplyJobInput): Promise<ApplyJobResult> {
-    const callable = httpsCallable<ApplyJobInput, ApplyJobResult>(functions, 'applyJob');
-    const { data } = await callable(input);
-    return data;
+    const applicationId = `${input.candidateId}_${input.jobId}_${input.shiftId}`.replace(/[/\\?%*:|"<>]/g, '_').substring(0, 1500);
+    const applicationRef = doc(db, 'applications', applicationId);
+    const jobRef = doc(db, 'jobs', input.jobId);
+    const candidateRef = doc(db, 'users', input.candidateId);
+
+    return await runTransaction(db, async (tx) => {
+        const [jobSnap, appSnap, candidateSnap] = await Promise.all([
+            tx.get(jobRef),
+            tx.get(applicationRef),
+            tx.get(candidateRef),
+        ]);
+
+        if (!jobSnap.exists()) {
+            throw new Error('Công việc không tồn tại.');
+        }
+
+        if (appSnap.exists()) {
+            const appData = appSnap.data() || {};
+            return {
+                applicationId: appSnap.id,
+                status: String(appData.status ?? 'NEW') as any,
+            };
+        }
+
+        const jobData = jobSnap.data() || {};
+        const status = String(jobData.status ?? 'OPEN').toUpperCase();
+        if (status !== 'OPEN' && status !== 'ACTIVE') {
+            throw new Error('Công việc đã đóng tuyển.');
+        }
+
+        const shiftCapacity = jobData.shift_capacity?.[input.shiftId];
+        if (!shiftCapacity || shiftCapacity.remaining_slots <= 0) {
+            throw new Error('Ca làm đã đủ số lượng.');
+        }
+
+        const employerId = String(jobData.employer_id ?? jobData.employerId ?? '');
+        const employerName = String(jobData.employer_name ?? jobData.employerName ?? '');
+        const shiftData = jobData.shifts?.find((s: any) => s.id === input.shiftId);
+
+        const candidateData = candidateSnap.exists() ? (candidateSnap.data() || {}) : {};
+        const candidateName = String(candidateData.full_name ?? candidateData.fullName ?? candidateData.display_name ?? candidateData.displayName ?? '');
+        const candidateAvatar = String(candidateData.avatar_url ?? candidateData.avatarUrl ?? candidateData.photo_url ?? candidateData.photoURL ?? '');
+        const candidateSkills = (candidateData.skills as string[]) ?? [];
+        const candidateRating = Number(candidateData.average_rating ?? candidateData.averageRating ?? 0);
+        const candidateVerified = (candidateData.verification_status ?? candidateData.verificationStatus) === 'VERIFIED';
+
+        tx.set(applicationRef, {
+            job_id: input.jobId,
+            shift_id: input.shiftId,
+            employer_id: employerId,
+            candidate_id: input.candidateId,
+            status: 'NEW',
+            payment_status: 'UNPAID',
+            cover_letter: input.coverLetter ?? '',
+            idempotency_key: input.idempotencyKey || null,
+            applied_at: serverTimestamp(),
+            created_at: serverTimestamp(),
+            updated_at: serverTimestamp(),
+            candidate_name: candidateName,
+            candidate_avatar: candidateAvatar,
+            candidate_skills: candidateSkills,
+            candidate_rating: candidateRating,
+            candidate_verified: candidateVerified,
+            job_title: String(jobData.title ?? ''),
+            shift_time: shiftData ? `${shiftData.start_time ?? shiftData.startTime} - ${shiftData.end_time ?? shiftData.endTime}` : '',
+            employer_name: employerName,
+        });
+
+        const nextRemaining = Math.max(shiftCapacity.remaining_slots - 1, 0);
+        tx.update(jobRef, {
+            shift_capacity: {
+                ...(jobData.shift_capacity ?? {}),
+                [input.shiftId]: {
+                    total_slots: shiftCapacity.total_slots,
+                    remaining_slots: nextRemaining,
+                    applied_count: (shiftCapacity.applied_count || 0) + 1,
+                },
+            },
+            updated_at: serverTimestamp(),
+        });
+
+        return {
+            applicationId,
+            status: 'NEW',
+            remainingSlots: nextRemaining,
+        };
+    });
 }
 
 export async function withdrawApplication(input: WithdrawApplicationInput): Promise<{ success: boolean }> {

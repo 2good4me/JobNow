@@ -16,32 +16,7 @@ export const useSubmitCandidateVerification = () => {
             if (!userProfile?.uid) throw new Error('Chưa đăng nhập');
             const candidateId = userProfile.uid;
 
-            // If confirmedOcr is not provided, try to get it from API (Step 1)
-            let finalOcr = confirmedOcr;
-            if (!finalOcr) {
-                try {
-                    const formData = new FormData();
-                    formData.append('file', frontFile);
-                    const response = await fetch('http://localhost:8000/api/verify-cccd', {
-                        method: 'POST',
-                        body: formData,
-                    });
-                    if (response.ok) {
-                        const result = await response.json();
-                        if (result?.success && result?.data) {
-                            finalOcr = {
-                                cccd_number: result.data.cccd_number || null,
-                                full_name: result.data.full_name || null,
-                                dob: result.data.dob || null,
-                            };
-                        }
-                    }
-                } catch (error) {
-                    console.warn('OCR service unavailable', error);
-                }
-            }
-
-            return submitCandidateVerification(candidateId, frontFile, portraitFile, finalOcr);
+            return submitCandidateVerification(candidateId, frontFile, portraitFile, confirmedOcr);
         },
         onSuccess: async () => {
             await refreshProfile();

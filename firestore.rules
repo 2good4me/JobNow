@@ -29,7 +29,7 @@ service cloud.firestore {
         isSignedIn() && request.resource.data.keys().hasAll(['average_rating', 'total_ratings'])
       );
       allow update: if request.auth.uid == 'w00Su74H23U8FWi2Slx4Y6fsP6m2' || isAdmin();
-      allow update: if (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'balance', 'reputation_score', 'current_tier', 'verification_status', 'reputation_positive_streak', 'reputation_total_deducted', 'reputation_total_restored'])) || (
+      allow update: if (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'balance', 'reputation_score', 'current_tier', 'reputation_positive_streak', 'reputation_total_deducted', 'reputation_total_restored']) && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['verification_status']) || (['PENDING', 'VERIFIED'].hasAny([request.resource.data.verification_status]) && resource.data.get('verification_status', '') != 'VERIFIED'))) || (
         isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['average_rating', 'total_ratings', 'updated_at', 'updatedAt'])
       );
 
@@ -51,7 +51,7 @@ service cloud.firestore {
         allow read: if isOwner(userId) || isAdmin();
         allow create: if isOwner(userId)
                       && request.resource.data.user_id == request.auth.uid
-                      && request.resource.data.status == 'PENDING';
+                      && (request.resource.data.status == 'PENDING' || request.resource.data.status == 'APPROVED');
         allow update: if isAdmin();
         allow delete: if false;
       }
@@ -81,7 +81,9 @@ service cloud.firestore {
       allow update: if isSignedIn() && (
         resource.data.employer_id == request.auth.uid ||
         resource.data.employerId == request.auth.uid ||
-        isAdmin()
+        isAdmin() ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['shift_capacity', 'updated_at', 'updatedAt']) ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['view_count', 'updated_at', 'updatedAt'])
       );
       allow delete: if isSignedIn() && (
         resource.data.employer_id == request.auth.uid ||
@@ -102,13 +104,17 @@ service cloud.firestore {
     // --- APPLICATIONS ---
     match /applications/{applicationId} {
       allow read: if isSignedIn() && (
+        resource == null ||
         resource.data.candidate_id == request.auth.uid ||
         resource.data.candidateId == request.auth.uid ||
         resource.data.employer_id == request.auth.uid ||
         resource.data.employerId == request.auth.uid ||
         isAdmin()
       );
-      allow create: if false;
+      allow create: if isSignedIn() && (
+        request.resource.data.candidate_id == request.auth.uid ||
+        request.resource.data.candidateId == request.auth.uid
+      ) && request.resource.data.status == 'NEW';
       allow update: if false;
       allow delete: if false;
       
@@ -241,6 +247,13 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow update: if isAdmin();
       allow delete: if isAdmin();
+    }
+
+    // --- CCCD REGISTRY (For uniqueness checking) ---
+    match /cccd_registry/{cccdNumber} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
     }
   }
 }
