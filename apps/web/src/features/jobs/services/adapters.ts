@@ -43,6 +43,7 @@ export function mapNearbyApiToJobDoc(data: Record<string, unknown>): JobDoc {
         is_boosted: getValue<boolean>(data, ['is_boosted', 'isBoosted']),
         boost_expires_at: getValue(data, ['boost_expires_at', 'boostExpiresAt']),
         boost_package_code: getValue(data, ['boost_package_code', 'boostPackageCode']),
+        payment_method: getValue(data, ['payment_method', 'paymentMethod']),
         created_at: getValue(data, ['created_at', 'createdAt']),
         updated_at: getValue(data, ['updated_at', 'updatedAt']),
     };
@@ -90,6 +91,7 @@ export function mapJobDocToJob(id: string, data: Partial<JobDoc>): Job {
         isBoosted: data.is_boosted ?? false,
         boostExpiresAt: data.boost_expires_at,
         boostPackageCode: data.boost_package_code,
+        paymentMethod: data.payment_method,
         totalAppliedCount: data.shift_capacity && Object.keys(data.shift_capacity).length > 0
             ? Object.values(data.shift_capacity).reduce((sum, shift) => sum + (shift.applied_count || 0), 0)
             : undefined,

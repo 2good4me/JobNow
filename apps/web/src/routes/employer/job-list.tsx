@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { Search, MapPin, Eye, Users, MoreVertical, Briefcase, Plus, Share2, Edit2, ArchiveRestore, PowerOff, Flame, X, ArrowLeft } from 'lucide-react';
+import { Search, MapPin, Eye, Users, MoreVertical, Briefcase, Plus, Share2, Edit2, ArchiveRestore, PowerOff, Flame, X } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth/context/AuthContext';
@@ -344,12 +344,6 @@ function JobManagementRoute() {
       <div className="bg-gradient-to-br from-[#1e3a5f] to-[#1e40af] px-5 pt-10 md:pt-14 pb-8 lg:rounded-b-[3rem] shadow-md relative z-10 transition-all">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-3 mb-4">
-          <button
-            onClick={() => window.history.back()}
-            className="w-10 h-10 rounded-full flex items-center justify-center bg-white/10 text-white hover:bg-white/20 transition-colors shrink-0"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
           <h1 className="text-white text-lg font-bold flex-1">Quản lý tin đăng</h1>
           <div className="bg-white/20 text-white text-[12px] font-bold px-2.5 py-1.5 rounded-xl shrink-0">
             {filteredJobs.length} tin

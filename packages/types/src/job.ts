@@ -4,6 +4,7 @@ export type GenderPreference = 'MALE' | 'FEMALE' | 'ANY';
 export type ShiftTimeBucket = 'MORNING' | 'AFTERNOON' | 'EVENING' | 'NIGHT';
 export type JobModerationStatus = 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED';
 export type BoostPackageCode = 'BOOST_24H' | 'BOOST_3D' | 'BOOST_7D';
+export type PaymentMethod = 'WALLET' | 'CASH';
 
 export interface Shift {
     id: string;
@@ -64,6 +65,7 @@ export interface Job {
     isBoosted?: boolean;
     boostExpiresAt?: any;
     boostPackageCode?: BoostPackageCode;
+    paymentMethod?: PaymentMethod;
 }
 
 /**
@@ -116,6 +118,7 @@ export interface JobDoc {
     is_boosted?: boolean;
     boost_expires_at?: any;
     boost_package_code?: BoostPackageCode;
+    payment_method?: PaymentMethod;
     created_at?: any;
     updated_at?: any;
 }

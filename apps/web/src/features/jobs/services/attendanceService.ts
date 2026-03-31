@@ -1,3 +1,13 @@
+import { 
+    doc, 
+    getDoc, 
+    updateDoc, 
+    serverTimestamp, 
+    collection, 
+    addDoc 
+} from 'firebase/firestore';
+import { db } from '@/config/firebase';
+import { addNotification } from '@/features/notifications/services/notificationService';
 import type { CheckInInput, CheckInResult, CheckOutInput } from '@jobnow/types';
 
 export interface GpsValidationInput {
@@ -56,25 +66,139 @@ export function validateGpsClientSide(input: GpsValidationInput): GpsValidationR
 }
 
 /**
- * Performs check-in directly using Firestore SDK.
- * Validates GPS location and Time integrity.
+ * Robust date/time parsing for client-side comparison.
+ * Supports YYYY-MM-DD and DD/MM/YYYY.
+ */
+function parseDateTime(dateStr: string, timeStr: string): Date {
+    const dateParts = dateStr.split(/[-/]/);
+    let year, month, day;
+    
+    if (dateParts.length === 3) {
+      if (dateParts[0].length === 4) {
+        // YYYY-MM-DD
+        [year, month, day] = dateParts.map(Number);
+      } else if (dateParts[2].length === 4) {
+        // DD-MM-YYYY or DD/MM/YYYY
+        [day, month, year] = dateParts.map(Number);
+      } else {
+        return new Date(`${dateStr}T${timeStr}:00`);
+      }
+      
+      const timeParts = timeStr.split(':');
+      const hours = parseInt(timeParts[0], 10);
+      const minutes = parseInt(timeParts[1], 10);
+      
+      // We use the local Date constructor for comparison as both start and now are local context
+      return new Date(year, month - 1, day, hours, minutes, 0);
+    }
+    
+    return new Date(`${dateStr}T${timeStr}:00`);
+}
+
+/**
+ * Performs check-in directly using Firestore SDK (Client-side validation).
+ * Enforces the 30-minute window for Spark plan compatibility.
  */
 export async function checkIn(input: CheckInInput): Promise<CheckInResult> {
     try {
-        const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
-        const { db } = await import('@/config/firebase');
         const appRef = doc(db, 'applications', input.applicationId);
+        const appSnap = await getDoc(appRef);
         
+        if (!appSnap.exists()) {
+            throw new Error('Không tìm thấy đơn ứng tuyển.');
+        }
+
+        const appData = appSnap.data();
+        const jobId = appData.job_id || appData.jobId;
+        const shiftId = appData.shift_id || appData.shiftId;
+        
+        // Fetch job info to get scheduled time
+        const jobRef = doc(db, 'jobs', jobId);
+        const jobSnap = await getDoc(jobRef);
+        const jobData = jobSnap.data() || {};
+        
+        // Find shift start time
+        const shifts = Array.isArray(jobData.shifts) ? jobData.shifts : [];
+        const targetShift = shifts.find((s: any) => String(s.id) === String(shiftId));
+        
+        let isLate = false;
+        let lateMinutes = 0;
+
+        const startDate = jobData.start_date || jobData.startDate;
+        const startTime = targetShift?.start_time || targetShift?.startTime;
+        
+        if (startDate && startTime) {
+            const now = new Date();
+            const scheduledStart = parseDateTime(startDate, startTime);
+            const diffMs = now.getTime() - scheduledStart.getTime();
+            const diffMins = diffMs / (1000 * 60);
+
+            if (diffMins < -30) {
+                throw new Error('Còn quá sớm để check-in. Bạn chỉ có thể check-in trước tối đa 30 phút.');
+            }
+
+            if (diffMins > 30) {
+                throw new Error('Đã quá thời hạn check-in (tối đa 30 phút sau khi ca bắt đầu). Vui lòng liên hệ nhà tuyển dụng.');
+            }
+
+            if (diffMins > 0) {
+                isLate = true;
+                lateMinutes = Math.round(diffMins);
+            }
+        }
+
+        // Create check-in record in subcollection
+        const checkinsRef = collection(appRef, 'checkins');
+        const checkinDoc = await addDoc(checkinsRef, {
+            application_id: input.applicationId,
+            candidate_id: input.candidateId,
+            job_id: jobId,
+            shift_id: shiftId,
+            type: 'GPS',
+            gps_location: {
+                latitude: input.latitude,
+                longitude: input.longitude,
+                accuracy: input.accuracy,
+            },
+            status: 'CHECKED_IN',
+            is_late: isLate,
+            late_minutes: lateMinutes,
+            check_in_time: serverTimestamp(),
+            created_at: serverTimestamp(),
+        });
+
+        // Update application status
         await updateDoc(appRef, {
             status: 'CHECKED_IN',
+            is_late: isLate,
+            late_minutes: lateMinutes,
             checkInTime: serverTimestamp(),
             check_in_time: serverTimestamp(),
             checkInLocation: { lat: input.latitude, lng: input.longitude },
-            updatedAt: serverTimestamp(),
             updated_at: serverTimestamp()
         });
+
+        // Notify Employer
+        const employerId = String(jobData.employer_id || jobData.employerId || '');
+        const candidateName = String(appData.candidate_name || appData.candidateName || 'Ứng viên');
+        const jobTitle = String(jobData.title || jobData.jobTitle || 'Công việc');
+        if (employerId) {
+            addNotification({
+                userId: employerId,
+                type: 'SHIFT_CHECKIN',
+                category: 'SHIFT',
+                title: 'Ứng viên đã check-in',
+                body: `${candidateName} đã check-in cho ca làm tại "${jobTitle}"${isLate ? ` (Muộn ${lateMinutes} phút)` : ''}.`,
+                data: { applicationId: input.applicationId, jobId: String(jobId) }
+            }).catch(console.error);
+        }
         
-        return { success: true, message: 'Check-in thành công!', timestamp: new Date().toISOString() } as unknown as CheckInResult;
+        return { 
+            success: true, 
+            checkinId: checkinDoc.id,
+            status: 'CHECKED_IN',
+            method: 'GPS' 
+        } as any;
     } catch (error: any) {
         console.error('Error in checkIn:', error);
         throw error;
@@ -83,23 +207,39 @@ export async function checkIn(input: CheckInInput): Promise<CheckInResult> {
 
 /**
  * Performs check-out directly using Firestore SDK.
- * Now requires GPS validation to ensure candidate is at the workplace.
- * Restricts check-out until shift's endTime unless it's a force check-out.
  */
 export async function checkOut(input: CheckOutInput & { latitude?: number; longitude?: number; accuracy?: number; isForce?: boolean }): Promise<{ success: boolean }> {
     try {
-        const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
-        const { db } = await import('@/config/firebase');
         const appRef = doc(db, 'applications', input.applicationId);
         
+        // Find active check-in
+        // Note: For simplicity on client-side, we update the application. 
+        // In a real app we'd query the subcollection for the active one.
+        
         await updateDoc(appRef, {
-            status: 'WORK_FINISHED',
+            status: 'COMPLETED',
             checkOutTime: serverTimestamp(),
             check_out_time: serverTimestamp(),
             checkOutLocation: { lat: input.latitude || 0, lng: input.longitude || 0 },
-            updatedAt: serverTimestamp(),
             updated_at: serverTimestamp()
         });
+
+        // Notify Employer
+        const appSnap = await getDoc(appRef);
+        const appData = appSnap.data() || {};
+        const employerId = String(appData.employer_id || appData.employerId || '');
+        const candidateName = String(appData.candidate_name || appData.candidateName || 'Ứng viên');
+        const jobTitle = String(appData.job_title || appData.jobTitle || 'Công việc');
+        if (employerId) {
+            addNotification({
+                userId: employerId,
+                type: 'PAYMENT_REMINDER',
+                category: 'PAYMENT',
+                title: 'Ứng viên đã hoàn thành ca làm',
+                body: `${candidateName} đã check-out tại "${jobTitle}". Vui lòng kiểm tra và thanh toán lương.`,
+                data: { applicationId: input.applicationId, jobId: String(appData.jobId || appData.job_id || '') }
+            }).catch(console.error);
+        }
         
         return { success: true };
     } catch (error: any) {
@@ -112,32 +252,24 @@ export async function checkOut(input: CheckOutInput & { latitude?: number; longi
  * Force check-out an application (Employer action)
  */
 export async function forceCheckOut(applicationId: string, employerId: string): Promise<{ success: boolean }> {
-    const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
-    const { db } = await import('@/config/firebase');
     const appRef = doc(db, 'applications', applicationId);
-    
     await updateDoc(appRef, {
-        status: 'WORK_FINISHED',
+        status: 'COMPLETED',
         checkOutTime: serverTimestamp(),
         check_out_time: serverTimestamp(),
         forceCheckOutBy: employerId,
         updatedAt: serverTimestamp(),
         updated_at: serverTimestamp()
     });
-    
     return { success: true };
 }
 
 /**
  * Simulates work time for testing purposes.
- * Moves check_in_time back by specified hours.
  */
 export async function simulateWorkTime(applicationId: string, hoursAgo: number): Promise<void> {
-    const { doc, updateDoc } = await import('firebase/firestore');
-    const { db } = await import('@/config/firebase');
     const checkInTime = new Date(Date.now() - hoursAgo * 3600 * 1000);
     const appRef = doc(db, 'applications', applicationId);
-    
     await updateDoc(appRef, {
         checkInTime: checkInTime,
         check_in_time: checkInTime

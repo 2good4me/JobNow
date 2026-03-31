@@ -23,6 +23,7 @@ import {
   type GenderPreference,
   type Shift,
 } from './-schemas/jobFormSchema';
+import { calculateBudget } from './-utils/budgetCalculations';
 
 export const Route = createFileRoute('/employer/post-job')({
   validateSearch: (search: Record<string, unknown>): { editJobId?: string; duplicateJobId?: string } => ({
@@ -118,6 +119,7 @@ function EmployerPostJobRoute() {
     isPremium: false,
     latitude: null,
     longitude: null,
+    paymentMethod: 'WALLET',
   });
 
   const { user, userProfile } = useAuth();
@@ -208,8 +210,17 @@ function EmployerPostJobRoute() {
         form.shifts.every(s => s.name.trim() && s.quantity >= 1)
       );
     }
+    if (step === 4) {
+      if (form.paymentMethod === 'WALLET') {
+        const salary = Number(form.salary.replace(/\D/g, '')) || 0;
+        const budget = calculateBudget(form.payType as PayType, salary, form.vacancies, form.shifts);
+        const balance = (userProfile as any)?.balance || 0;
+        return balance >= budget.totalBudget;
+      }
+      return true;
+    }
     return true;
-  }, [step, form]);
+  }, [step, form, userProfile]);
 
   /* ── Shift helpers ── */
   const addShift = useCallback(() => {
@@ -304,6 +315,7 @@ function EmployerPostJobRoute() {
         isPremium: existingJob.isPremium || false,
         latitude: existingJob.location.latitude,
         longitude: existingJob.location.longitude,
+        paymentMethod: (existingJob as any).paymentMethod || 'WALLET',
       });
     }
   }, [existingJob, editJobId, duplicateJobId]);
@@ -323,7 +335,7 @@ function EmployerPostJobRoute() {
       if (draft) {
         try {
           const parsed = JSON.parse(draft);
-          setForm(prev => ({ ...prev, ...parsed, coverImage: null }));
+          setForm(prev => ({ ...prev, ...parsed, coverImage: null, paymentMethod: parsed.paymentMethod || 'WALLET' }));
           toast.info('Đã tải lại bản nháp chưa hoàn thành');
         } catch(e) {}
       }
@@ -447,6 +459,7 @@ function EmployerPostJobRoute() {
         requirements: form.requirements.length > 0 ? form.requirements : undefined,
         images: imageUrls.length > 0 ? imageUrls : undefined,
         isPremium: form.isPremium,
+        paymentMethod: form.paymentMethod,
       };
 
       console.log('--- SUBMITTING JOB PAYLOAD ---', jobData);
@@ -600,6 +613,7 @@ function EmployerPostJobRoute() {
               setForm={setForm}
               fileInputId={fileInputId}
               handleImageSelect={handleImageSelect}
+              balance={(userProfile as any)?.balance || 0}
             />
           )}
           </form>

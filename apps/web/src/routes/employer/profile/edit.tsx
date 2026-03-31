@@ -97,7 +97,7 @@ function EmployerEditProfilePage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 pb-24 font-sans max-w-lg mx-auto w-full relative shadow-sm">
+    <div className="flex flex-col min-h-screen bg-slate-50 pb-24 font-sans max-w-3xl mx-auto w-full relative shadow-sm border-x border-slate-200">
       <div className="bg-[#1e3a5f] text-white p-4 sticky top-0 z-10 flex items-center justify-between shadow-md">
         <div className="flex items-center">
           <button onClick={() => navigate({ to: '/employer/profile' })} className="p-2 -ml-2 rounded-full hover:bg-white/10 transition">
@@ -111,7 +111,7 @@ function EmployerEditProfilePage() {
         </button>
       </div>
 
-      <div className="max-w-md mx-auto p-4">
+      <div className="w-full p-4 md:p-8">
         {/* Logo Upload */}
         <div className="flex flex-col items-center justify-center p-6 bg-white rounded-2xl shadow-sm border border-slate-100 mb-6">
           <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>

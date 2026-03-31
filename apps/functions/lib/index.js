@@ -174,6 +174,31 @@ async function getCapacityForShift(jobRef, jobData, shiftId, tx) {
         appliedCount: 0,
     };
 }
+function parseDateTime(dateStr, timeStr) {
+    const dateParts = dateStr.split(/[-/]/);
+    let year, month, day;
+    if (dateParts.length === 3) {
+        if (dateParts[0].length === 4) {
+            // YYYY-MM-DD
+            [year, month, day] = dateParts.map(Number);
+        }
+        else if (dateParts[2].length === 4) {
+            // DD-MM-YYYY or DD/MM/YYYY
+            [day, month, year] = dateParts.map(Number);
+        }
+        else {
+            // Fallback to direct parse
+            return new Date(`${dateStr}T${timeStr}:00+07:00`);
+        }
+        const timeParts = timeStr.split(':');
+        const hours = parseInt(timeParts[0], 10);
+        const minutes = parseInt(timeParts[1], 10);
+        // Construct ISO string with timezone to be safe
+        const isoStr = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00+07:00`;
+        return new Date(isoStr);
+    }
+    return new Date(`${dateStr}T${timeStr}:00+07:00`);
+}
 function getShiftWindowFromData(jobData, targetShift) {
     const startDate = String(jobData.start_date ?? jobData.startDate ?? '').trim();
     const startTime = String(targetShift?.start_time ?? targetShift?.startTime ?? '').trim();
@@ -181,9 +206,10 @@ function getShiftWindowFromData(jobData, targetShift) {
     if (!targetShift || !startDate || !startTime || !endTime) {
         return null;
     }
-    const start = new Date(`${startDate}T${startTime}:00`);
-    const end = new Date(`${startDate}T${endTime}:00`);
+    const start = parseDateTime(startDate, startTime);
+    const end = parseDateTime(startDate, endTime);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        console.error(`[getShiftWindowFromData] Invalid date conversion for job=${jobData.title}, startDate=${startDate}, time=${startTime}`);
         return null;
     }
     if (end <= start) {
@@ -692,6 +718,30 @@ exports.checkIn = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (requ
         const jobLat = Number(location.latitude ?? 0);
         const jobLng = Number(location.longitude ?? 0);
         const radius = Number(jobData.checkin_radius_m ?? 100);
+        // ─── Time Window Validation ───
+        const shiftWindow = await getShiftWindow(jobRef, jobData, shiftId, tx);
+        let isLate = false;
+        let lateMinutes = 0;
+        if (shiftWindow) {
+            const now = new Date();
+            const startTime = shiftWindow.start;
+            const diffMs = now.getTime() - startTime.getTime();
+            const diffMins = diffMs / (1000 * 60);
+            console.log(`[checkIn] Validation: app=${input.applicationId}, now=${now.toISOString()}, start=${startTime.toISOString()}, diffMins=${Math.round(diffMins)}`);
+            if (diffMins < -30) {
+                throw new https_1.HttpsError('failed-precondition', 'Còn quá sớm để check-in. Bạn chỉ có thể check-in trước tối đa 30 phút.');
+            }
+            if (diffMins > 30) {
+                throw new https_1.HttpsError('failed-precondition', 'Đã quá thời hạn check-in (tối đa 30 phút sau khi ca bắt đầu). Vui lòng liên hệ nhà tuyển dụng.');
+            }
+            if (diffMins > 0) {
+                isLate = true;
+                lateMinutes = Math.round(diffMins);
+            }
+        }
+        else {
+            console.warn(`[checkIn] Warning: Could not calculate shiftWindow for app=${input.applicationId}, shift=${shiftId}. Skipping time validation.`);
+        }
         const distanceMeters = haversineDistanceMeters(input.latitude, input.longitude, jobLat, jobLng);
         let method = 'GPS';
         if (distanceMeters > radius) {
@@ -715,12 +765,16 @@ exports.checkIn = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (requ
             },
             distance_meters: Math.round(distanceMeters),
             status: 'CHECKED_IN',
+            is_late: isLate,
+            late_minutes: lateMinutes,
             check_in_time: firestore_1.FieldValue.serverTimestamp(),
             created_at: firestore_1.FieldValue.serverTimestamp(),
             updated_at: firestore_1.FieldValue.serverTimestamp(),
         });
         tx.set(applicationRef, {
             status: 'CHECKED_IN',
+            is_late: isLate,
+            late_minutes: lateMinutes,
             check_in_time: firestore_1.FieldValue.serverTimestamp(),
             updated_at: firestore_1.FieldValue.serverTimestamp(),
         }, { merge: true });
