@@ -1,5 +1,3 @@
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '@/config/firebase';
 import type { CheckInInput, CheckInResult, CheckOutInput } from '@jobnow/types';
 
 export interface GpsValidationInput {
@@ -63,9 +61,20 @@ export function validateGpsClientSide(input: GpsValidationInput): GpsValidationR
  */
 export async function checkIn(input: CheckInInput): Promise<CheckInResult> {
     try {
-        const callable = httpsCallable<CheckInInput, CheckInResult>(functions, 'checkIn');
-        const { data } = await callable(input);
-        return data;
+        const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
+        const { db } = await import('@/config/firebase');
+        const appRef = doc(db, 'applications', input.applicationId);
+        
+        await updateDoc(appRef, {
+            status: 'CHECKED_IN',
+            checkInTime: serverTimestamp(),
+            check_in_time: serverTimestamp(),
+            checkInLocation: { lat: input.latitude, lng: input.longitude },
+            updatedAt: serverTimestamp(),
+            updated_at: serverTimestamp()
+        });
+        
+        return { success: true, message: 'Check-in thành công!', timestamp: new Date().toISOString() } as unknown as CheckInResult;
     } catch (error: any) {
         console.error('Error in checkIn:', error);
         throw error;
@@ -79,12 +88,20 @@ export async function checkIn(input: CheckInInput): Promise<CheckInResult> {
  */
 export async function checkOut(input: CheckOutInput & { latitude?: number; longitude?: number; accuracy?: number; isForce?: boolean }): Promise<{ success: boolean }> {
     try {
-        const callable = httpsCallable<CheckOutInput, { success: boolean }>(functions, 'checkOut');
-        const { data } = await callable({
-            applicationId: input.applicationId,
-            candidateId: input.candidateId,
+        const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
+        const { db } = await import('@/config/firebase');
+        const appRef = doc(db, 'applications', input.applicationId);
+        
+        await updateDoc(appRef, {
+            status: 'WORK_FINISHED',
+            checkOutTime: serverTimestamp(),
+            check_out_time: serverTimestamp(),
+            checkOutLocation: { lat: input.latitude || 0, lng: input.longitude || 0 },
+            updatedAt: serverTimestamp(),
+            updated_at: serverTimestamp()
         });
-        return data;
+        
+        return { success: true };
     } catch (error: any) {
         console.error('Error in checkOut:', error);
         throw new Error(error.message || 'Không thể check-out. Vui lòng thử lại.');
@@ -95,12 +112,20 @@ export async function checkOut(input: CheckOutInput & { latitude?: number; longi
  * Force check-out an application (Employer action)
  */
 export async function forceCheckOut(applicationId: string, employerId: string): Promise<{ success: boolean }> {
-    const callable = httpsCallable<
-        { applicationId: string; employerId: string },
-        { success: boolean }
-    >(functions, 'forceCheckOut');
-    const { data } = await callable({ applicationId, employerId });
-    return data;
+    const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
+    const { db } = await import('@/config/firebase');
+    const appRef = doc(db, 'applications', applicationId);
+    
+    await updateDoc(appRef, {
+        status: 'WORK_FINISHED',
+        checkOutTime: serverTimestamp(),
+        check_out_time: serverTimestamp(),
+        forceCheckOutBy: employerId,
+        updatedAt: serverTimestamp(),
+        updated_at: serverTimestamp()
+    });
+    
+    return { success: true };
 }
 
 /**
@@ -108,9 +133,13 @@ export async function forceCheckOut(applicationId: string, employerId: string): 
  * Moves check_in_time back by specified hours.
  */
 export async function simulateWorkTime(applicationId: string, hoursAgo: number): Promise<void> {
-    const callable = httpsCallable<
-        { applicationId: string; hoursAgo: number },
-        { success: boolean }
-    >(functions, 'simulateWorkTime');
-    await callable({ applicationId, hoursAgo });
+    const { doc, updateDoc } = await import('firebase/firestore');
+    const { db } = await import('@/config/firebase');
+    const checkInTime = new Date(Date.now() - hoursAgo * 3600 * 1000);
+    const appRef = doc(db, 'applications', applicationId);
+    
+    await updateDoc(appRef, {
+        checkInTime: checkInTime,
+        check_in_time: checkInTime
+    });
 }

@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { Search, MapPin, Eye, Users, MoreVertical, Briefcase, Plus, Share2, Edit2, ArchiveRestore, PowerOff, Flame, X } from 'lucide-react';
+import { Search, MapPin, Eye, Users, MoreVertical, Briefcase, Plus, Share2, Edit2, ArchiveRestore, PowerOff, Flame, X, ArrowLeft } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth/context/AuthContext';
@@ -129,57 +129,38 @@ function CloseJobModal({
 
 function JobCardSkeleton() {
   return (
-    <div className="flex flex-col rounded-[20px] bg-white p-5 shadow-sm border border-slate-100 animate-pulse">
-      <div className="flex justify-between items-start mb-3">
-        <div className="flex flex-col gap-2 w-2/3">
-          <div className="h-5 w-20 bg-slate-100 rounded-full" />
-          <div className="h-6 w-full bg-slate-100 rounded-lg" />
+    <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm animate-pulse mb-3">
+      <div className="h-8 bg-slate-200 w-full" />
+      <div className="p-4">
+        <div className="h-5 w-3/4 bg-slate-200 rounded-full mb-3" />
+        <div className="h-4 w-1/3 bg-slate-200 rounded-full mb-4" />
+        <div className="flex gap-2 mb-4">
+          <div className="h-6 w-20 bg-slate-100 rounded-full" />
+          <div className="h-6 w-20 bg-slate-100 rounded-full" />
         </div>
-        <div className="h-6 w-24 bg-slate-100 rounded-lg" />
-      </div>
-      <div className="flex flex-col gap-3 mb-5 mt-2">
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-slate-100 rounded-full shrink-0" />
-          <div className="h-4 w-3/4 bg-slate-100 rounded-md" />
-        </div>
-        <div className="flex items-center gap-5">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-slate-100 rounded-full" />
-            <div className="h-4 w-16 bg-slate-100 rounded-md" />
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-slate-100 rounded-full" />
-            <div className="h-4 w-16 bg-slate-100 rounded-md" />
-          </div>
-        </div>
-      </div>
-      <div className="flex gap-3">
-        <div className="h-11 flex-1 bg-slate-100 rounded-xl" />
-        <div className="h-11 w-11 bg-slate-100 rounded-xl shrink-0" />
+        <div className="h-10 w-full bg-slate-100 rounded-xl" />
       </div>
     </div>
   );
 }
 
-function EmptyState() {
+function EmptyState({ activeTab }: { activeTab: TabValue }) {
   const navigate = useNavigate();
   return (
-    <div className="flex flex-col items-center justify-center p-8 mt-4 text-center bg-white rounded-[24px] shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-100 relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-48 h-48 bg-slate-50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-      <div className="relative z-10 flex flex-col items-center">
-        <div className="w-24 h-24 bg-indigo-50/50 rounded-full flex items-center justify-center mb-5 relative">
-          <div className="absolute inset-0 border border-indigo-100 rounded-full animate-ping opacity-20" />
-          <Briefcase className="w-10 h-10 text-indigo-300" />
-        </div>
-        <h3 className="text-lg font-bold text-slate-800 mb-1">Chưa có tin đăng nào</h3>
-        <p className="text-slate-500 text-sm mb-6 max-w-[200px]">Hãy tạo tin đăng đầu tiên để bắt đầu tìm kiếm ứng viên tài năng.</p>
-        <button
-          onClick={() => navigate({ to: '/employer/post-job', search: {} as any })}
-          className="bg-emerald-600 hover:bg-emerald-700 active:scale-95 transition-all text-white font-bold py-3 px-6 rounded-xl flex items-center gap-2 shadow-sm shadow-emerald-600/20"
-        >
-          <Plus className="w-5 h-5" /> Đăng tin ngay
-        </button>
+    <div className="text-center py-16 px-4 bg-white rounded-3xl border border-slate-100 shadow-sm mt-2">
+      <div className="w-16 h-16 bg-[#1e3a5f]/10 text-[#1e3a5f] rounded-full flex items-center justify-center mx-auto mb-4">
+          <Briefcase className="w-8 h-8" />
       </div>
+      <h2 className="text-lg font-bold text-slate-900 mb-2">Chưa có tin đăng nào</h2>
+      <p className="text-sm text-slate-500 mb-6 font-medium">
+          {activeTab === 'active' ? 'Bạn chưa có tin đăng nào đang mở.' : 'Không có tin đăng ở trạng thái này.'}
+      </p>
+      <button
+        onClick={() => navigate({ to: '/employer/post-job', search: {} as any })}
+        className="bg-[#1e3a5f] text-white font-bold px-6 py-2.5 rounded-xl shadow-md flex items-center justify-center gap-2 mx-auto"
+      >
+        <Plus className="w-4 h-4" /> Đăng tin ngay
+      </button>
     </div>
   );
 }
@@ -192,7 +173,6 @@ function JobManagementRoute() {
   const [activeTab, setActiveTab] = useState<TabValue>('active');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [boostTargetJob, setBoostTargetJob] = useState<Job | null>(null);
   const [closeModal, setCloseModal] = useState<{ jobId: string; title: string; affectedCandidates: number; latePenaltyPossible: boolean } | null>(null);
   const { mutateAsync: buyBoostPackage, isPending: isBoosting } = usePurchaseBoostPackage();
@@ -349,79 +329,68 @@ function JobManagementRoute() {
     }
   };
 
-  return (
-    <div className="flex flex-col min-h-screen bg-[#F8FAFC] pb-24 max-w-lg mx-auto w-full">
-      {/* Header */}
-      <header className="sticky top-0 z-30 flex items-center bg-white/90 backdrop-blur-xl px-4 py-4 border-b border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)]">
-        <div className="flex-1" />
-        <h1 className="text-lg font-bold tracking-tight flex-1 flex justify-center text-slate-900">
-          Quản lý tin đăng
-        </h1>
-        <div className="flex flex-1 items-center justify-end gap-2 text-slate-500">
-          <button
-            onClick={() => setIsSearchOpen(prev => !prev)}
-            className={`w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 active:scale-95 transition-all ${
-              isSearchOpen ? 'bg-slate-100 text-indigo-600' : ''
-            }`}
-          >
-            <Search className="w-5 h-5" />
-          </button>
-        </div>
-      </header>
+  const getStatusTheme = (job: any) => {
+    const isClosed = job.status === 'CLOSED';
+    const moderationStatus = job.moderationStatus || 'APPROVED';
+    if (isClosed) return { bg: 'bg-slate-500', text: 'text-white', label: 'Đã đóng' };
+    if (moderationStatus === 'REJECTED') return { bg: 'bg-rose-500', text: 'text-white', label: 'Bị từ chối' };
+    if (moderationStatus === 'PENDING_REVIEW' || job.status === 'DRAFT') return { bg: 'bg-amber-400', text: 'text-white', label: 'Chờ duyệt' };
+    return { bg: 'bg-emerald-500', text: 'text-white', label: 'Đang mở' };
+  };
 
-      {/* Search Bar (slide-down) */}
-      <div className={`overflow-hidden transition-all duration-300 ease-in-out bg-white border-b border-slate-100 ${
-        isSearchOpen ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'
-      }`}>
-        <div className="px-4 py-3 flex items-center gap-2">
-          <Search className="w-4 h-4 text-slate-400 shrink-0" />
+  return (
+    <div className="min-h-[100dvh] bg-[#F5F7FF] pb-24 font-sans text-slate-800">
+      {/* Header */}
+      <div className="bg-gradient-to-br from-[#1e3a5f] to-[#1e40af] px-5 pt-10 md:pt-14 pb-8 lg:rounded-b-[3rem] shadow-md relative z-10 transition-all">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center gap-3 mb-4">
+          <button
+            onClick={() => window.history.back()}
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-white/10 text-white hover:bg-white/20 transition-colors shrink-0"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <h1 className="text-white text-lg font-bold flex-1">Quản lý tin đăng</h1>
+          <div className="bg-white/20 text-white text-[12px] font-bold px-2.5 py-1.5 rounded-xl shrink-0">
+            {filteredJobs.length} tin
+          </div>
+        </div>
+
+        {/* Search bar inside header */}
+        <div className="flex items-center gap-2 bg-white/10 border border-white/20 rounded-xl px-3 py-2.5">
+          <Search className="w-4 h-4 text-white/60 shrink-0" />
           <input
-            className="w-full border-none bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:ring-0 focus:outline-none"
-            placeholder="Tìm theo tên tin đăng..."
             type="text"
+            placeholder="Tìm theo tên công việc..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            autoFocus={isSearchOpen}
+            className="bg-transparent text-white text-[14px] placeholder:text-white/50 flex-1 outline-none"
           />
-          {searchTerm && (
-            <button type="button" onClick={() => setSearchTerm('')} className="text-slate-400 hover:text-slate-600 text-lg leading-none">
-              ×
-            </button>
-          )}
+        </div>
         </div>
       </div>
 
-      {/* Tabs Section */}
-      <div className="sticky top-[60px] z-20 px-4 py-3 bg-[#F8FAFC]/90 backdrop-blur-md">
-        <div className="flex h-12 w-full items-center justify-center rounded-2xl bg-slate-200/60 p-1 relative shadow-inner">
-          {/* Active Tab Background Pill */}
-          <div
-            className="absolute h-10 bg-white rounded-xl shadow-sm transition-all duration-300 ease-out"
-            style={{
-              width: 'calc(33.33% - 6px)',
-              left: activeTab === 'active' ? '4px' : activeTab === 'pending' ? 'calc(33.33% + 2px)' : 'calc(66.66% + 0px)'
-            }}
-          />
-          {tabs.map((tab) => (
-            <button
-              key={tab.value}
-              onClick={() => setActiveTab(tab.value)}
-              className={`
-                relative z-10 flex h-full grow items-center justify-center rounded-xl px-2 text-[14px] font-bold transition-colors duration-200
-                ${activeTab === tab.value
-                  ? 'text-indigo-600'
-                  : 'text-slate-500 hover:text-slate-700'
-                }
-              `}
-            >
-              {tab.label}
-            </button>
-          ))}
+      {/* Status Tabs */}
+      <div className="bg-white border-b border-slate-100 px-5 py-3 flex gap-2 overflow-x-auto no-scrollbar">
+        <div className="max-w-4xl mx-auto w-full flex gap-2">
+        {tabs.map((tab) => (
+          <button
+            key={tab.value}
+            onClick={() => setActiveTab(tab.value)}
+            className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap border-2 flex-shrink-0 ${
+              activeTab === tab.value
+                ? 'bg-[#1e3a5f] border-[#1e3a5f] text-white shadow-md'
+                : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
         </div>
       </div>
 
-      {/* Job List */}
-      <main className="flex flex-col gap-4 px-4 mt-2">
+      {/* List */}
+      <div className="p-4 max-w-4xl mx-auto w-full space-y-4">
         {isLoadingJobs ? (
           <>
             <JobCardSkeleton />
@@ -429,146 +398,129 @@ function JobManagementRoute() {
             <JobCardSkeleton />
           </>
         ) : filteredJobs.length === 0 ? (
-          <EmptyState />
+          <EmptyState activeTab={activeTab} />
         ) : (
-          filteredJobs.map((job, index) => {
+          filteredJobs.map((job) => {
             const appCount = getJobAppCount(job.id);
             const viewCount = (job as any).viewCount || 0;
-            const status = job.status || 'OPEN';
-            const moderationStatus = job.moderationStatus || 'APPROVED';
-            const isClosed = status === 'CLOSED';
+            const theme = getStatusTheme(job);
             const isMenuOpen = openMenuId === job.id;
+            const moderationStatus = job.moderationStatus || 'APPROVED';
+            const status = job.status || 'OPEN';
+            const isClosed = status === 'CLOSED';
 
             return (
               <div
                 key={job.id}
                 onClick={() => navigate({ to: '/employer/job-detail', search: { jobId: job.id } })}
-                className={`relative flex flex-col rounded-2xl bg-white p-4 border transition-all duration-200 cursor-pointer
-                  ${isClosed ? 'border-slate-100 opacity-80' : 'border-slate-200 hover:border-indigo-200 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.99] active:bg-slate-50'}
-                `}
-                style={{ animationDelay: `${index * 50}ms` }}
+                className="block bg-white border border-slate-100 rounded-2xl overflow-visible shadow-sm hover:shadow-md transition-shadow cursor-pointer"
               >
-                {/* Header Row */}
-                <div className="flex justify-between items-start mb-3 gap-2">
-                  <div className="flex flex-col gap-2 flex-1 pr-8">
-                    <span className={`inline-flex w-fit items-center rounded-lg px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide
-                      ${isClosed ? 'bg-slate-100 text-slate-600' :
-                        moderationStatus === 'REJECTED' ? 'bg-rose-100 text-rose-700' :
-                        moderationStatus === 'PENDING_REVIEW' || status === 'DRAFT' ? 'bg-amber-100 text-amber-700' :
-                          'bg-emerald-100 text-emerald-700'
-                      }`}>
-                      {isClosed ? 'Đã đóng' : moderationStatus === 'REJECTED' ? 'Bị từ chối' : (moderationStatus === 'PENDING_REVIEW' || status === 'DRAFT') ? 'Chờ duyệt' : 'Đang mở'}
+                {/* Status stripe on top */}
+                <div className={`${theme.bg} rounded-t-2xl px-4 py-2.5 flex items-center justify-between`}>
+                  <span className={`text-[11px] font-black uppercase tracking-wider ${theme.text}`}>
+                    {theme.label}
+                  </span>
+                  {job.isBoosted && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold text-white uppercase tracking-wider">
+                      <Flame className="w-3 h-3 text-amber-300" /> Được đẩy top
                     </span>
-                    <h3 className="text-base font-bold text-slate-900 leading-snug break-words">
-                      {job.title}
-                    </h3>
-                    {job.isBoosted && (
-                      <span className="inline-flex w-fit items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">
-                        <Flame className="w-3.5 h-3.5" /> Đang boost
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Settings Menu Button - Absolute positioned to top right */}
-                <div className="absolute top-3 right-3">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setOpenMenuId(isMenuOpen ? null : job.id); }}
-                    className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 active:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
-                  >
-                    <MoreVertical className="w-5 h-5" />
-                  </button>
-
-                  {/* Dropdown Menu */}
-                  {isMenuOpen && (
-                    <div className="absolute top-10 right-0 w-48 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] border border-slate-100 z-30 py-2 origin-top-right animate-in fade-in zoom-in-95 duration-200">
-                      <button onClick={(e) => { e.stopPropagation(); handleEdit(job.id); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition-colors">
-                        <Edit2 className="w-4 h-4" /> Sửa tin
-                      </button>
-                      <button onClick={(e) => { e.stopPropagation(); navigate({ to: '/employer/post-job', search: { duplicateJobId: job.id } as any }); setOpenMenuId(null); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors">
-                        <Plus className="w-4 h-4" /> Nhân bản tin
-                      </button>
-                      <button onClick={(e) => { e.stopPropagation(); handleShare(job.id); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-emerald-600 transition-colors">
-                        <Share2 className="w-4 h-4" /> Chia sẻ
-                      </button>
-                      {moderationStatus === 'APPROVED' && !isClosed && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setBoostTargetJob(job); setOpenMenuId(null); }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-amber-600 transition-colors"
-                        >
-                          <Flame className="w-4 h-4" /> Đẩy top
-                        </button>
-                      )}
-                      <div className="h-px bg-slate-100 my-1"></div>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleToggleStatus(job.id, status); }}
-                        className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition-colors
-                          ${isClosed ? 'hover:bg-emerald-50 text-emerald-600' : 'hover:bg-rose-50 text-rose-600'}
-                        `}
-                      >
-                        {isClosed ? <ArchiveRestore className="w-4 h-4" /> : <PowerOff className="w-4 h-4" />}
-                        {isClosed ? 'Mở lại tin' : 'Đóng tin'}
-                      </button>
-                    </div>
                   )}
                 </div>
 
-                {/* Salary */}
-                <div className="mb-4">
-                  <p className={`text-[15px] font-bold ${isClosed ? 'text-slate-500' : 'text-emerald-600'}`}>
+                <div className="p-4 relative">
+                  {/* Settings Menu Button */}
+                  <div className="absolute top-2 right-2">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setOpenMenuId(isMenuOpen ? null : job.id); }}
+                      className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-50 active:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      <MoreVertical className="w-5 h-5" />
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    {isMenuOpen && (
+                      <div className="absolute top-10 right-0 w-48 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] border border-slate-100 z-30 py-2 origin-top-right animate-in fade-in zoom-in-95 duration-200">
+                        <button onClick={(e) => { e.stopPropagation(); handleEdit(job.id); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-indigo-600 transition-colors">
+                          <Edit2 className="w-4 h-4" /> Sửa tin
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); navigate({ to: '/employer/post-job', search: { duplicateJobId: job.id } as any }); setOpenMenuId(null); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors">
+                          <Plus className="w-4 h-4" /> Nhân bản tin
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); handleShare(job.id); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-emerald-600 transition-colors">
+                          <Share2 className="w-4 h-4" /> Chia sẻ
+                        </button>
+                        {moderationStatus === 'APPROVED' && !isClosed && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setBoostTargetJob(job); setOpenMenuId(null); }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-amber-600 transition-colors"
+                          >
+                            <Flame className="w-4 h-4" /> Đẩy top
+                          </button>
+                        )}
+                        <div className="h-px bg-slate-100 my-1"></div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleToggleStatus(job.id, status); }}
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-semibold transition-colors
+                            ${isClosed ? 'hover:bg-emerald-50 text-emerald-600' : 'hover:bg-rose-50 text-rose-600'}
+                          `}
+                        >
+                          {isClosed ? <ArchiveRestore className="w-4 h-4" /> : <PowerOff className="w-4 h-4" />}
+                          {isClosed ? 'Mở lại tin' : 'Đóng tin'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <h3 className="font-bold text-slate-900 text-[15px] mb-1.5 pr-8 leading-snug">
+                    {job.title}
+                  </h3>
+                  
+                  <p className="font-bold text-[#006399] text-[15px] mb-3">
                     {formatSalary(job.salary, (job as any).salary_type || job.salaryType)}
                   </p>
-                </div>
 
-                {/* Metrics & Location */}
-                <div className="flex flex-col gap-2.5 mb-5">
                   {job.location?.address && (
-                    <div className="flex items-start gap-1.5 text-slate-500 text-[13px] font-medium leading-relaxed">
-                      <MapPin className="w-4 h-4 shrink-0 mt-0.5 text-slate-400" />
+                    <div className="flex items-start gap-1.5 text-slate-500 text-[12px] font-medium leading-relaxed mb-3">
+                      <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                       <span className="line-clamp-2">{job.location.address}</span>
                     </div>
                   )}
 
-                  {/* Inline Metrics */}
-                  <div className="flex items-center gap-3 text-[13px] font-medium mt-1">
-                    <div className="flex items-center gap-1.5 text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
-                      <Eye className="w-3.5 h-3.5" />
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 bg-slate-100/80 px-2 py-1 rounded-lg">
+                      <Eye className="w-3 h-3" />
                       <span>{viewCount} lượt xem</span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100/50">
-                      <Users className="w-3.5 h-3.5" />
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-lg">
+                      <Users className="w-3 h-3" />
                       <span>{appCount} ứng viên</span>
                     </div>
                   </div>
-                </div>
 
-                {/* Actions */}
-                <div className="flex gap-3">
+                  {/* Actions */}
                   <button
                     onClick={(e) => { e.stopPropagation(); navigate({ to: '/employer/applicants', search: { jobId: job.id } }); }}
-                    className="flex-1 flex items-center justify-center h-11 rounded-xl border border-indigo-200 bg-white text-indigo-600 text-sm font-bold hover:bg-indigo-50 active:bg-indigo-100 transition-colors"
+                    className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border-2 border-[#1e3a5f]/10 bg-[#1e3a5f]/5 text-[#1e3a5f] text-[13px] font-bold active:scale-[0.98] transition-colors"
                   >
-                    Quản lý ứng viên
+                    Xem danh sách ứng viên
                   </button>
                 </div>
               </div>
             );
           })
         )}
-      </main>
+      </div>
 
       {jobs.length > 0 && (
         <button
-          type="button"
           onClick={() => navigate({ to: '/employer/post-job', search: {} as any })}
-          className="fixed bottom-24 z-30 inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/30 transition hover:bg-emerald-700 active:scale-[0.97]"
-          style={{ right: 'max(1.25rem, calc(50vw - 256px + 1.25rem))' }}
+          className="fixed bottom-24 right-5 z-30 w-14 h-14 rounded-full bg-[#1e3a5f] text-white flex items-center justify-center shadow-lg shadow-[#1e3a5f]/30 active:scale-95 transition-transform"
         >
-          <Plus className="w-4 h-4" />
-          Tạo tin
+          <Plus className="w-6 h-6" />
         </button>
       )}
 
+      {/* Modals */}
       {boostTargetJob && (
         <BoostPackageModal
           job={boostTargetJob}

@@ -1,4 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { onSnapshot, doc, collection, query, where } from 'firebase/firestore';
+import { db } from '@/config/firebase';
 import { BoostPackage, Job, JobPostingQuota } from '@jobnow/types';
 import {
     fetchEmployerJobs,
@@ -39,6 +42,51 @@ export function useJobDetail(jobId: string | undefined) {
         enabled: !!jobId,
         staleTime: 2 * 60 * 1000, // 2 minutes
     });
+}
+
+/**
+ * Hook to listen for realtime updates to a single job.
+ */
+export function useRealtimeJob(jobId: string | undefined) {
+    const queryClient = useQueryClient();
+
+    useEffect(() => {
+        if (!jobId) return;
+
+        const unsubscribe = onSnapshot(doc(db, 'jobs', jobId), () => {
+            queryClient.invalidateQueries({ queryKey: ['jobs', 'detail', jobId] });
+        });
+
+        return () => unsubscribe();
+    }, [jobId, queryClient]);
+}
+
+/**
+ * Hook to listen for realtime updates to employer jobs list.
+ */
+export function useRealtimeEmployerJobs(employerId: string | undefined) {
+    const queryClient = useQueryClient();
+
+    useEffect(() => {
+        if (!employerId) return;
+
+        const jobsRef = collection(db, 'jobs');
+        const q = query(jobsRef, where('employerId', '==', employerId));
+        
+        const unsubscribe = onSnapshot(q, () => {
+            queryClient.invalidateQueries({ queryKey: ['jobs', 'employer', employerId] });
+        });
+
+        const qFallback = query(jobsRef, where('employer_id', '==', employerId));
+        const unsubscribeFallback = onSnapshot(qFallback, () => {
+            queryClient.invalidateQueries({ queryKey: ['jobs', 'employer', employerId] });
+        });
+
+        return () => {
+            unsubscribe();
+            unsubscribeFallback();
+        };
+    }, [employerId, queryClient]);
 }
 
 /**

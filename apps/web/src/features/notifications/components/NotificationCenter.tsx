@@ -158,7 +158,7 @@ export function NotificationCenter() {
 
         // --- Employer flows ---
         if (role === 'EMPLOYER') {
-            if (n.type === 'NEW_APPLICATION' || jobId) {
+            if (n.type === 'NEW_APPLICATION' && jobId) {
                 navigate({ 
                     to: '/employer/applicants' as any, 
                     search: { jobId } 
@@ -166,7 +166,17 @@ export function NotificationCenter() {
                 return;
             }
             
-            // Other employer routes can be added here
+            if ((n.type === 'JOB_CLOSED' || n.category === 'JOB') && jobId) {
+                 navigate({
+                     to: '/employer/job-detail' as any,
+                     search: { jobId }
+                 } as any);
+                 return;
+            }
+
+            // Fallback for employer
+            navigate({ to: '/employer' as any });
+            return;
         }
 
         // --- Candidate flows (Default) ---

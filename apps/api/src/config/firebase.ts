@@ -3,30 +3,31 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 // Look for serviceAccountKey.json in the project root
-const serviceAccountPath = path.resolve(process.cwd(), '../../serviceAccountKey.json');
-const altServiceAccountPath = path.resolve(process.cwd(), 'serviceAccountKey.json');
+    // Robustly find the service account key in a monorepo
+    const pathsToTry = [
+        path.join(__dirname, '../../../../serviceAccountKey.json'), // From src/config
+        path.join(__dirname, '../../../serviceAccountKey.json'),    // From dist/config
+        path.join(process.cwd(), 'serviceAccountKey.json'),         // Current dir
+        path.join(process.cwd(), '../../serviceAccountKey.json'),  // Two levels up
+        'C:/Users/Nhu Vu/JobNow/serviceAccountKey.json',            // Absolute fallback (adjust as needed)
+    ];
 
-// Check if app is already initialized to avoid re-initialization error
-if (!admin.apps.length) {
-    console.log('Current working directory:', process.cwd());
-    console.log('Checking service account at:', serviceAccountPath);
-    console.log('Checking alternative path:', altServiceAccountPath);
-    
-    if (fs.existsSync(serviceAccountPath)) {
-        console.log('✅ Found service account key at project root');
-        admin.initializeApp({
-            credential: admin.credential.cert(serviceAccountPath)
-        });
-    } else if (fs.existsSync(altServiceAccountPath)) {
-        console.log('✅ Found service account key in current folder');
-        admin.initializeApp({
-            credential: admin.credential.cert(altServiceAccountPath)
-        });
-    } else {
-        console.log('⚠️ No service account key found. Using default credentials.');
+    let initialized = false;
+    for (const p of pathsToTry) {
+        if (fs.existsSync(p)) {
+            console.log(`✅ Found service account key at: ${p}`);
+            admin.initializeApp({
+                credential: admin.credential.cert(p)
+            });
+            initialized = true;
+            break;
+        }
+    }
+
+    if (!initialized) {
+        console.log('⚠️ No service account key found. Using default credentials or project ID fallback.');
         admin.initializeApp({ projectId: 'jobnow-80037' });
     }
-}
 
 const db = admin.firestore();
 const auth = admin.auth();
