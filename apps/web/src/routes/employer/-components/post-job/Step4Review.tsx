@@ -1,4 +1,5 @@
-import { CalendarClock, Check, DollarSign, ImagePlus, MapPin, Sparkles, Trash2, UsersRound, Clock } from 'lucide-react';
+import { CalendarClock, Check, DollarSign, ImagePlus, MapPin, Sparkles, Trash2, UsersRound, Clock, WalletCards, AlertCircle } from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
 import { formatSalary, type JobFormState } from '../../post-job';
 import type { PayType } from '../../-schemas/jobFormSchema';
 import { calculateBudget } from '../../-utils/budgetCalculations';
@@ -8,6 +9,7 @@ interface Step4ReviewProps {
   setForm: React.Dispatch<React.SetStateAction<JobFormState>>;
   fileInputId: string;
   handleImageSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  balance: number;
 }
 
 export default function Step4Review({
@@ -15,7 +17,9 @@ export default function Step4Review({
   setForm,
   fileInputId,
   handleImageSelect,
+  balance,
 }: Step4ReviewProps) {
+  const navigate = useNavigate();
   // Calculate budget using new utility
   const salary = Number(form.salary.replace(/\D/g, '')) || 0;
   const budgetResult = calculateBudget(form.payType as PayType, salary, form.vacancies, form.shifts);
@@ -146,6 +150,74 @@ export default function Step4Review({
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Payment Method Selection */}
+          <div className="pt-4 mt-2 border-t border-slate-100">
+             <h3 className="text-sm font-bold text-slate-800 mb-3">Phương thức trả lương</h3>
+             <div className="grid grid-cols-2 gap-3">
+               <button
+                 type="button"
+                 onClick={() => setForm(p => ({ ...p, paymentMethod: 'WALLET' }))}
+                 className={`flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all ${
+                   form.paymentMethod === 'WALLET' ? 'border-[#1e3a5f] bg-[#1e3a5f]/5' : 'border-slate-100 bg-white hover:border-slate-300'
+                 }`}
+               >
+                 <div className={`p-2 rounded-full ${form.paymentMethod === 'WALLET' ? 'bg-[#1e3a5f] text-white' : 'bg-slate-100 text-slate-400'}`}>
+                   <WalletCards className="w-5 h-5" />
+                 </div>
+                 <span className={`text-[13px] font-bold ${form.paymentMethod === 'WALLET' ? 'text-[#1e3a5f]' : 'text-slate-500'}`}>Ví JobNow</span>
+               </button>
+
+               <button
+                 type="button"
+                 onClick={() => setForm(p => ({ ...p, paymentMethod: 'CASH' }))}
+                 className={`flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all ${
+                   form.paymentMethod === 'CASH' ? 'border-[#1e3a5f] bg-[#1e3a5f]/5' : 'border-slate-100 bg-white hover:border-slate-300'
+                 }`}
+               >
+                 <div className={`p-2 rounded-full ${form.paymentMethod === 'CASH' ? 'bg-[#1e3a5f] text-white' : 'bg-slate-100 text-slate-400'}`}>
+                   <DollarSign className="w-5 h-5" />
+                 </div>
+                 <span className={`text-[13px] font-bold ${form.paymentMethod === 'CASH' ? 'text-[#1e3a5f]' : 'text-slate-500'}`}>Tiền mặt</span>
+               </button>
+             </div>
+
+             {form.paymentMethod === 'WALLET' && (
+               <div className="mt-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                 <div className="flex justify-between items-center mb-2">
+                   <span className="text-[12px] text-slate-500 font-medium">Số dư hiện tại</span>
+                   <span className="text-[14px] font-black text-slate-900">{balance.toLocaleString('vi-VN')}đ</span>
+                 </div>
+                 <div className="flex justify-between items-center">
+                   <span className="text-[12px] text-slate-500 font-medium">Ngân sách dự kiến</span>
+                   <span className={`text-[14px] font-black ${balance < budgetResult.totalBudget ? 'text-rose-600' : 'text-[#1e3a5f]'}`}>
+                     {budgetResult.totalBudget.toLocaleString('vi-VN')}đ
+                   </span>
+                 </div>
+                 {balance < budgetResult.totalBudget && (
+                   <div className="mt-3 flex items-center justify-between gap-3 pt-3 border-t border-slate-200">
+                      <p className="text-[11px] font-bold text-rose-500 flex-1 leading-tight">⚠️ Số dư không đủ để thanh toán qua ví. Hãy chọn tiền mặt hoặc nạp thêm.</p>
+                      <button
+                        type="button"
+                        onClick={() => navigate({ to: '/employer/wallet' })}
+                        className="px-3 py-2 bg-[#1e3a5f] text-white text-[11px] font-bold rounded-xl active:scale-95 transition-transform"
+                      >
+                        Nạp thêm
+                      </button>
+                   </div>
+                 )}
+               </div>
+             )}
+
+             {form.paymentMethod === 'CASH' && (
+               <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-100 flex gap-2">
+                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                 <p className="text-[11px] text-amber-900 font-bold leading-relaxed">
+                   Lưu ý: Bạn chọn trả tiền mặt cho ứng viên sau ca làm. Ứng viên cần xác nhận đã nhận tiền để hệ thống đóng ca làm.
+                 </p>
+               </div>
+             )}
           </div>
         </div>
       </section>

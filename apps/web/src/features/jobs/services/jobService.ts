@@ -126,6 +126,7 @@ function mapJobSnapshot(
         is_boosted: Boolean(raw.is_boosted ?? raw.isBoosted ?? false),
         boost_expires_at: raw.boost_expires_at ?? raw.boostExpiresAt,
         boost_package_code: (raw.boost_package_code ?? raw.boostPackageCode) as any,
+        payment_method: (raw.payment_method ?? (raw as any).paymentMethod) as any,
     };
 
     return mapJobDocToJob(docSnap.id, normalized);
@@ -243,6 +244,7 @@ export async function createJob(jobData: Partial<Job>): Promise<Job> {
             start_date: jobData.startDate ?? null,
             is_premium: false,
             is_boosted: false,
+            payment_method: jobData.paymentMethod || 'WALLET',
             boost_expires_at: null,
             created_at: now,
             updated_at: now,
@@ -327,6 +329,7 @@ export async function updateJob(jobId: string, data: Partial<Job>): Promise<void
         if (data.isBoosted !== undefined) updateData.is_boosted = data.isBoosted;
         if (data.boostExpiresAt !== undefined) updateData.boost_expires_at = data.boostExpiresAt;
         if (data.boostPackageCode !== undefined) updateData.boost_package_code = data.boostPackageCode;
+        if (data.paymentMethod !== undefined) updateData.payment_method = data.paymentMethod;
 
         if (data.location !== undefined) {
             updateData.address = data.location?.address ?? '';

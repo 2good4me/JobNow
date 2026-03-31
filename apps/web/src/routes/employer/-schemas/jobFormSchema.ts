@@ -3,6 +3,7 @@ import { calculateBudget } from '../-utils/budgetCalculations';
 
 export type PayType = 'Theo giờ' | 'Theo ca' | 'Theo ngày';
 export type GenderPreference = 'Nam' | 'Nữ' | 'Cả hai';
+export type PaymentMethod = 'WALLET' | 'CASH';
 
 export interface Shift {
   id: string;
@@ -141,6 +142,7 @@ export const jobFormSchema = z.object({
   coverImage: z.instanceof(File).nullable().optional(),
 
   isPremium: z.boolean().default(false),
+  paymentMethod: z.enum(['WALLET', 'CASH'] as const).default('WALLET'),
 })
   // Composite validation: deadline must be >= startDate
   .refine((data) => {

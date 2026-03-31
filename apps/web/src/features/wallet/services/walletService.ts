@@ -122,11 +122,16 @@ export async function requestPayment(
     jobId: string,
     applicationId: string
 ): Promise<void> {
+    const balance = await getWalletBalance(employerId);
+    if (balance < amount) {
+        throw new Error(`Số dư không đủ để thanh toán (${amount.toLocaleString('vi-VN')}đ). Vui lòng nạp thêm tiền vào ví.`);
+    }
+
     const callable = httpsCallable<
         { applicationId: string; employerId: string; candidateId: string; amount: number; jobId: string; jobTitle: string },
         { success: boolean }
     >(functions, 'processPayment');
-    await callable({ applicationId, employerId, candidateId, amount, jobId, jobTitle: 'Payment Request' });
+    await callable({ applicationId, employerId, candidateId, amount, jobId, jobTitle: 'Thanh toán tiền lương' });
 }
 
 /**

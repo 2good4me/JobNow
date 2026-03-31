@@ -31,27 +31,30 @@ function CandidateWalletPage() {
 
   const [showWithdrawSheet, setShowWithdrawSheet] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'INCOME' | 'WITHDRAW'>('ALL');
+  const [timeFilter, setTimeFilter] = useState<'MONTH' | 'ALL'>('ALL');
 
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
   startOfMonth.setHours(0, 0, 0, 0);
 
-  const isIncomeTransaction = (type: string) => ['DEPOSIT', 'PAYMENT', 'REFUND'].includes(type);
+  const isIncomeTransaction = (type: string) => ['DEPOSIT', 'PAYMENT', 'REFUND', 'SALARY', 'INCOME'].includes(type.toUpperCase());
   const isWithdrawTransaction = (type: string) => type === 'WITHDRAW';
 
   const monthlyIncome = transactions.reduce((sum, tx) => {
     if (!isIncomeTransaction(tx.type) || tx.status !== 'COMPLETED') return sum;
-    if (tx.createdAt < startOfMonth) return sum;
+    if (timeFilter === 'MONTH' && tx.createdAt < startOfMonth) return sum;
     return sum + Math.abs(tx.amount);
   }, 0);
 
   const pendingAmount = transactions.reduce((sum, tx) => {
     if (tx.status !== 'PENDING') return sum;
+    if (timeFilter === 'MONTH' && tx.createdAt < startOfMonth) return sum;
     return sum + Math.abs(tx.amount);
   }, 0);
 
   const withdrawnAmount = transactions.reduce((sum, tx) => {
     if (!isWithdrawTransaction(tx.type) || tx.status !== 'COMPLETED') return sum;
+    if (timeFilter === 'MONTH' && tx.createdAt < startOfMonth) return sum;
     return sum + Math.abs(tx.amount);
   }, 0);
 
@@ -114,13 +117,41 @@ function CandidateWalletPage() {
           </div>
         </section>
 
+        {/* ── Filter Tab ── */}
+        <section className="mt-4 px-1">
+          <div className="bg-white/80 backdrop-blur-xl p-1 rounded-2xl shadow-sm border border-slate-200/60 flex gap-1">
+            <button
+              onClick={() => setTimeFilter('ALL')}
+              className={`flex-1 py-2 rounded-xl text-[12px] font-black transition-all ${
+                timeFilter === 'ALL' 
+                  ? 'bg-[#0f172a] text-white shadow-md' 
+                  : 'text-slate-400'
+              }`}
+            >
+              Tất cả
+            </button>
+            <button
+              onClick={() => setTimeFilter('MONTH')}
+              className={`flex-1 py-2 rounded-xl text-[12px] font-black transition-all ${
+                timeFilter === 'MONTH' 
+                  ? 'bg-[#0f172a] text-white shadow-md' 
+                  : 'text-slate-400'
+              }`}
+            >
+              Tháng này
+            </button>
+          </div>
+        </section>
+
         <section className="mt-5 grid grid-cols-3 gap-3">
           <div className="rounded-[24px] bg-white p-4 shadow-sm border border-slate-100 flex flex-col items-center">
             <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center mb-3">
               <TrendingUp className="w-4 h-4 text-emerald-600" />
             </div>
             <p className="text-[9px] font-bold uppercase tracking-[0.1em] text-slate-400">Thu nhập</p>
-            <p className="mt-1 text-[13px] font-black text-emerald-600">+{formatAmount(monthlyIncome)}</p>
+            <p className="mt-1 text-[13px] font-black text-emerald-600">
+              {monthlyIncome > 0 ? '+' : ''}{formatAmount(monthlyIncome)}
+            </p>
           </div>
           <div className="rounded-[24px] bg-white p-4 shadow-sm border border-slate-100 flex flex-col items-center">
             <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center mb-3">
@@ -196,7 +227,8 @@ function CandidateWalletPage() {
               </div>
             ) : (
               filteredTransactions.map((tx) => {
-                const isIncome = isIncomeTransaction(tx.type);
+                const incomeTypes = ['DEPOSIT', 'PAYMENT', 'REFUND', 'SALARY', 'INCOME'];
+                const isIncome = incomeTypes.includes(tx.type.toUpperCase()) || tx.amount > 0;
                 const isPending = tx.status === 'PENDING';
 
                 return (
