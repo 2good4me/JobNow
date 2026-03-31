@@ -26,6 +26,7 @@ import type {
 } from '@jobnow/types';
 import { mapApplicationDocToApplication } from './adapters';
 import { getProfileCompleteness } from './candidateProfileService';
+import { addNotification } from '@/features/notifications/services/notificationService';
 
 function encodeCursor(id: string): string {
     return btoa(JSON.stringify({ id }));
@@ -123,7 +124,9 @@ export async function applyJob(input: ApplyJobInput): Promise<ApplyJobResult> {
     const jobRef = doc(db, 'jobs', input.jobId);
     const candidateRef = doc(db, 'users', input.candidateId);
 
-    return await runTransaction(db, async (tx) => {
+    let notifyData: any = null;
+
+    const result = await runTransaction(db, async (tx) => {
         const [jobSnap, appSnap, candidateSnap] = await Promise.all([
             tx.get(jobRef),
             tx.get(applicationRef),
@@ -199,12 +202,33 @@ export async function applyJob(input: ApplyJobInput): Promise<ApplyJobResult> {
             updated_at: serverTimestamp(),
         });
 
+        notifyData = {
+            employerId,
+            jobTitle: String(jobData.title || 'Công việc'),
+            candidateName,
+            jobId: input.jobId,
+            applicationId
+        };
+
         return {
             applicationId,
             status: 'NEW',
             remainingSlots: nextRemaining,
         };
     });
+
+    if (notifyData && notifyData.employerId && notifyData.candidateName) {
+        addNotification({
+            userId: notifyData.employerId,
+            type: 'NEW_APPLICATION',
+            category: 'APPLICATION',
+            title: 'Có ứng viên mới',
+            body: `${notifyData.candidateName} vừa ứng tuyển vị trí ${notifyData.jobTitle}`,
+            data: { jobId: notifyData.jobId, applicationId: notifyData.applicationId }
+        }).catch(console.error);
+    }
+
+    return result as ApplyJobResult;
 }
 
 export async function withdrawApplication(input: WithdrawApplicationInput): Promise<{ success: boolean }> {

@@ -55,8 +55,15 @@ export class VNPayService {
             
         const hmac = crypto.createHmac('sha512', this.hashSecret);
         const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex'); 
+        
+        console.log('--- VNPAY VERIFY IPN DEBUG ---');
+        console.log('Sign Data:', signData);
+        console.log('Provided Hash:', secureHash);
+        console.log('Calculated Hash:', signed);
+        console.log('Match:', secureHash === signed);
+        console.log('------------------------------');
 
-        return secureHash === signed;
+        return secureHash === signed.toLowerCase() || secureHash === signed.toUpperCase();
     }
 
     // Encode values để ký (giống cách VNPay tạo chữ ký)

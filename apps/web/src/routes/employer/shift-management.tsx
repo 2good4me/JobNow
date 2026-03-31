@@ -65,197 +65,220 @@ function ShiftManagementPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 pb-24 max-w-lg mx-auto w-full relative shadow-sm">
-      <div className="flex-1 flex flex-col w-full bg-white">
-        <header className="sticky top-0 z-40 bg-[#1e3a5f] text-white">
-          <div className="flex items-center justify-between p-4">
-            <div className="flex items-center">
-              <button
-                onClick={() => navigate({ to: '/employer' })}
-                className="p-2 -ml-2 rounded-full hover:bg-white/10 transition cursor-pointer"
-                type="button"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </button>
-              <h1 className="text-lg font-bold ml-2">Quản lý Ca làm</h1>
+    <div className="flex flex-col min-h-[100dvh] bg-[#F5F7FF] pb-24 font-sans text-slate-800 relative">
+      {/* ── Gradient Header ── */}
+      <div className="bg-gradient-to-br from-[#1e3a5f] to-[#1e40af] px-5 pt-10 md:pt-14 pb-8 lg:rounded-b-[3rem] shadow-md relative z-10 transition-all">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate({ to: '/employer' })}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors shadow-sm backdrop-blur-sm"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div className="flex-1 text-center pr-10">
+               <h1 className="text-xl font-bold text-white drop-shadow-sm">Quản lý Ca làm</h1>
+               <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-white/70 mt-0.5">Theo dõi chấm công hiển thị lịch</p>
             </div>
           </div>
-        </header>
+        </div>
+      </div>
 
-        <section className="flex-1 bg-slate-50 p-4 space-y-4">
-          {isJobsLoading ? (
-            <div className="flex items-center justify-center py-10">
-              <div className="w-6 h-6 rounded-full border-2 border-blue-200 border-t-blue-600 animate-spin"></div>
+      <div className="flex-1 w-full max-w-4xl mx-auto space-y-4 pt-6 px-4">
+        {isJobsLoading ? (
+          <div className="flex items-center justify-center py-10">
+            <div className="w-8 h-8 rounded-full border-4 border-[#1e3a5f]/20 border-t-[#1e3a5f] animate-spin"></div>
+          </div>
+        ) : activeJobs.length === 0 ? (
+          <div className="py-16 text-center bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+            <div className="w-16 h-16 rounded-3xl bg-slate-50 flex items-center justify-center mx-auto mb-4 border border-slate-100 rotate-3">
+              <Clock className="h-8 w-8 text-slate-400" />
             </div>
-          ) : activeJobs.length === 0 ? (
-            <div className="py-16 text-center">
-              <Clock className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-              <p className="text-sm text-slate-500">Chưa có tin tuyển dụng nào có ca làm</p>
-              <button
-                type="button"
-                onClick={() => navigate({ to: '/employer/post-job', search: { editJobId: undefined } })}
-                className="mt-4 text-sm font-medium text-blue-600 hover:text-blue-700 cursor-pointer"
-              >
-                Đăng tin mới →
-              </button>
-            </div>
-          ) : !selectedJobId ? (
-            // Job selection view
-            <>
-              <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Chọn tin tuyển dụng</h2>
+            <p className="text-sm font-bold text-slate-700 mb-2">Chưa có tin tuyển dụng nào có ca làm</p>
+            <p className="text-xs text-slate-500 mb-6 px-4">Bạn có thể tạo tin mới và thêm thông tin ca làm việc để quản lý.</p>
+            <button
+              type="button"
+              onClick={() => navigate({ to: '/employer/post-job', search: { editJobId: undefined } })}
+              className="inline-flex items-center justify-center px-6 py-2.5 bg-[#1e3a5f] text-white font-bold rounded-xl text-sm shadow-md hover:bg-[#1e40af] transition-colors"
+            >
+              Đăng tin mới ngay
+            </button>
+          </div>
+        ) : !selectedJobId ? (
+          // ── Job selection view ──
+          <>
+            <h2 className="text-[12px] font-bold text-slate-500 uppercase tracking-widest pl-1 mb-2">Chọn công việc</h2>
+            <div className="space-y-3">
               {activeJobs.map((job) => (
                 <button
                   key={job.id}
                   type="button"
                   onClick={() => setSelectedJobId(job.id)}
-                  className="w-full text-left rounded-xl border border-slate-100 bg-white p-4 shadow-sm hover:shadow-md transition cursor-pointer"
+                  className="w-full text-left rounded-3xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md transition-shadow cursor-pointer relative overflow-hidden group"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-[15px] font-bold text-slate-900 line-clamp-1">{job.title}</h3>
-                      <div className="mt-1 flex items-center gap-3 text-xs text-slate-500">
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" /> {job.shifts?.length || 0} ca
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-[#1e3a5f]/5 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110" />
+                  <div className="relative z-10 flex items-center justify-between">
+                    <div className="flex-1 min-w-0 pr-4">
+                      <h3 className="text-[15px] font-bold text-[#1e3a5f] line-clamp-1 mb-2 leading-snug">{job.title}</h3>
+                      <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg text-xs font-bold">
+                          <Clock className="h-3.5 w-3.5" /> {job.shifts?.length || 0} ca
                         </span>
-                        <span className="flex items-center gap-1">
-                          <Users className="h-3 w-3" /> {approvedCountByJob[job.id] || 0} NV
+                        <span className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg text-xs font-bold">
+                          <Users className="h-3.5 w-3.5" /> {approvedCountByJob[job.id] || 0} NV
                         </span>
                       </div>
                     </div>
-                    <ChevronRight className="h-5 w-5 text-slate-400" />
+                    <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-[#1e3a5f]/10 transition-colors">
+                      <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-[#1e3a5f]" />
+                    </div>
                   </div>
                 </button>
               ))}
-            </>
-          ) : (
-            // Shift detail view for selected job
-            <>
-              <div className="flex items-center gap-2 mb-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedJobId(null)}
-                  className="text-sm font-medium text-blue-600 hover:text-blue-700 cursor-pointer"
+            </div>
+          </>
+        ) : (
+          // ── Shift detail view for selected job ──
+          <>
+            <div className="flex items-center gap-2 mb-2">
+              <button
+                type="button"
+                onClick={() => setSelectedJobId(null)}
+                className="flex items-center gap-1.5 text-[13px] font-bold text-slate-500 hover:text-slate-800 transition-colors bg-white px-3 py-1.5 rounded-full shadow-sm"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" /> Trở về danh sách
+              </button>
+            </div>
+
+            <div className="bg-white rounded-3xl border border-slate-100 p-5 shadow-sm mb-4">
+              <h2 className="text-[15px] font-bold text-[#1e3a5f] leading-snug mb-2">{selectedJob?.title}</h2>
+              <div className="flex items-center gap-2 text-[12px] font-medium text-slate-500">
+                <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-indigo-500" /> {selectedJob?.shifts?.length || 0} ca</span>
+                <span>•</span>
+                <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5 text-emerald-500" /> {approvedCountByJob[selectedJobId] || 0} NV đã chọn</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between mb-4 px-1">
+              <h3 className="text-[12px] font-bold text-slate-500 uppercase tracking-widest">Danh sách ca</h3>
+              <div className="flex bg-[#1e3a5f]/5 p-1 rounded-xl">
+                <button 
+                  onClick={() => setViewMode('list')} 
+                  className={`px-4 py-1.5 text-[12px] font-bold rounded-lg transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-[#1e3a5f]' : 'text-slate-500 hover:text-slate-700'}`}
                 >
-                  ← Quay lại
+                  Danh sách
+                </button>
+                <button 
+                  onClick={() => setViewMode('calendar')} 
+                  className={`px-4 py-1.5 text-[12px] font-bold rounded-lg transition-all ${viewMode === 'calendar' ? 'bg-white shadow-sm text-[#1e3a5f]' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  Lịch biểu
                 </button>
               </div>
+            </div>
 
-              <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm mb-4">
-                <h2 className="text-base font-bold text-slate-900">{selectedJob?.title}</h2>
-                <p className="text-xs text-slate-500 mt-1">
-                  {selectedJob?.shifts?.length || 0} ca làm | {approvedCountByJob[selectedJobId] || 0} nhân viên đã duyệt
-                </p>
-              </div>
+            {viewMode === 'calendar' && selectedJob?.shifts && selectedJob.shifts.length > 0 && (
+              <div className="bg-white rounded-3xl border border-slate-100 p-5 shadow-sm mb-6 overflow-x-auto">
+                <p className="text-[11px] text-slate-500 mb-5 font-medium"><span className="text-amber-500 mr-1">*</span>Hiển thị lịch trình ca làm trong ngày (06:00 - 24:00)</p>
+                <div className="min-w-[300px] relative mt-2 border-l-2 border-dashed border-slate-200 ml-12" style={{ height: `${(24 - 6) * 48}px` }}>
+                  {Array.from({ length: 24 - 6 + 1 }).map((_, i) => (
+                    <div key={i} className="absolute w-full border-t border-slate-100 flex items-center" style={{ top: `${i * 48}px` }}>
+                      <span className="absolute -left-12 text-[10px] text-slate-400 font-bold px-1 bg-white -mt-2.5 tracking-wider">{String(i + 6).padStart(2, '0')}:00</span>
+                    </div>
+                  ))}
+                  
+                  {selectedJob.shifts.map((shift, index) => {
+                     const [startH, startM] = (shift.startTime || '00:00').split(':').map(Number);
+                     const [endH, endM] = (shift.endTime || '00:00').split(':').map(Number);
+                     
+                     const startOffset = (Math.max(6, startH) - 6 + (startM || 0)/60) * 48;
+                     const duration = (endH - startH + ((endM || 0) - (startM || 0))/60) * 48;
+                     
+                     const attendance = getShiftAttendance(selectedJobId, shift.id);
+                     const checkedInCount = attendance.filter(a => a.status === 'CHECKED_IN' || a.status === 'COMPLETED').length;
 
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Danh sách ca</h3>
-                <div className="flex bg-slate-200/60 p-1 rounded-lg">
-                  <button 
-                    onClick={() => setViewMode('list')} 
-                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-                  >
-                    Danh sách
-                  </button>
-                  <button 
-                    onClick={() => setViewMode('calendar')} 
-                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${viewMode === 'calendar' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-                  >
-                    Lịch biểu
-                  </button>
-                </div>
-              </div>
-
-              {viewMode === 'calendar' && selectedJob?.shifts && selectedJob.shifts.length > 0 && (
-                <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm mb-6 overflow-x-auto">
-                  <p className="text-xs text-slate-500 mb-4 font-medium italic">* Hiển thị lịch trình ca làm trong ngày (Từ 06:00 đến 24:00)</p>
-                  <div className="min-w-[300px] relative mt-2 border-l-2 border-slate-100 ml-12" style={{ height: `${(24 - 6) * 48}px` }}>
-                    {Array.from({ length: 24 - 6 + 1 }).map((_, i) => (
-                      <div key={i} className="absolute w-full border-t border-slate-100/50 flex items-center" style={{ top: `${i * 48}px` }}>
-                        <span className="absolute -left-12 text-[10px] text-slate-400 font-bold px-1 bg-white -mt-2">{String(i + 6).padStart(2, '0')}:00</span>
-                      </div>
-                    ))}
-                    
-                    {selectedJob.shifts.map((shift, index) => {
-                       const [startH, startM] = (shift.startTime || '00:00').split(':').map(Number);
-                       const [endH, endM] = (shift.endTime || '00:00').split(':').map(Number);
-                       
-                       const startOffset = (Math.max(6, startH) - 6 + (startM || 0)/60) * 48;
-                       const duration = (endH - startH + ((endM || 0) - (startM || 0))/60) * 48;
-                       
-                       const attendance = getShiftAttendance(selectedJobId, shift.id);
-                       const checkedInCount = attendance.filter(a => a.status === 'CHECKED_IN' || a.status === 'COMPLETED').length;
-
-                       return (
-                         <div 
-                           key={index} 
-                           className="absolute left-2 right-2 rounded-lg bg-blue-50/80 border-l-4 border-blue-500 p-2 overflow-hidden shadow-sm hover:shadow-md transition-all hover:bg-blue-100 cursor-pointer" 
-                           style={{ top: `${startOffset}px`, height: `${Math.max(30, duration)}px` }}
-                         >
-                           <div className="flex justify-between items-start">
-                             <p className="text-xs font-black text-blue-900 line-clamp-1">Ca {index + 1}: {shift.name}</p>
-                             <p className="text-[10px] font-bold text-blue-700 bg-white/60 px-1 rounded">{shift.startTime} - {shift.endTime}</p>
-                           </div>
-                           {duration > 40 && (
-                             <div className="mt-1 flex items-center gap-1 opacity-80">
-                               <Users className="w-3 h-3 text-blue-600" />
-                               <span className="text-[10px] text-blue-800 font-medium">{checkedInCount}/{attendance.length} NV</span>
-                             </div>
-                           )}
+                     return (
+                       <div 
+                         key={index} 
+                         className="absolute left-3 right-2 rounded-xl bg-[#1e3a5f]/5 border-l-[3px] border-[#1e40af] p-2.5 overflow-hidden shadow-sm hover:shadow-md transition-all hover:bg-[#1e3a5f]/10 cursor-pointer" 
+                         style={{ top: `${startOffset}px`, height: `${Math.max(40, duration)}px` }}
+                       >
+                         <div className="flex justify-between items-start">
+                           <p className="text-[12px] font-black text-[#1e3a5f] line-clamp-1">Ca {index + 1}: {shift.name}</p>
+                           <p className="text-[10px] font-bold text-[#1e40af] bg-white/80 px-1.5 py-0.5 rounded-md backdrop-blur-sm whitespace-nowrap ml-2 shadow-sm border border-white/50">{shift.startTime} - {shift.endTime}</p>
                          </div>
-                       );
-                    })}
+                         {duration > 40 && (
+                           <div className="mt-1.5 flex items-center gap-1.5 opacity-90">
+                             <div className="w-5 h-5 rounded-md bg-white flex items-center justify-center shadow-sm">
+                               <Users className="w-3.5 h-3.5 text-[#1e40af]" />
+                             </div>
+                             <span className="text-[10px] text-[#1e3a5f] font-bold">{checkedInCount}/{attendance.length} NV đã vào</span>
+                           </div>
+                         )}
+                       </div>
+                     );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {viewMode === 'list' && selectedJob?.shifts?.map((shift, index) => {
+              const attendance = getShiftAttendance(selectedJobId, shift.id);
+              const shiftStatus = getShiftStatus(shift.startTime, shift.endTime);
+              const StatusIcon = shiftStatus.icon;
+              const checkedInCount = attendance.filter(a => a.status === 'CHECKED_IN' || a.status === 'COMPLETED').length;
+
+              return (
+              <div key={index} className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm mb-4">
+                <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-100">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <div className="w-2 h-2 rounded-full bg-indigo-500" />
+                      <p className="text-[15px] font-black text-[#1e3a5f]">Ca {index + 1}: {shift.name || ''}</p>
+                    </div>
+                    <p className="text-[13px] text-slate-500 font-medium">
+                      <Clock className="inline h-3.5 w-3.5 mr-1 text-indigo-400" />
+                      {formatTime(shift.startTime)} — {formatTime(shift.endTime)}
+                    </p>
+                  </div>
+                  <div className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg ${
+                    shiftStatus.label === 'Đang diễn ra' ? 'bg-emerald-50 text-emerald-700' :
+                    shiftStatus.label === 'Chưa bắt đầu' ? 'bg-slate-50 text-slate-600' :
+                    'bg-rose-50 text-rose-600'
+                  }`}>
+                    <StatusIcon className="h-3.5 w-3.5" />
+                    <span className="tracking-wide">{shiftStatus.label}</span>
                   </div>
                 </div>
-              )}
 
-              {viewMode === 'list' && selectedJob?.shifts?.map((shift, index) => {
-                const attendance = getShiftAttendance(selectedJobId, shift.id);
-                const shiftStatus = getShiftStatus(shift.startTime, shift.endTime);
-                const StatusIcon = shiftStatus.icon;
-                const checkedInCount = attendance.filter(a => a.status === 'CHECKED_IN' || a.status === 'COMPLETED').length;
-
-                return (
-                <div key={index} className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm mb-3">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <p className="text-sm font-bold text-slate-900">Ca {index + 1}: {shift.name || ''}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        <Clock className="inline h-3 w-3 mr-1" />
-                        {formatTime(shift.startTime)} — {formatTime(shift.endTime)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs">
-                      <StatusIcon className={`h-3.5 w-3.5 ${shiftStatus.color}`} />
-                      <span className={`font-medium ${shiftStatus.color}`}>{shiftStatus.label}</span>
-                    </div>
+                {/* Attendance Summary */}
+                <div className="flex items-center justify-between gap-2 mb-3 bg-indigo-50/50 rounded-xl px-4 py-3 border border-indigo-100/50">
+                  <div className="flex items-center gap-2">
+                    <UserCheck className="h-5 w-5 text-indigo-500" />
+                    <span className="text-[13px] font-bold text-[#1e3a5f]">Điểm danh</span>
                   </div>
+                  <span className="text-[13px] font-black text-indigo-600 bg-white px-2.5 py-0.5 rounded-md shadow-sm">
+                    {checkedInCount}/{attendance.length}
+                  </span>
+                </div>
 
-                  {/* Attendance Summary */}
-                  <div className="flex items-center gap-2 mb-3 bg-slate-50 rounded-lg px-3 py-2">
-                    <UserCheck className="h-4 w-4 text-blue-500" />
-                    <span className="text-xs font-semibold text-slate-600">
-                      {checkedInCount}/{attendance.length} đã check-in
-                    </span>
-                  </div>
-
-                  {/* Employee List */}
-                  {attendance.length > 0 && (
-                    <div className="space-y-2 mb-3">
-                      {attendance.map((app) => (
-                        <div key={app.id} className="flex items-center gap-3 rounded-lg border border-slate-100 px-3 py-2">
-                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 overflow-hidden">
-                            {app.candidateAvatar ? (
-                              <img src={app.candidateAvatar} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              <span className="text-xs font-bold text-blue-600">
-                                {(app.candidateName || '?').charAt(0).toUpperCase()}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-slate-800 truncate">{app.candidateName || app.candidateId}</p>
-                          </div>
-                          <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                {/* Employee List */}
+                {attendance.length > 0 && (
+                  <div className="space-y-2.5 mb-5">
+                    {attendance.map((app) => (
+                      <div key={app.id} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-2.5">
+                        <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 overflow-hidden border border-indigo-50">
+                          {app.candidateAvatar ? (
+                            <img src={app.candidateAvatar} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-sm font-bold text-indigo-600">
+                              {(app.candidateName || '?').charAt(0).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-bold text-slate-800 truncate mb-0.5">{app.candidateName || app.candidateId}</p>
+                          <span className={`inline-block text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${
                             app.status === 'CHECKED_IN' ? 'bg-emerald-100 text-emerald-700' :
                             app.status === 'COMPLETED' ? 'bg-blue-100 text-blue-700' :
                             'bg-amber-100 text-amber-700'
@@ -263,39 +286,42 @@ function ShiftManagementPage() {
                             {app.status === 'CHECKED_IN' ? 'Đã vào' : app.status === 'COMPLETED' ? 'Hoàn thành' : 'Đã duyệt'}
                           </span>
                         </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {attendance.length === 0 && (
-                    <p className="text-xs text-slate-400 mb-3 italic">Chưa có nhân viên nào được duyệt cho ca này.</p>
-                  )}
-
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => navigate({
-                        to: '/employer/qr-display' as any,
-                        search: { jobId: selectedJobId || '', shiftIndex: index.toString() } as any
-                      })}
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-200 hover:bg-blue-700 transition cursor-pointer"
-                    >
-                      <QrCode className="h-4 w-4" /> Hiện QR Code
-                    </button>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              );
-              })}
+                )}
 
-              {viewMode === 'list' && (!selectedJob?.shifts || selectedJob.shifts.length === 0) && (
-                <div className="py-8 text-center text-sm text-slate-400">
-                  <AlertCircle className="h-8 w-8 mx-auto mb-2 text-slate-300" />
-                  Tin này chưa có ca làm nào.
+                {attendance.length === 0 && (
+                  <p className="text-[13px] text-slate-400 mb-5 italic text-center py-2 bg-slate-50 rounded-xl border border-dashed border-slate-200">Chưa có NV nào được duyệt cho ca này.</p>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate({
+                      to: '/employer/qr-display' as any,
+                      search: { jobId: selectedJobId || '', shiftIndex: index.toString() } as any
+                    })}
+                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-200 hover:from-indigo-600 hover:to-indigo-700 transition cursor-pointer active:scale-95"
+                  >
+                    <QrCode className="h-5 w-5" /> Hiện mã QR điểm danh
+                  </button>
                 </div>
-              )}
-            </>
-          )}
-        </section>
+              </div>
+            );
+            })}
+
+            {viewMode === 'list' && (!selectedJob?.shifts || selectedJob.shifts.length === 0) && (
+              <div className="py-12 bg-white rounded-3xl border border-slate-100 text-center shadow-sm">
+                <AlertCircle className="h-10 w-10 mx-auto mb-3 text-rose-300" />
+                <p className="text-[13px] font-bold text-slate-500">Tin này chưa có ca làm nào được cấu hình.</p>
+              </div>
+            )}
+            
+            {/* SPACING AT BOTTOM */}
+            <div className="h-6" />
+          </>
+        )}
       </div>
     </div>
   );

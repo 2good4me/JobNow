@@ -68,20 +68,20 @@ function StepBar({ current, total }: { current: number; total: number }) {
         const isCompleted = step < current;
         const isActive = step === current;
         return (
-          <div key={step} className="flex items-center flex-1">
+          <div key={step} className="flex items-center flex-1 last:flex-none">
             <div className={`
-              w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all duration-200
+              w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all duration-300
               ${isCompleted
-                ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-200'
+                ? 'bg-white text-[#1e3a5f] shadow-sm'
                 : isActive
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-300 scale-110'
-                  : 'bg-slate-200 text-slate-400'
+                  ? 'bg-white text-[#1e3a5f] ring-2 ring-white ring-offset-2 ring-offset-[#1e3a5f] scale-110 ml-0.5 mr-0.5'
+                  : 'bg-white/20 text-white/50'
               }
             `}>
               {isCompleted ? <Check className="w-4 h-4" /> : step}
             </div>
             {step < total && (
-              <div className={`h-0.5 flex-1 mx-1 rounded-full transition-colors duration-300 ${step < current ? 'bg-emerald-400' : 'bg-slate-200'}`} />
+              <div className={`h-1 flex-1 mx-2 rounded-full transition-colors duration-300 ${step < current ? 'bg-white' : 'bg-white/20'}`} />
             )}
           </div>
         );
@@ -489,15 +489,14 @@ function EmployerPostJobRoute() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-blue-50/40 pb-24 max-w-lg mx-auto w-full relative shadow-sm">
-      <div className="mx-auto w-full max-w-md px-4 pt-4">
-
+    <div className="flex flex-col min-h-[100dvh] bg-[#F5F7FF] pb-24 font-sans text-slate-800">
+      <div className="mx-auto w-full max-w-2xl">
         {/* Loading state when fetching job data for editing */}
         {editJobId && isLoadingJob && (
           <div className="flex min-h-[60vh] items-center justify-center">
-            <div className="text-center">
-              <Loader2 className="mx-auto h-8 w-8 animate-spin text-emerald-600" />
-              <p className="mt-3 text-sm text-slate-600">Đang tải thông tin...</p>
+            <div className="text-center bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+              <Loader2 className="mx-auto h-8 w-8 animate-spin text-[#1e3a5f]" />
+              <p className="mt-3 text-sm font-bold text-slate-600">Đang tải thông tin...</p>
             </div>
           </div>
         )}
@@ -506,55 +505,63 @@ function EmployerPostJobRoute() {
         {!(editJobId && isLoadingJob) && (
           <>
             {/* ── Header ──────────────────────────── */}
-            <header className="sticky top-0 z-40 bg-white/90 p-4 shadow-sm border-b border-slate-100 backdrop-blur-md">
-              <div className="mb-3 flex items-center gap-3">
+            <div className="bg-gradient-to-br from-[#1e3a5f] to-[#1e40af] px-5 pt-10 md:pt-14 pb-8 lg:rounded-b-[3rem] shadow-md relative z-10 transition-all">
+              <div className="mb-4 flex items-center justify-between">
                 <button
                   type="button"
                   onClick={() => navigate({ to: '/employer/job-list' })}
-                  className="w-10 h-10 shrink-0 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors shrink-0 backdrop-blur-sm"
                 >
-                  <X className="w-5 h-5" />
+                  <ArrowLeft className="w-5 h-5" />
                 </button>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 truncate">Job Wizard</p>
-                  <h1 className="text-lg font-bold text-slate-900 truncate">{editJobId ? 'Chỉnh sửa tin' : 'Đăng tin tuyển dụng'}</h1>
+                <div className="flex-1 text-center min-w-0 px-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/70 truncate">Job Wizard</p>
+                  <h1 className="text-lg font-bold text-white truncate">{editJobId ? 'Chỉnh sửa tin' : 'Đăng tin tuyển dụng'}</h1>
                 </div>
-                <span className="shrink-0 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
-                  Bước {step}/{STEP_LABELS.length}
-                </span>
+                <div className="w-10 h-10 shrink-0 flex items-center justify-center rounded-full bg-white/20 text-white font-bold text-[13px]">
+                  {step}/{STEP_LABELS.length}
+                </div>
               </div>
-          <StepBar current={step} total={STEP_LABELS.length} />
-          <div className="mt-2 grid grid-cols-4 text-center">
-            {STEP_LABELS.map((label, i) => (
-              <span key={label} className={`text-[10px] font-semibold ${i + 1 <= step ? 'text-emerald-600' : 'text-slate-400'}`}>
-                {label}
-              </span>
-            ))}
-          </div>
-        </header>
+              <StepBar current={step} total={STEP_LABELS.length} />
+              {/* Labels */}
+              <div className="mt-4 px-1 flex justify-between relative">
+                {STEP_LABELS.map((label, i) => (
+                  <div key={label} className="w-10 text-center relative">
+                    {/* The text label aligns under the node */}
+                    <span 
+                      className={`text-[10px] font-bold whitespace-nowrap absolute -translate-x-1/2 left-1/2 ${i + 1 <= step ? 'text-white' : 'text-white/40'}`}
+                    >
+                      {label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-        {postingQuota && (
-          <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-            <p className="font-bold">
-              Gói hiện tại: {postingQuota.tierLabel === 'Verified' ? 'Đã xác thực' : 'Starter'}
-            </p>
-            <p className="mt-1 text-blue-800">
-              Còn {postingQuota.monthlyRemaining}/{postingQuota.monthlyLimit} tin trong tháng và {postingQuota.activeShiftRemaining}/{postingQuota.activeShiftLimit} ca đang hoạt động.
-            </p>
-            {postingQuota.verificationStatus !== 'VERIFIED' && (
-              <button
-                type="button"
-                onClick={() => navigate({ to: '/employer/verification' })}
-                className="mt-2 text-sm font-bold text-blue-600"
-              >
-                Xác thực để mở quota cao hơn
-              </button>
-            )}
-          </div>
-        )}
+        <div className="px-4">
+          {postingQuota && (
+            <div className="mt-4 rounded-3xl border border-indigo-100 bg-white p-4 shadow-sm flex flex-col gap-2">
+              <p className="font-bold text-slate-800">
+                Gói hiện tại: <span className="text-indigo-600">{postingQuota.tierLabel === 'Verified' ? 'Đã xác thực' : 'Starter'}</span>
+              </p>
+              <p className="text-[13px] font-medium text-slate-600">
+                Còn <strong>{postingQuota.monthlyRemaining}/{postingQuota.monthlyLimit}</strong> tin trong tháng và{' '}
+                <strong>{postingQuota.activeShiftRemaining}/{postingQuota.activeShiftLimit}</strong> ca đang hoạt động.
+              </p>
+              {postingQuota.verificationStatus !== 'VERIFIED' && (
+                <button
+                  type="button"
+                  onClick={() => navigate({ to: '/employer/verification' })}
+                  className="mt-1 self-start inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-1.5 text-[12px] font-bold text-indigo-700 hover:bg-indigo-100"
+                >
+                  Xác thực để mở quota cao hơn <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          )}
 
-        {/* ── Content Area ────────────────────────── */}
-        <form className="mt-6" onSubmit={(e) => e.preventDefault()}>
+          {/* ── Content Area ────────────────────────── */}
+          <form className="mt-6" onSubmit={(e) => e.preventDefault()}>
           {step === 1 && (
             <Step1Info
               form={form}
@@ -595,7 +602,8 @@ function EmployerPostJobRoute() {
               handleImageSelect={handleImageSelect}
             />
           )}
-        </form>
+          </form>
+        </div>
           </>
         )}
       </div>
@@ -613,18 +621,18 @@ function EmployerPostJobRoute() {
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200/60 bg-white/90 shadow-[0_-4px_24px_rgba(0,0,0,0.08)] backdrop-blur-xl">
         {globalError && (
           <div className="bg-rose-50 border-b border-rose-200 p-3 text-center">
-            <p className="text-sm font-bold text-rose-600">🚨 CHI TIẾT LỖI GÂY RA KHÔNG THỂ ĐĂNG TIN 🚨</p>
-            <p className="text-xs font-semibold text-rose-700 mt-1">{globalError}</p>
+            <p className="text-sm font-bold text-rose-600">🚨 LỖI ĐĂNG TIN 🚨</p>
+            <p className="text-[13px] font-semibold text-rose-700 mt-1">{globalError}</p>
           </div>
         )}
-        <div className="max-w-md mx-auto flex items-center gap-3 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="max-w-2xl mx-auto flex items-center gap-3 px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
 
-          {/* ── Secondary: Cancel / Back (Ghost style, left-aligned) ── */}
+          {/* ── Secondary: Cancel / Back ── */}
           {step > 1 ? (
             <button
               type="button"
               onClick={() => handleStepChange(step - 1)}
-              className="min-h-[48px] flex-1 rounded-xl border border-slate-200 bg-transparent px-4 py-3 text-sm font-semibold text-slate-600 transition-all hover:border-slate-300 hover:bg-slate-50 active:scale-[0.97] flex items-center justify-center gap-1.5"
+              className="min-h-[52px] flex-1 rounded-2xl border-2 border-slate-200 bg-white px-4 py-3 text-[14px] font-bold text-slate-600 transition-all hover:bg-slate-50 flex items-center justify-center gap-1.5 active:scale-[0.98]"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Quay lại</span>
@@ -633,22 +641,20 @@ function EmployerPostJobRoute() {
             <button
               type="button"
               onClick={() => navigate({ to: editJobId ? `/employer/job-detail` : '/employer', search: editJobId ? { jobId: editJobId } : {} })}
-              className="min-h-[48px] flex-1 rounded-xl border border-slate-200 bg-transparent px-4 py-3 text-sm font-semibold text-slate-500 transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-600 active:scale-[0.97] flex items-center justify-center gap-1.5"
+              className="min-h-[52px] flex-1 rounded-2xl border-2 border-slate-200 bg-white px-4 py-3 text-[14px] font-bold text-slate-500 transition-all hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 active:scale-[0.98] flex items-center justify-center gap-1.5"
             >
               <X className="w-4 h-4" />
               <span>Hủy</span>
             </button>
           )}
 
-          {/* ── Primary: Next / Submit (Bold, right-aligned for thumb zone) ── */}
+          {/* ── Primary: Next / Submit ── */}
           <button
             type="button"
-            className={`min-h-[52px] flex-[2] rounded-xl px-5 py-3.5 text-[15px] font-bold tracking-tight transition-all flex items-center justify-center gap-2
+            className={`min-h-[52px] flex-[2] rounded-2xl px-5 py-3 text-[15px] font-bold text-white transition-all flex items-center justify-center gap-2
               ${!canAdvance || isSubmitting
-                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                : step === 4
-                  ? 'bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:brightness-110 active:scale-[0.97]'
-                  : 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20 hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-600/30 active:scale-[0.97]'
+                ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                : 'bg-[#1e3a5f] shadow-[0_8px_16px_rgba(30,58,95,0.2)] hover:bg-[#1e40af] active:scale-[0.98]'
               }
             `}
             disabled={!canAdvance || isSubmitting}

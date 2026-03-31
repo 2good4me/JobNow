@@ -29,7 +29,12 @@ service cloud.firestore {
         isSignedIn() && request.resource.data.keys().hasAll(['average_rating', 'total_ratings'])
       );
       allow update: if request.auth.uid == 'w00Su74H23U8FWi2Slx4Y6fsP6m2' || isAdmin();
-      allow update: if (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'balance', 'reputation_score', 'current_tier', 'reputation_positive_streak', 'reputation_total_deducted', 'reputation_total_restored']) && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['verification_status']) || (['PENDING', 'VERIFIED'].hasAny([request.resource.data.verification_status]) && resource.data.get('verification_status', '') != 'VERIFIED'))) || (
+      allow update: if (isOwner(userId) && 
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'role', 'reputation_score', 'current_tier', 'reputation_positive_streak', 
+          'reputation_total_deducted', 'reputation_total_restored', 'balance', 'verification_status'
+        ])
+      ) || (
         isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['average_rating', 'total_ratings', 'updated_at', 'updatedAt'])
       );
 
@@ -115,7 +120,13 @@ service cloud.firestore {
         request.resource.data.candidate_id == request.auth.uid ||
         request.resource.data.candidateId == request.auth.uid
       ) && request.resource.data.status == 'NEW';
-      allow update: if false;
+      allow update: if isSignedIn() && (
+        resource.data.employer_id == request.auth.uid || 
+        resource.data.employerId == request.auth.uid ||
+        resource.data.candidate_id == request.auth.uid || 
+        resource.data.candidateId == request.auth.uid ||
+        isAdmin()
+      );
       allow delete: if false;
       
       match /{allSubcollections=**} {
@@ -177,7 +188,7 @@ service cloud.firestore {
     // --- TRANSACTIONS ---
     match /transactions/{transactionId} {
       allow read: if isSignedIn() && (resource == null || resource.data.user_id == request.auth.uid || resource.data.userId == request.auth.uid);
-      allow create: if false;
+      allow create: if isSignedIn();
       allow update, delete: if false;
     }
 

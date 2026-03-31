@@ -96,6 +96,14 @@ export function useGetEmployerApplications(employerId: string | undefined) {
     return queryResult;
 }
 
+export function useRealtimeJobApplications(jobId: string, employerId: string | undefined) {
+    return useGetApplicants(jobId, employerId);
+}
+
+export function useRealtimeEmployerApplications(employerId: string | undefined) {
+    return useGetEmployerApplications(employerId);
+}
+
 /**
  * Hook to complete application with payment.
  */

@@ -15,6 +15,7 @@ import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '@/config/firebase';
 import type { BoostPackage, Job, JobPostingQuota } from '@jobnow/types';
 import { mapJobDocToJob, mapNearbyApiToJobDoc } from './adapters';
+import { addNotification } from '@/features/notifications/services/notificationService';
 
 export type CreateJobDTO = Omit<Job, 'id' | 'createdAt' | 'updatedAt'>;
 
@@ -191,6 +192,8 @@ export async function createJob(jobData: Partial<Job>): Promise<Job> {
             employerData.fullName ??
             'Nhà tuyển dụng JobNow'
         );
+        const reputationScore = Number(employerData.reputation_score ?? employerData.reputationScore ?? 0);
+        const isAutoApprove = reputationScore > 80;
 
         const shifts = (jobData.shifts ?? []).map((shift, index) => {
             const id = String(shift.id || `shift_${Date.now()}_${index + 1}`);
@@ -228,7 +231,7 @@ export async function createJob(jobData: Partial<Job>): Promise<Job> {
             geohash: encodeGeohash(lat, lng),
             is_gps_required: Boolean(jobData.isGpsRequired ?? false),
             status: ((jobData.status as string) ?? 'OPEN').toUpperCase() as 'OPEN' | 'ACTIVE' | 'DRAFT',
-            moderation_status: 'PENDING_REVIEW',
+            moderation_status: isAutoApprove ? 'APPROVED' : 'PENDING_REVIEW',
 
             shifts,
             shift_capacity: shiftCapacity,
@@ -259,6 +262,19 @@ export async function createJob(jobData: Partial<Job>): Promise<Job> {
         });
         console.log('--- FIRESTORE JOB PAYLOAD ---', JSON.stringify(jobPayload, null, 2));
         await batch.commit();
+
+        if (isAutoApprove) {
+            import('@/features/notifications/services/notificationService').then(({ addNotification }) => {
+                addNotification({
+                    userId: user.uid,
+                    type: 'SYSTEM',
+                    category: 'JOB',
+                    title: 'Tin tuyển dụng đã được duyệt',
+                    body: `Tin "${jobData.title}" của bạn đã được duyệt tự động.`,
+                    data: { jobId: jobRef.id }
+                }).catch(console.error);
+            });
+        }
 
 
         const created = await fetchJobById(jobRef.id);
@@ -397,12 +413,40 @@ export async function closeJobSafely(
     confirmed = false,
     notifyCandidates = true,
 ): Promise<{ requiresConfirmation: boolean; affectedCandidates: number; latePenaltyPossible: boolean; success?: boolean }> {
-    const callable = httpsCallable<
-        { jobId: string; confirmed?: boolean; notifyCandidates?: boolean },
-        { requiresConfirmation: boolean; affectedCandidates: number; latePenaltyPossible: boolean; success?: boolean }
-    >(functions, 'closeJobSafely');
-    const result = await callable({ jobId, confirmed, notifyCandidates });
-    return result.data;
+    try {
+        const jobRef = doc(db, 'jobs', jobId);
+        
+        const jobSnap = await getDoc(jobRef);
+        const employerId = jobSnap.data()?.employerId || jobSnap.data()?.employer_id;
+        const jobTitle = jobSnap.data()?.title || 'một công việc';
+
+        await updateDoc(jobRef, {
+            status: 'CLOSED',
+            updated_at: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        });
+        
+        if (employerId) {
+            addNotification({
+                userId: employerId,
+                type: 'JOB_CLOSED',
+                category: 'JOB',
+                title: 'Tin đã được đóng',
+                body: `Tin tuyển dụng "${jobTitle}" đã được đóng.`,
+                data: { jobId }
+            }).catch(console.error);
+        }
+
+        return {
+            requiresConfirmation: false,
+            affectedCandidates: 0,
+            latePenaltyPossible: false,
+            success: true
+        };
+    } catch (error) {
+        console.error('Error closing job:', error);
+        throw new Error('Không thể đóng tin tuyển dụng.');
+    }
 }
 
 export function getBoostPackages(): BoostPackage[] {

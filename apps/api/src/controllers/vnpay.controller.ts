@@ -98,9 +98,13 @@ export const createPaymentUrl = async (req: Request, res: Response) => {
 
 export const vnpayIpn = async (req: Request, res: Response) => {
     try {
+        console.log('--- VNPay IPN Received ---');
+        console.log('Query:', req.query);
+
         const isValid = vnpayService.verifyIpn(req.query);
         
         if (!isValid) {
+            console.error('❌ VNPay IPN Error: Checksum failed');
             return res.status(200).json({ RspCode: '97', Message: 'Checksum failed' });
         }
 
@@ -110,17 +114,20 @@ export const vnpayIpn = async (req: Request, res: Response) => {
 
         // Extract userId from TxnRef (format: userId_timestamp)
         const userId = vnp_TxnRef.split('_')[0];
+        console.log(`Processing payment for User: ${userId}, Amount: ${vnp_Amount}`);
 
         // Check if transaction exists
         const txRef = db.collection('transactions').doc(vnp_TxnRef);
         const txDoc = await txRef.get();
 
         if (!txDoc.exists) {
+            console.error('❌ VNPay IPN Error: Transaction not found');
             return res.status(200).json({ RspCode: '01', Message: 'Order not found' });
         }
 
         const txData = txDoc.data();
         if (txData?.status === 'COMPLETED' || txData?.status === 'FAILED') {
+            console.log('⚠️ VNPay IPN: Transaction already processed');
             return res.status(200).json({ RspCode: '02', Message: 'Order already confirmed' });
         }
 
@@ -136,23 +143,37 @@ export const vnpayIpn = async (req: Request, res: Response) => {
                 }
 
                 // Update Transaction status
-                t.update(txRef, { status: 'COMPLETED', updatedAt: new Date(), updated_at: new Date() });
+                t.update(txRef, { 
+                    status: 'COMPLETED', 
+                    vnpay_status: vnp_ResponseCode,
+                    amount_confirmed: vnp_Amount,
+                    updatedAt: new Date(), 
+                    updated_at: new Date() 
+                });
                 
-                // Update User balance
+                // Update User balance - Update Field Value to be safe
                 t.set(userRef, { 
                     balance: currentBalance + vnp_Amount,
                     updated_at: new Date()
                 }, { merge: true });
+                
+                console.log(`✅ Balance updated: ${currentBalance} -> ${currentBalance + vnp_Amount}`);
             });
             
             return res.status(200).json({ RspCode: '00', Message: 'Confirm Success' });
         } else {
             // Failed
-            await txRef.update({ status: 'FAILED', updatedAt: new Date(), updated_at: new Date() });
+            console.log(`❌ VNPay Payment Failed with code: ${vnp_ResponseCode}`);
+            await txRef.update({ 
+                status: 'FAILED', 
+                vnpay_status: vnp_ResponseCode,
+                updatedAt: new Date(), 
+                updated_at: new Date() 
+            });
             return res.status(200).json({ RspCode: '00', Message: 'Confirm Success (Failed Transaction)' });
         }
     } catch (error) {
-        console.error('IPN processing error:', error);
+        console.error('❌ VNPay IPN Critical error:', error);
         return res.status(200).json({ RspCode: '99', Message: 'Unknown error' });
     }
 };

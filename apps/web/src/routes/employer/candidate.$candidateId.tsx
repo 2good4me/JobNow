@@ -98,19 +98,19 @@ function CandidateDetailPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <div className="min-h-[100dvh] bg-[#F5F7FF] flex items-center justify-center font-sans">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
             </div>
         );
     }
 
     if (!candidate) {
         return (
-            <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-                <p className="text-slate-500 mb-4">Không tìm thấy thông tin ứng viên.</p>
+            <div className="min-h-[100dvh] bg-[#F5F7FF] flex flex-col items-center justify-center p-4 font-sans">
+                <p className="text-slate-500 mb-4 font-medium">Không tìm thấy thông tin ứng viên.</p>
                 <button 
                     onClick={() => navigate({ to: '/employer/applicants' as any })}
-                    className="text-blue-600 font-bold"
+                    className="text-indigo-600 font-bold hover:text-indigo-700 bg-white px-4 py-2 rounded-xl shadow-sm"
                 >
                     Quay lại danh sách
                 </button>
@@ -125,24 +125,28 @@ function CandidateDetailPage() {
             : { color: 'bg-slate-400', text: 'Chưa xác minh' };
 
     return (
-        <div className="min-h-screen bg-slate-50 pb-24">
+        <div className="flex flex-col min-h-[100dvh] bg-[#F5F7FF] pb-24 font-sans relative">
             {/* Header App Bar */}
-            <div className="fixed top-0 inset-x-0 z-30 flex items-center justify-between px-4 py-3 bg-white/90 backdrop-blur-md shadow-sm border-b border-slate-100">
+            <div className="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-4 py-3 bg-[#1e3a5f]/95 backdrop-blur-md shadow-sm border-b border-white/10">
                 <button
                     onClick={() => window.history.back()}
-                    className="w-10 h-10 flex items-center justify-center -ml-2 rounded-full hover:bg-slate-100 transition-colors"
+                    className="w-10 h-10 flex items-center justify-center -ml-2 rounded-full hover:bg-white/10 transition-colors"
                 >
-                    <ArrowLeft className="w-6 h-6 text-slate-800" />
+                    <ArrowLeft className="w-5 h-5 text-white" />
                 </button>
-                <h1 className="text-[17px] font-bold text-slate-900">Chi tiết ứng viên</h1>
-                <button className="w-10 h-10 flex items-center justify-center -mr-2 rounded-full hover:bg-slate-100 transition-colors">
-                    <Share2 className="w-5 h-5 text-slate-800" />
+                <h1 className="text-[17px] font-bold text-white drop-shadow-sm">Chi tiết ứng viên</h1>
+                <button className="w-10 h-10 flex items-center justify-center -mr-2 rounded-full hover:bg-white/10 transition-colors">
+                    <Share2 className="w-4 h-4 text-white" />
                 </button>
             </div>
 
             {/* Profile Header */}
-            <div className="pt-20 pb-8 px-5 bg-gradient-to-b from-white to-slate-50">
-                <div className="flex flex-col items-center">
+            <div className="pt-20 pb-8 px-5 bg-gradient-to-br from-[#1e3a5f] to-[#1e40af] rounded-b-[2.5rem] shadow-md relative overflow-hidden mb-6">
+                {/* Decorative background */}
+                <div className="absolute -top-10 -right-10 w-48 h-48 bg-white/5 rounded-full blur-2xl pointer-events-none" />
+                <div className="absolute bottom-0 -left-10 w-32 h-32 bg-[#1e40af]/30 rounded-full blur-2xl pointer-events-none" />
+                
+                <div className="flex flex-col items-center relative z-10">
                     <div className="relative mb-4">
                         <div className="w-[104px] h-[104px] rounded-full p-1 bg-white shadow-md">
                             {candidate.avatarUrl ? (
@@ -162,33 +166,33 @@ function CandidateDetailPage() {
                         </div>
                     </div>
 
-                    <h2 className="text-xl font-bold text-slate-900 mb-1">{candidate.fullName}</h2>
+                    <h2 className="text-xl font-bold text-white mb-1.5 drop-shadow-sm">{candidate.fullName}</h2>
                     <div className="flex items-center gap-2 mb-6">
-                        <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${verificationBadge.color} text-white uppercase tracking-wider`}>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm ${verificationBadge.color} text-white uppercase tracking-widest`}>
                             {verificationBadge.text}
                         </span>
-                        <div className="flex items-center gap-1 text-[13px] font-medium text-slate-500">
-                            <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                        <div className="flex items-center gap-1.5 text-[12px] font-medium text-white/80 bg-black/10 px-2 py-0.5 rounded-md backdrop-blur-sm border border-white/10">
+                            <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                             <span>4.8 (12 đánh giá)</span>
                         </div>
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex items-center gap-3 w-full max-w-sm">
+                    <div className="flex items-center gap-3 w-full max-w-[280px]">
                         <button 
-                            className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-70 text-white font-bold py-3.5 rounded-full shadow-sm transition-colors"
+                            className="flex-1 flex items-center justify-center gap-2 bg-white hover:bg-slate-50 disabled:opacity-70 text-[#1e3a5f] font-bold py-3 px-6 rounded-2xl shadow-lg transition-all active:scale-95"
                             onClick={handleChat}
                             disabled={isChatLoading}
                         >
                             {isChatLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <MessageCircle className="w-5 h-5" />}
-                            Nhắn tin
+                            Nhắn tin trực tiếp
                         </button>
                     </div>
                 </div>
             </div>
 
             {/* Profile Content */}
-            <div className="px-5 space-y-4">
+            <div className="px-5 space-y-4 max-w-[420px] mx-auto relative z-20">
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 gap-3">
                     <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 flex flex-col items-center">
