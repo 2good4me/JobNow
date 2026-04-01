@@ -1,5 +1,5 @@
 import { DollarSign, Tag, X, ChevronDown, Info } from 'lucide-react';
-import { payTypes, type JobFormState, type PayType } from '../../post-job';
+import { payTypes, type JobFormState, type PayType } from '../../post-job-types';
 import { getSalaryLabel, getSalaryExplanation } from '../../-utils/budgetCalculations';
 
 interface Step1InfoProps {

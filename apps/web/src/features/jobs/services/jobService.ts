@@ -179,8 +179,15 @@ export async function createJob(jobData: Partial<Job>): Promise<Job> {
         console.log('[createJob] v2 - DIRECT FIRESTORE WRITE - START');
         const { getAuth } = await import('firebase/auth');
 
-        const auth = getAuth();
-        const user = auth.currentUser;
+        const authInstance = getAuth();
+        let user: any = authInstance.currentUser;
+
+        // Support Playwright E2E Mocking
+        if (!user && typeof window !== 'undefined' && (window as any).__JOBNOW_E2E_MOCK_AUTH__) {
+            console.log('[createJob] Using E2E Mock Auth');
+            user = (window as any).__JOBNOW_E2E_MOCK_AUTH__.profile;
+        }
+
         if (!user) throw new Error('Bạn cần đăng nhập để đăng tin.');
 
         // Fetch employer profile to get name
@@ -379,6 +386,17 @@ export async function deleteJob(jobId: string): Promise<void> {
 
 
 export async function fetchMyJobPostingQuota(): Promise<JobPostingQuota> {
+    if (typeof window !== 'undefined' && (window as any).__JOBNOW_E2E_MOCK_AUTH__) {
+        return {
+            monthlyLimit: 10,
+            monthlyRemaining: 9,
+            activeShiftLimit: 5,
+            activeShiftRemaining: 4,
+            tier: 'VERIFIED',
+            tierLabel: 'Verified',
+            verificationStatus: 'VERIFIED'
+        } as any;
+    }
     const callable = httpsCallable<Record<string, never>, JobPostingQuota>(functions, 'getMyJobPostingQuota');
     const result = await callable({});
     return result.data;

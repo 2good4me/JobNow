@@ -19,10 +19,21 @@ import { CategoryBottomSheet } from './-components/post-job/CategoryBottomSheet'
 import {
   jobFormSchema,
   type JobFormState as JobFormSchemaState,
+} from './-schemas/jobFormSchema';
+import {
+  type JobFormState,
+  type Shift,
   type PayType,
   type GenderPreference,
-  type Shift,
-} from './-schemas/jobFormSchema';
+  FALLBACK_CATEGORIES,
+  nextShiftId
+} from './post-job-types';
+
+
+
+
+
+
 import { calculateBudget } from './-utils/budgetCalculations';
 
 export const Route = createFileRoute('/employer/post-job')({
@@ -33,32 +44,10 @@ export const Route = createFileRoute('/employer/post-job')({
   component: EmployerPostJobRoute,
 });
 
-// App form state keeps GPS fields nullable until user selects a location.
-export type JobFormState = Omit<JobFormSchemaState, 'latitude' | 'longitude'> & {
-  latitude: number | null;
-  longitude: number | null;
-};
-// Re-export types for use in step components
-export type { PayType, GenderPreference, Shift };
-
-/* ── Constants ───────────────────────────────── */
-export const FALLBACK_CATEGORIES = ['F&B Service', 'Retail', 'Delivery', 'Event Helper'];
-export const payTypes: PayType[] = ['Theo giờ', 'Theo ca', 'Theo ngày'];
-export const genderOptions: GenderPreference[] = ['Nam', 'Nữ', 'Cả hai'];
-
 const STEP_LABELS = ['Thông tin', 'Chi tiết', 'Ca làm', 'Xem lại'] as const;
 
-/* ── Helpers ─────────────────────────────────── */
-let _shiftId = 0;
-export function nextShiftId() {
-  return `shift-${Date.now()}-${++_shiftId}`;
-}
 
-export function formatSalary(val: string) {
-  const num = Number(val.replace(/\D/g, ''));
-  if (!num) return val;
-  return num.toLocaleString('vi-VN');
-}
+
 
 /* ── Step Progress Bar ───────────────────────── */
 function StepBar({ current, total }: { current: number; total: number }) {
@@ -168,7 +157,7 @@ function EmployerPostJobRoute() {
 
       // Validate shifts
       const shiftErrors: string[] = [];
-      form.shifts.forEach((shift, idx) => {
+      form.shifts.forEach((shift: Shift, idx: number) => {
         if (!shift.name.trim()) shiftErrors.push(`Ca ${idx + 1}: Tên ca không được để trống`);
         const [startH, startM] = shift.startTime.split(':').map(Number);
         const [endH, endM] = shift.endTime.split(':').map(Number);
@@ -207,9 +196,10 @@ function EmployerPostJobRoute() {
     if (step === 3) {
       return (
         form.shifts.length > 0 &&
-        form.shifts.every(s => s.name.trim() && s.quantity >= 1)
+        form.shifts.every((s: Shift) => s.name.trim() && s.quantity >= 1)
       );
     }
+
     if (step === 4) {
       if (form.paymentMethod === 'WALLET') {
         const salary = Number(form.salary.replace(/\D/g, '')) || 0;
@@ -231,17 +221,16 @@ function EmployerPostJobRoute() {
   }, []);
 
   const removeShift = useCallback((id: string) => {
-    setForm(prev => ({ ...prev, shifts: prev.shifts.filter(s => s.id !== id) }));
+    setForm(prev => ({ ...prev, shifts: prev.shifts.filter((s: Shift) => s.id !== id) }));
   }, []);
 
   const updateShift = useCallback((id: string, patch: Partial<Shift>) => {
     setForm(prev => ({
       ...prev,
-      shifts: prev.shifts.map(s => s.id === id ? { ...s, ...patch } : s),
+      shifts: prev.shifts.map((s: Shift) => s.id === id ? { ...s, ...patch } : s),
     }));
   }, []);
 
-  /* ── Image upload ── */
   const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.size <= 5 * 1024 * 1024) {
@@ -251,7 +240,6 @@ function EmployerPostJobRoute() {
     }
   }, []);
 
-  /* ── Helpers ── */
   const addRequirement = useCallback(() => {
     const val = requirementInput.trim();
     if (val && !form.requirements.includes(val)) {
@@ -276,7 +264,6 @@ function EmployerPostJobRoute() {
     return 'ANY';
   };
 
-  // Reverse mappers for editing
   const reverseMapPayType = (st: SalaryType): PayType => {
     if (st === 'HOURLY') return 'Theo giờ';
     if (st === 'PER_SHIFT') return 'Theo ca';
@@ -289,7 +276,6 @@ function EmployerPostJobRoute() {
     return 'Cả hai';
   };
 
-  // Pre-populate form when editing or duplicating
   useEffect(() => {
     if (existingJob && (editJobId || duplicateJobId)) {
       setForm({
@@ -311,7 +297,7 @@ function EmployerPostJobRoute() {
           endTime: s.endTime,
           quantity: s.quantity,
         })),
-        coverImage: null, // Can't pre-populate file input
+        coverImage: null,
         isPremium: existingJob.isPremium || false,
         latitude: existingJob.location.latitude,
         longitude: existingJob.location.longitude,
@@ -320,15 +306,14 @@ function EmployerPostJobRoute() {
     }
   }, [existingJob, editJobId, duplicateJobId]);
 
-  // Keep vacancies in sync with shifts
   useEffect(() => {
-    const totalVacancies = form.shifts.reduce((acc, shift) => acc + shift.quantity, 0);
+    const totalVacancies = form.shifts.reduce((acc: number, s: Shift) => acc + s.quantity, 0);
     if (form.vacancies !== totalVacancies) {
       setForm(prev => ({ ...prev, vacancies: totalVacancies }));
     }
   }, [form.shifts, form.vacancies]);
 
-  // Load draft on mount
+
   useEffect(() => {
     if (!editJobId && !duplicateJobId) {
       const draft = localStorage.getItem('jobnow_draft_job');
@@ -342,7 +327,6 @@ function EmployerPostJobRoute() {
     }
   }, [editJobId, duplicateJobId]);
 
-  // Autosave when form changes
   useEffect(() => {
     if (!editJobId && !duplicateJobId && form.title) {
        const timer = setTimeout(() => {
@@ -354,19 +338,16 @@ function EmployerPostJobRoute() {
 
   const handleStepChange = (newStep: number) => {
     if (newStep > step) {
-      // Moving forward - validate current step
       if (validateStep(step)) {
         setStep(newStep);
         setErrors({});
       }
     } else {
-      // Moving backward - just go
       setStep(newStep);
       setErrors({});
     }
   };
 
-  /* ── Submit ── */
   const handleSubmit = async () => {
     if (!user?.uid) {
       toast.error('Lỗi xác thực. Không tìm thấy ID nhà tuyển dụng.');
@@ -382,7 +363,6 @@ function EmployerPostJobRoute() {
     }
 
     try {
-      // Final validation with Zod
       const validationResult = jobFormSchema.safeParse(form);
       if (!validationResult.success) {
         const zodErrors = validationResult.error.flatten().fieldErrors;
@@ -400,7 +380,6 @@ function EmployerPostJobRoute() {
         return;
       }
 
-      // Upload cover image if selected
       let imageUrls: string[] = [];
       let imageUploadWarning: string | null = null;
       if (form.coverImage) {
@@ -426,11 +405,10 @@ function EmployerPostJobRoute() {
           imageUploadWarning = 'Không thể tải ảnh. Tin vẫn được đăng nhưng chưa có ảnh.';
         }
       } else if (editJobId && existingJob?.images) {
-        // Keep existing images when editing without new upload
         imageUrls = existingJob.images;
       }
 
-      const jobData: Partial<Job> = {
+      const jobData: any = {
         employerId: user.uid,
         categoryId: form.category,
         title: form.title,
@@ -445,15 +423,16 @@ function EmployerPostJobRoute() {
         },
         geohash: '',
         isGpsRequired: true,
-        shifts: form.shifts.map(s => ({
+        shifts: form.shifts.map((s: Shift) => ({
           id: s.id,
           name: s.name,
           startTime: s.startTime,
           endTime: s.endTime,
           quantity: s.quantity,
         })),
-        vacancies: form.shifts.reduce((acc, s) => acc + s.quantity, 0),
-        genderPreference: mapGender(form.gender),
+        vacancies: form.shifts.reduce((acc: number, s: Shift) => acc + s.quantity, 0),
+        genderPreference: mapGender(form.gender as GenderPreference),
+
         startDate: form.startDate,
         deadline: form.deadline || undefined,
         requirements: form.requirements.length > 0 ? form.requirements : undefined,

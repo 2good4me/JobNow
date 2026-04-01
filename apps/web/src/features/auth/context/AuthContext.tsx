@@ -36,6 +36,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     useEffect(() => {
+        // Support Playwright E2E Mocking
+        if (typeof window !== 'undefined' && (window as any).__JOBNOW_E2E_MOCK_AUTH__) {
+            const mock = (window as any).__JOBNOW_E2E_MOCK_AUTH__;
+            setUser({ 
+                uid: mock.profile.uid, 
+                email: mock.profile.email,
+                displayName: mock.profile.full_name,
+                getIdToken: async () => 'mock-token',
+            } as any);
+            setUserProfile(mock.profile);
+            setLoading(false);
+            return;
+        }
+
         let isMounted = true;
 
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {

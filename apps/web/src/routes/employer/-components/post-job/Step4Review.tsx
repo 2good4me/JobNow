@@ -1,8 +1,10 @@
 import { CalendarClock, Check, DollarSign, ImagePlus, MapPin, Sparkles, Trash2, UsersRound, Clock, WalletCards, AlertCircle } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
-import { formatSalary, type JobFormState } from '../../post-job';
+import { formatSalary, type JobFormState } from '../../post-job-types';
 import type { PayType } from '../../-schemas/jobFormSchema';
+import { type Shift } from '../../post-job-types';
 import { calculateBudget } from '../../-utils/budgetCalculations';
+
 
 interface Step4ReviewProps {
   form: JobFormState;
@@ -114,7 +116,7 @@ export default function Step4Review({
             <div className="pt-3 border-t border-slate-100">
               <p className="text-[12px] text-slate-500 font-bold mb-2 uppercase tracking-wider">Ca làm ({form.shifts.length})</p>
               <div className="space-y-1.5">
-                {form.shifts.map(s => (
+                {form.shifts.map((s: Shift) => (
                   <div
                     key={s.id}
                     className="flex items-center justify-between text-[13px] bg-slate-50 rounded-xl px-3.5 py-2.5 border border-slate-100"

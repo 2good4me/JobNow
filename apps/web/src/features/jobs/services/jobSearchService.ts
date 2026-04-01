@@ -94,9 +94,22 @@ export async function fetchAllJobs(): Promise<Job[]> {
             };
             return mapJobDocToJob(docSnap.id, normalized);
         })
-        .filter(job => {
+        .filter((job: Job) => {
+            // Log for E2E debugging
+            if (job.title?.includes('E2E')) {
+                console.log(`[E2E Debug] Checking job: ${job.title}, ID: ${job.id}`);
+                console.log(`[E2E Debug] moderationStatus: ${job.moderationStatus}, status: ${job.status}`);
+            }
+
             const moderationStatus = String(job.moderationStatus ?? '').toUpperCase();
-            return (moderationStatus === '' || moderationStatus === 'APPROVED') && ['OPEN', 'ACTIVE', 'FULL'].includes(String(job.status ?? '').toUpperCase());
+            const isApproved = (moderationStatus === '' || moderationStatus === 'APPROVED');
+            const isStatusValid = ['OPEN', 'ACTIVE', 'FULL'].includes(String(job.status ?? '').toUpperCase());
+            
+            if (job.title?.includes('E2E') && (!isApproved || !isStatusValid)) {
+                console.log(`[E2E Debug] Excluded by status: isApproved=${isApproved}, isStatusValid=${isStatusValid}`);
+            }
+
+            return isApproved && isStatusValid;
         })
         .filter(job => {
             // Hide jobs where ALL shifts are fully booked (remaining_slots <= 0)

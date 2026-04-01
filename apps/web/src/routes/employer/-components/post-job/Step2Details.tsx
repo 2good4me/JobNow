@@ -1,6 +1,6 @@
 import { CalendarClock, LocateFixed, MapPin, Navigation, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { genderOptions, type JobFormState } from '../../post-job';
+import { genderOptions, type JobFormState } from '../../post-job-types';
 
 interface Step2DetailsProps {
   form: JobFormState;

@@ -1,5 +1,5 @@
 import { Clock, Minus, Plus, X, AlertCircle, DollarSign, CheckCircle2 } from 'lucide-react';
-import { type JobFormState, type Shift, formatSalary } from '../../post-job';
+import { type JobFormState, type Shift, formatSalary } from '../../post-job-types';
 import type { PayType } from '../../-schemas/jobFormSchema';
 import { calculateBudget } from '../../-utils/budgetCalculations';
 
@@ -52,7 +52,7 @@ export default function Step3Shifts({
         )}
 
         <div className="space-y-4">
-          {form.shifts.map((shift, idx) => {
+          {form.shifts.map((shift: Shift, idx: number) => {
             const timeError = getTimeError(shift);
             return (
               <div

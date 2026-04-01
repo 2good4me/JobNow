@@ -1,14 +1,26 @@
-# Frontend UI/UX Employer Routes Tasks
+# JobNow E2E Testing Stabilization
 
-- [ ] Planning & Setup
-  - [ ] Fetch all UI screens from Stitch MCP.
-  - [ ] Update `implementation_plan.md`.
-- [ ] Implement Applicant Management Dashboard
-  - [ ] Create `apps/web/src/routes/employer/applicants.tsx` based on Stitch MCP screen `91db6512b945479e80b9124cd6de1969`.
-  - [ ] Integrate mock data for applicants.
-- [ ] Implement Post Job Wizard
-  - [ ] Create `apps/web/src/routes/employer/post-job.tsx` based on Stitch MCP screens `e160768e80624a4a9c16fbd445f43fee` and `62ec7081b4b54b0384b0368466fcb45e`.
-  - [ ] Consolidate into a smooth long-scroll form.
-- [ ] Implement Employer Profile
-  - [ ] Create `apps/web/src/routes/employer/profile.tsx` based on Stitch MCP screen `ce172e00219c4e78ab626c663e9429e1`.
-  - [ ] Add mock data for profile details.
+## Phase 1: Infrastructure & Seeding [DONE]
+- [x] Phân tích cấu trúc Firestore và Auth.
+- [x] Tạo script seed dữ liệu cho các user E2E (employer, candidate_pending, candidate_verified).
+- [x] Đảm bảo backend có thể xử lý các request từ mock users.
+
+## Phase 2: Employer Flow (Đăng tin tuyển dụng) [DONE]
+- [x] Sửa lỗi selector cho tiêu đề công việc (placeholder chính xác).
+- [x] Sử dụng ID cố định cho e2e_employer.
+- [x] Đảm bảo tin tuyển dụng được tạo thành công với suffix ngẫu nhiên.
+
+## Phase 3: Candidate Verification (eKYC) [/]
+- [x] Debug lỗi Job Search & eKYC E2E
+- [/] Sửa lỗi Mock Auth trong Job Service
+- [ ] Chạy lại và ổn định E2E Test
+- [ ] Hoàn thiện luồng ứng tuyển E2E.
+
+## Phase 4: Candidate Application (Ứng tuyển) [ ]
+- [ ] Tìm kiếm tin tuyển dụng vừa đăng.
+- [ ] Thực hiện ứng tuyển.
+- [ ] Xác nhận trạng thái ứng tuyển trong database.
+
+## Phase 5: Cleanup & Refinement [ ]
+- [ ] Xóa dữ liệu rác sau khi test (nếu cần).
+- [ ] Tối ưu hóa thời gian chạy test.
