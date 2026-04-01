@@ -1,6 +1,16 @@
-# Implement Firestore Rules and Services
+# Implementation Plan - Deploying JobNow as a Mobile App via Firebase
 
-This plan covers updating Firebase Security Rules for the `jobs` and `applications` collections and implementing the corresponding Firestore service files in the React frontend.
+The goal is to transform the JobNow web application into a mobile-ready experience leveraging your new **Firebase Blaze (Paid) Plan**. We will use **Firebase Hosting** as the backbone for high-performance delivery and **Capacitor** as the bridge to native mobile platforms (Android/iOS).
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Firebase Hosting vs Native App**: To have a "Mobile App" through Firebase, the standard path for a React app is:
+> 1. **PWA (Firebase Hosting)**: The fastest way. Users install it from the browser. It feels like an app, works offline, and supports push notifications.
+> 2. **Native Shell (Capacitor)**: Wraps the Firebase-hosted content into an APK (Android) or IPA (iOS) for the App Stores.
+
+> [!NOTE]
+> Since you have the Blaze plan, we will enable **Firebase Cloud Messaging (FCM)** for native push notifications and **Firebase App Check** for security.
 
 ## Proposed Changes
 
@@ -57,3 +67,8 @@ Refactor Stitch MCP screen `ce172e00219c4e78ab626c663e9429e1`.
 ### Manual Verification
 - Code review of the service files to ensure proper error handling (try/catch) and correct Firestore method usage.
 - Data schema mock check inside the service files.
+
+## Open Questions
+
+- **Do you want to distribute the app via Firebase App Distribution (for testing) or just host it as a PWA for now?**
+- **Do you already have a Firebase project ID you'd like to use for the mobile app specifically, or should we stick with the existing one?**
