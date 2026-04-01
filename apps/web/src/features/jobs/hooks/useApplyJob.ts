@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { ApplyJobInput, ApplyJobResult } from '@jobnow/types';
-import { applyJob, precheckApply } from '../services/applicationFlowService';
+import type { ApplyJobInput, ApplyJobResult, WithdrawApplicationInput } from '@jobnow/types';
+import { applyJob, precheckApply, withdrawApplication } from '../services/applicationFlowService';
 
 export function createIdempotencyKey(candidateId: string, jobId: string, shiftId: string): string {
     return `${candidateId}_${jobId}_${shiftId}`;
@@ -20,6 +20,18 @@ export function useApplyJob() {
             }
             return applyJob({ ...payload, idempotencyKey });
         },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['applications'] });
+            queryClient.invalidateQueries({ queryKey: ['jobs', 'search'] });
+        },
+    });
+}
+
+export function useWithdrawApplication() {
+    const queryClient = useQueryClient();
+
+    return useMutation<{ success: boolean }, Error, WithdrawApplicationInput>({
+        mutationFn: async (payload) => withdrawApplication(payload),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['applications'] });
             queryClient.invalidateQueries({ queryKey: ['jobs', 'search'] });

@@ -40,7 +40,6 @@ import { Route as CandidateShiftsRouteImport } from './routes/candidate/shifts'
 import { Route as CandidateProfileRouteImport } from './routes/candidate/profile'
 import { Route as CandidateNotificationsRouteImport } from './routes/candidate/notifications'
 import { Route as CandidateChatRouteImport } from './routes/candidate/chat'
-import { Route as CandidateApplicationsRouteImport } from './routes/candidate/applications'
 import { Route as AdminVerificationsRouteImport } from './routes/admin/verifications'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
@@ -54,6 +53,7 @@ import { Route as EmployerProfileIndexRouteImport } from './routes/employer/prof
 import { Route as CandidateVerificationIndexRouteImport } from './routes/candidate/verification/index'
 import { Route as CandidateProfileIndexRouteImport } from './routes/candidate/profile/index'
 import { Route as CandidateJobsIndexRouteImport } from './routes/candidate/jobs/index'
+import { Route as CandidateApplicationsIndexRouteImport } from './routes/candidate/applications/index'
 import { Route as EmployerProfileReputationRouteImport } from './routes/employer/profile/reputation'
 import { Route as EmployerProfileEditRouteImport } from './routes/employer/profile/edit'
 import { Route as EmployerCandidateCandidateIdRouteImport } from './routes/employer/candidate.$candidateId'
@@ -64,7 +64,7 @@ import { Route as CandidateProfileEditRouteImport } from './routes/candidate/pro
 import { Route as CandidateJobsJobIdRouteImport } from './routes/candidate/jobs/$jobId'
 import { Route as CandidateEmployersEmployerIdRouteImport } from './routes/candidate/employers/$employerId'
 import { Route as CandidateEmployerEmployerIdRouteImport } from './routes/candidate/employer/$employerId'
-import { Route as CandidateApplicationsApplicationIdRouteImport } from './routes/candidate/applications.$applicationId'
+import { Route as CandidateApplicationsApplicationIdRouteImport } from './routes/candidate/applications/$applicationId'
 import { Route as AdminUsersUserIdRouteImport } from './routes/admin/users.$userId'
 import { Route as EmployerProfileSettingsIndexRouteImport } from './routes/employer/profile/settings/index'
 import { Route as EmployerProfileSettingsTermsRouteImport } from './routes/employer/profile/settings/terms'
@@ -231,11 +231,6 @@ const CandidateChatRoute = CandidateChatRouteImport.update({
   path: '/candidate/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CandidateApplicationsRoute = CandidateApplicationsRouteImport.update({
-  id: '/candidate/applications',
-  path: '/candidate/applications',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AdminVerificationsRoute = AdminVerificationsRouteImport.update({
   id: '/verifications',
   path: '/verifications',
@@ -303,6 +298,12 @@ const CandidateJobsIndexRoute = CandidateJobsIndexRouteImport.update({
   path: '/candidate/jobs/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CandidateApplicationsIndexRoute =
+  CandidateApplicationsIndexRouteImport.update({
+    id: '/candidate/applications/',
+    path: '/candidate/applications/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const EmployerProfileReputationRoute =
   EmployerProfileReputationRouteImport.update({
     id: '/reputation',
@@ -361,9 +362,9 @@ const CandidateEmployerEmployerIdRoute =
   } as any)
 const CandidateApplicationsApplicationIdRoute =
   CandidateApplicationsApplicationIdRouteImport.update({
-    id: '/$applicationId',
-    path: '/$applicationId',
-    getParentRoute: () => CandidateApplicationsRoute,
+    id: '/candidate/applications/$applicationId',
+    path: '/candidate/applications/$applicationId',
+    getParentRoute: () => rootRouteImport,
   } as any)
 const AdminUsersUserIdRoute = AdminUsersUserIdRouteImport.update({
   id: '/$userId',
@@ -442,7 +443,6 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRouteWithChildren
   '/admin/verifications': typeof AdminVerificationsRoute
-  '/candidate/applications': typeof CandidateApplicationsRouteWithChildren
   '/candidate/chat': typeof CandidateChatRoute
   '/candidate/notifications': typeof CandidateNotificationsRoute
   '/candidate/profile': typeof CandidateProfileRouteWithChildren
@@ -478,6 +478,7 @@ export interface FileRoutesByFullPath {
   '/employer/candidate/$candidateId': typeof EmployerCandidateCandidateIdRoute
   '/employer/profile/edit': typeof EmployerProfileEditRoute
   '/employer/profile/reputation': typeof EmployerProfileReputationRoute
+  '/candidate/applications/': typeof CandidateApplicationsIndexRoute
   '/candidate/jobs/': typeof CandidateJobsIndexRoute
   '/candidate/profile/': typeof CandidateProfileIndexRoute
   '/candidate/verification/': typeof CandidateVerificationIndexRoute
@@ -509,7 +510,6 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRouteWithChildren
   '/admin/verifications': typeof AdminVerificationsRoute
-  '/candidate/applications': typeof CandidateApplicationsRouteWithChildren
   '/candidate/chat': typeof CandidateChatRoute
   '/candidate/notifications': typeof CandidateNotificationsRoute
   '/candidate/shifts': typeof CandidateShiftsRoute
@@ -542,6 +542,7 @@ export interface FileRoutesByTo {
   '/employer/candidate/$candidateId': typeof EmployerCandidateCandidateIdRoute
   '/employer/profile/edit': typeof EmployerProfileEditRoute
   '/employer/profile/reputation': typeof EmployerProfileReputationRoute
+  '/candidate/applications': typeof CandidateApplicationsIndexRoute
   '/candidate/jobs': typeof CandidateJobsIndexRoute
   '/candidate/profile': typeof CandidateProfileIndexRoute
   '/candidate/verification': typeof CandidateVerificationIndexRoute
@@ -575,7 +576,6 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRouteWithChildren
   '/admin/verifications': typeof AdminVerificationsRoute
-  '/candidate/applications': typeof CandidateApplicationsRouteWithChildren
   '/candidate/chat': typeof CandidateChatRoute
   '/candidate/notifications': typeof CandidateNotificationsRoute
   '/candidate/profile': typeof CandidateProfileRouteWithChildren
@@ -611,6 +611,7 @@ export interface FileRoutesById {
   '/employer/candidate/$candidateId': typeof EmployerCandidateCandidateIdRoute
   '/employer/profile/edit': typeof EmployerProfileEditRoute
   '/employer/profile/reputation': typeof EmployerProfileReputationRoute
+  '/candidate/applications/': typeof CandidateApplicationsIndexRoute
   '/candidate/jobs/': typeof CandidateJobsIndexRoute
   '/candidate/profile/': typeof CandidateProfileIndexRoute
   '/candidate/verification/': typeof CandidateVerificationIndexRoute
@@ -645,7 +646,6 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/users'
     | '/admin/verifications'
-    | '/candidate/applications'
     | '/candidate/chat'
     | '/candidate/notifications'
     | '/candidate/profile'
@@ -681,6 +681,7 @@ export interface FileRouteTypes {
     | '/employer/candidate/$candidateId'
     | '/employer/profile/edit'
     | '/employer/profile/reputation'
+    | '/candidate/applications/'
     | '/candidate/jobs/'
     | '/candidate/profile/'
     | '/candidate/verification/'
@@ -712,7 +713,6 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/users'
     | '/admin/verifications'
-    | '/candidate/applications'
     | '/candidate/chat'
     | '/candidate/notifications'
     | '/candidate/shifts'
@@ -745,6 +745,7 @@ export interface FileRouteTypes {
     | '/employer/candidate/$candidateId'
     | '/employer/profile/edit'
     | '/employer/profile/reputation'
+    | '/candidate/applications'
     | '/candidate/jobs'
     | '/candidate/profile'
     | '/candidate/verification'
@@ -777,7 +778,6 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/users'
     | '/admin/verifications'
-    | '/candidate/applications'
     | '/candidate/chat'
     | '/candidate/notifications'
     | '/candidate/profile'
@@ -813,6 +813,7 @@ export interface FileRouteTypes {
     | '/employer/candidate/$candidateId'
     | '/employer/profile/edit'
     | '/employer/profile/reputation'
+    | '/candidate/applications/'
     | '/candidate/jobs/'
     | '/candidate/profile/'
     | '/candidate/verification/'
@@ -838,7 +839,6 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRoute
   SupportCenterRoute: typeof SupportCenterRoute
   SupportCenterDataRoute: typeof SupportCenterDataRoute
-  CandidateApplicationsRoute: typeof CandidateApplicationsRouteWithChildren
   CandidateChatRoute: typeof CandidateChatRoute
   CandidateNotificationsRoute: typeof CandidateNotificationsRoute
   CandidateProfileRoute: typeof CandidateProfileRouteWithChildren
@@ -861,10 +861,12 @@ export interface RootRouteChildren {
   CandidateIndexRoute: typeof CandidateIndexRoute
   EmployerIndexRoute: typeof EmployerIndexRoute
   JobsIndexRoute: typeof JobsIndexRoute
+  CandidateApplicationsApplicationIdRoute: typeof CandidateApplicationsApplicationIdRoute
   CandidateEmployerEmployerIdRoute: typeof CandidateEmployerEmployerIdRoute
   CandidateEmployersEmployerIdRoute: typeof CandidateEmployersEmployerIdRoute
   CandidateJobsJobIdRoute: typeof CandidateJobsJobIdRoute
   EmployerCandidateCandidateIdRoute: typeof EmployerCandidateCandidateIdRoute
+  CandidateApplicationsIndexRoute: typeof CandidateApplicationsIndexRoute
   CandidateJobsIndexRoute: typeof CandidateJobsIndexRoute
   CandidateVerificationIndexRoute: typeof CandidateVerificationIndexRoute
   CandidateWalletTransactionsTransactionIdRoute: typeof CandidateWalletTransactionsTransactionIdRoute
@@ -1089,13 +1091,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CandidateChatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/candidate/applications': {
-      id: '/candidate/applications'
-      path: '/candidate/applications'
-      fullPath: '/candidate/applications'
-      preLoaderRoute: typeof CandidateApplicationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/admin/verifications': {
       id: '/admin/verifications'
       path: '/verifications'
@@ -1187,6 +1182,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CandidateJobsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/candidate/applications/': {
+      id: '/candidate/applications/'
+      path: '/candidate/applications'
+      fullPath: '/candidate/applications/'
+      preLoaderRoute: typeof CandidateApplicationsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/employer/profile/reputation': {
       id: '/employer/profile/reputation'
       path: '/reputation'
@@ -1259,10 +1261,10 @@ declare module '@tanstack/react-router' {
     }
     '/candidate/applications/$applicationId': {
       id: '/candidate/applications/$applicationId'
-      path: '/$applicationId'
+      path: '/candidate/applications/$applicationId'
       fullPath: '/candidate/applications/$applicationId'
       preLoaderRoute: typeof CandidateApplicationsApplicationIdRouteImport
-      parentRoute: typeof CandidateApplicationsRoute
+      parentRoute: typeof rootRouteImport
     }
     '/admin/users/$userId': {
       id: '/admin/users/$userId'
@@ -1375,20 +1377,6 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
-interface CandidateApplicationsRouteChildren {
-  CandidateApplicationsApplicationIdRoute: typeof CandidateApplicationsApplicationIdRoute
-}
-
-const CandidateApplicationsRouteChildren: CandidateApplicationsRouteChildren = {
-  CandidateApplicationsApplicationIdRoute:
-    CandidateApplicationsApplicationIdRoute,
-}
-
-const CandidateApplicationsRouteWithChildren =
-  CandidateApplicationsRoute._addFileChildren(
-    CandidateApplicationsRouteChildren,
-  )
-
 interface CandidateProfileRouteChildren {
   CandidateProfileEditRoute: typeof CandidateProfileEditRoute
   CandidateProfileReputationRoute: typeof CandidateProfileReputationRoute
@@ -1461,7 +1449,6 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterRoute: RegisterRoute,
   SupportCenterRoute: SupportCenterRoute,
   SupportCenterDataRoute: SupportCenterDataRoute,
-  CandidateApplicationsRoute: CandidateApplicationsRouteWithChildren,
   CandidateChatRoute: CandidateChatRoute,
   CandidateNotificationsRoute: CandidateNotificationsRoute,
   CandidateProfileRoute: CandidateProfileRouteWithChildren,
@@ -1484,10 +1471,13 @@ const rootRouteChildren: RootRouteChildren = {
   CandidateIndexRoute: CandidateIndexRoute,
   EmployerIndexRoute: EmployerIndexRoute,
   JobsIndexRoute: JobsIndexRoute,
+  CandidateApplicationsApplicationIdRoute:
+    CandidateApplicationsApplicationIdRoute,
   CandidateEmployerEmployerIdRoute: CandidateEmployerEmployerIdRoute,
   CandidateEmployersEmployerIdRoute: CandidateEmployersEmployerIdRoute,
   CandidateJobsJobIdRoute: CandidateJobsJobIdRoute,
   EmployerCandidateCandidateIdRoute: EmployerCandidateCandidateIdRoute,
+  CandidateApplicationsIndexRoute: CandidateApplicationsIndexRoute,
   CandidateJobsIndexRoute: CandidateJobsIndexRoute,
   CandidateVerificationIndexRoute: CandidateVerificationIndexRoute,
   CandidateWalletTransactionsTransactionIdRoute:

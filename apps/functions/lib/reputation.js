@@ -4,6 +4,7 @@ exports.REPUTATION_ACTIONS = exports.EKYC_REPUTATION_BONUS = exports.MAX_REPUTAT
 exports.clampReputationScore = clampReputationScore;
 exports.getReputationTier = getReputationTier;
 exports.getCancellationActionCode = getCancellationActionCode;
+exports.getReputationHistoryRef = getReputationHistoryRef;
 exports.applyReputationAction = applyReputationAction;
 const firestore_1 = require("firebase-admin/firestore");
 exports.DEFAULT_REPUTATION_SCORE = 100;
@@ -60,15 +61,34 @@ function getHistoryRef(db, userId, actionCode, dedupeKey) {
         .slice(0, 140);
     return db.collection('reputation_history').doc(normalized);
 }
+function getReputationHistoryRef(db, userId, actionCode, dedupeKey) {
+    return getHistoryRef(db, userId, actionCode, dedupeKey);
+}
 async function applyReputationAction(input) {
     const action = exports.REPUTATION_ACTIONS[input.actionCode];
     const userRef = input.db.collection('users').doc(input.userId);
     const historyRef = getHistoryRef(input.db, input.userId, input.actionCode, input.dedupeKey);
     const status = input.status ?? 'APPLIED';
-    const [historySnap, userSnap] = await Promise.all([
-        input.tx.get(historyRef),
-        input.userData ? Promise.resolve(null) : input.tx.get(userRef),
-    ]);
+    // Use pre-read snapshot if available, otherwise do tx.get (only safe before writes)
+    let historySnap;
+    let userSnap = null;
+    if (input.preReadHistorySnap !== undefined && input.preReadHistorySnap !== null) {
+        historySnap = input.preReadHistorySnap;
+        userSnap = null;
+    }
+    else if (input.preReadHistorySnap === null) {
+        // preReadHistorySnap is explicitly null → doc doesn't exist, create a fake non-existing snap
+        // We still need to call tx.get if we don't have a pre-read snap
+        // But if null is passed, it means the doc was pre-checked and doesn't exist
+        historySnap = { exists: false };
+        userSnap = null;
+    }
+    else {
+        [historySnap, userSnap] = await Promise.all([
+            input.tx.get(historyRef),
+            input.userData ? Promise.resolve(null) : input.tx.get(userRef),
+        ]);
+    }
     if (historySnap.exists) {
         const existing = historySnap.data() || {};
         const balanceAfter = Number(existing.balance_after ?? input.userData?.reputation_score ?? exports.DEFAULT_REPUTATION_SCORE);

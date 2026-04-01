@@ -114,39 +114,15 @@ export function ApplicationCard({ application: app }: ApplicationCardProps) {
       </div>
 
       {/* Bottom: Action Buttons — separated by a thin divider */}
-      {(canCancel || app.status === 'APPROVED') && (
+      {canCancel && (
         <div className="px-4 pb-4">
           <div className="border-t border-[#F2F4F6] pt-4 flex items-center gap-3">
-            {canCancel && (
-              <button
-                onClick={handleCancelApplication}
-                className="w-full flex-1 border border-[#E2E2E9] text-[#191C1E] bg-white hover:bg-[#F2F4F6] py-2.5 rounded-2xl text-[14px] font-bold transition-colors"
-              >
-                Rút đơn
-              </button>
-            )}
-            {app.status === 'APPROVED' && (
-              <>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    // Navigate to shift info
-                  }}
-                  className="flex-1 bg-[#006399] text-white py-2.5 rounded-2xl text-[14px] font-bold hover:bg-[#004e7a] transition-colors text-center"
-                >
-                  Xem ca làm
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    // Navigate to chat
-                  }}
-                  className="flex-1 border border-[#E2E2E9] text-[#191C1E] bg-white hover:bg-[#F2F4F6] py-2.5 rounded-2xl text-[14px] font-bold transition-colors text-center"
-                >
-                  Chat
-                </button>
-              </>
-            )}
+            <button
+              onClick={handleCancelApplication}
+              className="w-full flex-1 border border-[#E2E2E9] text-[#191C1E] bg-white hover:bg-[#F2F4F6] py-2.5 rounded-2xl text-[14px] font-bold transition-colors"
+            >
+              Rút đơn
+            </button>
           </div>
         </div>
       )}

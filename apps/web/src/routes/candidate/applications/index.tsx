@@ -9,7 +9,7 @@ import { ReviewModal } from '@/features/jobs/components/ReviewModal';
 import { Star, DollarSign, Loader2 } from 'lucide-react';
 import { useConfirmPayment } from '@/features/jobs/hooks/useManageApplicants';
 
-export const Route = createFileRoute('/candidate/applications')({
+export const Route = createFileRoute('/candidate/applications/')({
     component: CandidateApplications,
 });
 

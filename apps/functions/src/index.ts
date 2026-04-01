@@ -10,6 +10,7 @@ import {
   applyReputationAction,
   clampReputationScore,
   getCancellationActionCode,
+  getReputationHistoryRef,
   getReputationTier,
   type ReputationActionCode,
 } from './reputation';
@@ -847,7 +848,8 @@ export const withdrawApplication = onCall<WithdrawApplicationInput>({ region: 'a
     }
 
     const appData = appSnap.data() || {};
-    if (String(appData.candidate_id ?? '') !== uid) {
+    const candidateId = String(appData.candidate_id ?? appData.candidateId ?? '');
+    if (candidateId !== uid) {
       throw new HttpsError('permission-denied', 'Bạn không có quyền hủy đơn này.');
     }
 
@@ -856,43 +858,130 @@ export const withdrawApplication = onCall<WithdrawApplicationInput>({ region: 'a
       return;
     }
 
+    const jobId = String(appData.job_id ?? appData.jobId ?? '');
+    const shiftId = String(appData.shift_id ?? appData.shiftId ?? '');
+
+    // ─── ALL READS FIRST ───
+    let jobSnap: FirebaseFirestore.DocumentSnapshot | null = null;
+    let candidateSnap: FirebaseFirestore.DocumentSnapshot | null = null;
+    let employerSnap: FirebaseFirestore.DocumentSnapshot | null = null;
+    let shiftSnap: FirebaseFirestore.DocumentSnapshot | null = null;
+    let reputationHistorySnap: FirebaseFirestore.DocumentSnapshot | null = null;
+    const employerId = String(appData.employer_id ?? appData.employerId ?? '');
+    let actionCode: ReputationActionCode | null = null;
+    let hoursUntilShift: number | null = null;
+    let isUrgent = false;
+
+    if (jobId && shiftId) {
+      const jobRef = db.collection('jobs').doc(jobId);
+      const candidateRef = db.collection('users').doc(uid);
+      const employerRef = employerId ? db.collection('users').doc(employerId) : null;
+      const shiftRef = jobRef.collection('shifts').doc(shiftId);
+
+      [jobSnap, candidateSnap, shiftSnap] = await Promise.all([
+        tx.get(jobRef),
+        tx.get(candidateRef),
+        tx.get(shiftRef),
+      ]);
+      if (employerRef) {
+        employerSnap = await tx.get(employerRef);
+      }
+
+      // Compute actionCode before writes so we can pre-read reputation history
+      if (jobSnap.exists) {
+        const jd = jobSnap.data() || {};
+        const targetShiftForWindow = shiftSnap?.exists ? (shiftSnap.data() || null) : getShiftFromJobData(jd, shiftId);
+        const shiftWindow = getShiftWindowFromData(jd, targetShiftForWindow);
+        hoursUntilShift = shiftWindow ? (shiftWindow.start.getTime() - Date.now()) / (1000 * 60 * 60) : null;
+        if (hoursUntilShift !== null) {
+          isUrgent = hoursUntilShift > 0 && hoursUntilShift < 12;
+          actionCode = getCancellationActionCode(hoursUntilShift);
+        }
+      }
+
+      // Pre-read reputation history doc if actionCode is known
+      const candidateRole = getUserRoleFromData(candidateSnap?.data() || {});
+      if (actionCode && candidateRole === 'CANDIDATE') {
+        const historyRef = getReputationHistoryRef(db, uid, actionCode, input.applicationId);
+        reputationHistorySnap = await tx.get(historyRef);
+      }
+    }
+
+    // ─── ALL WRITES BELOW ───
     tx.set(applicationRef, {
       status: 'CANCELLED',
       updated_at: FieldValue.serverTimestamp(),
     }, { merge: true });
 
-    const jobId = String(appData.job_id ?? '');
-    const shiftId = String(appData.shift_id ?? '');
-    if (!jobId || !shiftId) return;
+    if (!jobId || !shiftId || !jobSnap?.exists) return;
 
     const jobRef = db.collection('jobs').doc(jobId);
     const candidateRef = db.collection('users').doc(uid);
-    const [jobSnap, candidateSnap] = await Promise.all([tx.get(jobRef), tx.get(candidateRef)]);
-    if (!jobSnap.exists) return;
-
+    const employerRef = employerId ? db.collection('users').doc(employerId) : null;
     const jobData = jobSnap.data() || {};
-    const capacity = await getCapacityForShift(jobRef, jobData, shiftId, tx);
+
+    // Compute capacity inline (no tx.get needed)
+    const shiftCapacity = (jobData.shift_capacity ?? {}) as Record<string, { total_slots: number; remaining_slots: number; applied_count: number }>;
+    let capacity = shiftCapacity[shiftId];
+    if (!capacity) {
+      const targetShiftData = shiftSnap?.exists ? shiftSnap.data() : getShiftFromJobData(jobData, shiftId);
+      const quantity = Number(targetShiftData?.quantity ?? 0);
+      capacity = { total_slots: quantity, remaining_slots: quantity, applied_count: 0 };
+    }
+
     tx.set(jobRef, {
       shift_capacity: {
         ...(jobData.shift_capacity ?? {}),
         [shiftId]: {
-          total_slots: capacity.totalSlots,
-          remaining_slots: Math.min(capacity.remainingSlots + 1, capacity.totalSlots),
-          applied_count: Math.max(capacity.appliedCount - 1, 0),
+          total_slots: Number(capacity.total_slots ?? 0),
+          remaining_slots: Math.min(Number(capacity.remaining_slots ?? 0) + 1, Number(capacity.total_slots ?? 0)),
+          applied_count: Math.max(Number(capacity.applied_count ?? 0) - 1, 0),
         },
       },
       updated_at: FieldValue.serverTimestamp(),
     }, { merge: true });
 
-    const candidateRole = getUserRoleFromData(candidateSnap.data());
-    let actionCode: ReputationActionCode | null = null;
-    let isUrgent = false;
+    // ─── ESCROW REFUND (if candidate cancels an APPROVED/CHECKED_IN shift) ───
+    if (['APPROVED', 'CHECKED_IN'].includes(currentStatus)) {
+      if (employerRef && employerSnap?.exists) {
+        const employerData = employerSnap.data() || {};
+        const employerBalance = Number(employerData.balance ?? 0);
+        const salary = Number(jobData.salary ?? 0);
+        const jobTitle = String(jobData.title ?? '');
 
-    const hoursUntilShift = await getHoursUntilShift(jobRef, jobData, shiftId, new Date(), tx);
-    if (hoursUntilShift !== null) {
-      isUrgent = hoursUntilShift > 0 && hoursUntilShift < 12;
-      actionCode = getCancellationActionCode(hoursUntilShift);
+        // Add back balance
+        tx.set(employerRef, {
+          balance: employerBalance + salary,
+          updated_at: FieldValue.serverTimestamp(),
+        }, { merge: true });
+
+        // Create REFUND transaction
+        const refundTxRef = db.collection('transactions').doc(normalizeDocumentId(`refund_withdraw_${input.applicationId}_${Date.now()}`));
+        tx.set(refundTxRef, {
+          userId: employerId,
+          user_id: employerId,
+          type: 'REFUND',
+          entry_type: 'CREDIT',
+          amount: salary,
+          description: `Hoàn tiền lương từ "${jobTitle}" do ứng viên hủy ca`,
+          related_application_id: input.applicationId,
+          related_job_id: jobSnap.id,
+          status: 'COMPLETED',
+          created_at: FieldValue.serverTimestamp(),
+          createdAt: FieldValue.serverTimestamp(),
+          updated_at: FieldValue.serverTimestamp(),
+        });
+
+        // Cancel the pending lock transaction
+        const lockTxRef = db.collection('transactions').doc(normalizeDocumentId(`lock_${input.applicationId}`));
+        tx.set(lockTxRef, {
+          status: 'CANCELLED',
+          updated_at: FieldValue.serverTimestamp(),
+        }, { merge: true });
+      }
     }
+
+    const candidateRole = getUserRoleFromData(candidateSnap?.data() || {});
 
     if (actionCode && candidateRole === 'CANDIDATE') {
       const result = await applyReputationAction({
@@ -900,13 +989,14 @@ export const withdrawApplication = onCall<WithdrawApplicationInput>({ region: 'a
         db,
         userId: uid,
         userRole: candidateRole,
-        userData: candidateSnap.data() || {},
+        userData: candidateSnap?.data() || {},
         actionCode,
         dedupeKey: input.applicationId,
         jobId,
         applicationId: input.applicationId,
         shiftId,
         actorId: uid,
+        preReadHistorySnap: reputationHistorySnap,
         metadata: {
           source: 'withdrawApplication',
           hours_until_shift: hoursUntilShift,
@@ -1155,7 +1245,8 @@ export const checkIn = onCall<CheckInInput>({ region: 'asia-southeast1' }, async
     }
 
     const appData = appSnap.data() || {};
-    if (String(appData.candidate_id ?? '') !== uid) {
+    const candidateId = String(appData.candidate_id ?? appData.candidateId ?? '');
+    if (candidateId !== uid) {
       throw new HttpsError('permission-denied', 'Bạn không có quyền check-in đơn này.');
     }
 
@@ -1163,8 +1254,8 @@ export const checkIn = onCall<CheckInInput>({ region: 'asia-southeast1' }, async
       throw new HttpsError('failed-precondition', 'Đơn chưa ở trạng thái được nhận việc.');
     }
 
-    const jobId = String(appData.job_id ?? '');
-    const shiftId = String(appData.shift_id ?? '');
+    const jobId = String(appData.job_id ?? appData.jobId ?? '');
+    const shiftId = String(appData.shift_id ?? appData.shiftId ?? '');
     const jobRef = db.collection('jobs').doc(jobId);
     const jobSnap = await tx.get(jobRef);
     if (!jobSnap.exists) {
@@ -1286,7 +1377,8 @@ export const checkOut = onCall<CheckOutInput>({ region: 'asia-southeast1' }, asy
     }
 
     const appData = appSnap.data() || {};
-    if (String(appData.candidate_id ?? '') !== uid) {
+    const candidateId = String(appData.candidate_id ?? appData.candidateId ?? '');
+    if (candidateId !== uid) {
       throw new HttpsError('permission-denied', 'Bạn không có quyền check-out đơn này.');
     }
 
@@ -1315,9 +1407,9 @@ export const checkOut = onCall<CheckOutInput>({ region: 'asia-southeast1' }, asy
         userData: candidateSnap.data() || {},
         actionCode: 'C_COMPLETED',
         dedupeKey: input.applicationId,
-        jobId: String(appData.job_id ?? ''),
+        jobId: String(appData.job_id ?? appData.jobId ?? ''),
         applicationId: input.applicationId,
-        shiftId: String(appData.shift_id ?? ''),
+        shiftId: String(appData.shift_id ?? appData.shiftId ?? ''),
         actorId: uid,
         metadata: { source: 'checkOut' },
       });
@@ -1550,8 +1642,8 @@ export const sendChatMessage = onCall<SendChatMessageInput>({ region: 'asia-sout
       conversationSnap = await tx.get(conversationRef);
     }
 
-    const candidateId = String(conversationData.candidate_id ?? '');
-    const employerId = String(conversationData.employer_id ?? '');
+    const candidateId = String(conversationData.candidate_id ?? conversationData.candidateId ?? '');
+    const employerId = String(conversationData.employer_id ?? conversationData.employerId ?? '');
     const chatPermission = String(conversationData.chat_permission ?? 'EMPLOYER_ONLY');
     const conversationStatus = String(conversationData.status ?? 'PENDING');
 
@@ -1623,8 +1715,8 @@ export const markConversationRead = onCall<MarkConversationReadInput>({ region: 
     }
 
     const data = conversationSnap.data() || {};
-    const candidateId = String(data.candidate_id ?? '');
-    const employerId = String(data.employer_id ?? '');
+    const candidateId = String(data.candidate_id ?? data.candidateId ?? '');
+    const employerId = String(data.employer_id ?? data.employerId ?? '');
 
     if (uid !== candidateId && uid !== employerId) {
       throw new HttpsError('permission-denied', 'Bạn không thuộc hội thoại này.');
@@ -1650,6 +1742,14 @@ export const markConversationRead = onCall<MarkConversationReadInput>({ region: 
 export const submitRating = onCall<RatingInput>({ region: 'asia-southeast1' }, async (request) => {
   const uid = assertAuth(request);
   const input = request.data;
+
+  if (!input.applicationId?.trim()) {
+    throw new HttpsError('invalid-argument', 'ID đơn ứng tuyển không hợp lệ.');
+  }
+
+  if (!input.revieweeId?.trim()) {
+    throw new HttpsError('invalid-argument', 'ID đối tượng đánh giá không hợp lệ.');
+  }
 
   if (uid !== input.reviewerId) {
     throw new HttpsError('permission-denied', 'Bạn không thể gửi đánh giá thay người khác.');
@@ -1683,7 +1783,9 @@ export const submitRating = onCall<RatingInput>({ region: 'asia-southeast1' }, a
       throw new HttpsError('failed-precondition', 'Chỉ có thể đánh giá sau khi hoàn thành ca làm.');
     }
 
-    const isParticipant = uid === String(appData.candidate_id ?? '') || uid === String(appData.employer_id ?? '');
+    const candId = String(appData.candidate_id ?? appData.candidateId ?? '');
+    const empId = String(appData.employer_id ?? appData.employerId ?? '');
+    const isParticipant = uid === candId || uid === empId;
     if (!isParticipant) {
       throw new HttpsError('permission-denied', 'Bạn không có quyền đánh giá đơn này.');
     }
@@ -2193,7 +2295,8 @@ export const submitReputationAppeal = onCall<SubmitReputationAppealInput>({ regi
     }
 
     const historyData = historySnap.data() || {};
-    if (String(historyData.user_id ?? '') !== uid) {
+    const userId = String(historyData.user_id ?? historyData.userId ?? '');
+    if (userId !== uid) {
       throw new HttpsError('permission-denied', 'Bạn không có quyền khiếu nại biến động này.');
     }
 

@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, useParams } from '@tanstack/react-router';
+import { useState } from 'react';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useMyApplicationsRealtime } from '@/features/jobs/hooks/useMyApplicationsRealtime';
 import { 
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useJob } from '@/features/jobs/hooks/useJob';
 import { useConfirmPayment } from '@/features/jobs/hooks/useManageApplicants';
+import { useWithdrawApplication } from '@/features/jobs/hooks/useApplyJob';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -26,6 +28,8 @@ function ApplicationDetailPage() {
     const { userProfile } = useAuth();
     const navigate = useNavigate();
     const { mutate: confirmPayment, isPending: isConfirming } = useConfirmPayment();
+    const { mutate: withdraw, isPending: isWithdrawing } = useWithdrawApplication();
+    const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
     const { data: applications = [], isLoading } = useMyApplicationsRealtime({
         candidateId: userProfile?.uid,
@@ -168,6 +172,58 @@ function ApplicationDetailPage() {
                             {isConfirming ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
                             XÁC NHẬN ĐÃ NHẬN TIỀN
                         </button>
+                    </div>
+                )}
+
+                {/* Cancel Shift Action */}
+                {['NEW', 'PENDING', 'APPROVED', 'CHECKED_IN'].includes(application.status) && (
+                    <div className="mt-4 space-y-3">
+                        {!showCancelConfirm ? (
+                            <button 
+                                disabled={isWithdrawing}
+                                onClick={() => setShowCancelConfirm(true)}
+                                className="w-full flex items-center justify-center gap-2 py-3 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl font-bold text-sm transition-colors disabled:opacity-50"
+                            >
+                                {isWithdrawing ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                                Hủy Ca Làm
+                            </button>
+                        ) : (
+                            <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4 space-y-3 animate-in fade-in duration-200">
+                                <div className="flex items-start gap-3">
+                                    <XCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-bold text-red-700 text-sm">Xác nhận hủy ca làm?</p>
+                                        <p className="text-xs text-red-600/80 mt-1">Nếu đã được duyệt, nhà tuyển dụng sẽ nhận lại tiền và điểm uy tín của bạn có thể bị ảnh hưởng.</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setShowCancelConfirm(false)}
+                                        className="flex-1 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 font-bold text-sm hover:bg-slate-50 transition-colors"
+                                    >
+                                        Không, giữ lại
+                                    </button>
+                                    <button
+                                        disabled={isWithdrawing}
+                                        onClick={() => {
+                                            withdraw({ applicationId: application.id, candidateId: userProfile?.uid || '' }, {
+                                                onSuccess: () => {
+                                                    toast.success('Đã hủy ứng tuyển thành công.');
+                                                    setShowCancelConfirm(false);
+                                                },
+                                                onError: (err: Error) => {
+                                                    toast.error(err.message || 'Không thể hủy, vui lòng thử lại.');
+                                                }
+                                            });
+                                        }}
+                                        className="flex-1 py-2.5 rounded-xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+                                    >
+                                        {isWithdrawing ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                                        Xác nhận hủy
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 

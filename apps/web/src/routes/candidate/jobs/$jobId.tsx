@@ -5,7 +5,7 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useJob } from '@/features/jobs/hooks/useJob';
 import { useAuth } from '@/features/auth/context/AuthContext';
-import { useApplyJob } from '@/features/jobs/hooks/useApplyJob';
+import { useApplyJob, useWithdrawApplication } from '@/features/jobs/hooks/useApplyJob';
 import { useUserProfile } from '@/features/auth/hooks/useUserProfile';
 import { useIsJobWishlisted, useToggleWishlist } from '@/features/jobs/hooks/useWishlistJobs';
 import { useApprovedCount } from '@/features/jobs/hooks/useApprovedCount';
@@ -152,12 +152,16 @@ function JobDetailPage() {
         where('shift_id', '==', selectedShiftId)
       );
       const snapshot = await getDocs(q);
-      return !snapshot.empty ? snapshot.docs[0].data() : null;
+      return !snapshot.empty ? { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as any : null;
     },
     enabled: !!userProfile?.uid && !!selectedShiftId,
   });
 
   const hasApplied = !!existingApplication;
+  const existingStatus = existingApplication?.status;
+  const canCancel = existingApplication && ['NEW', 'PENDING', 'APPROVED', 'CHECKED_IN'].includes(existingStatus);
+  const { mutate: withdraw, isPending: isWithdrawing } = useWithdrawApplication();
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   // Initialize selectedShiftId when job data is loaded
   useEffect(() => {
@@ -505,21 +509,68 @@ function JobDetailPage() {
           >
             <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>chat_bubble</span>
           </button>
-          <button
-            onClick={handleApply}
-            disabled={applyMutation.isPending || hasApplied || selectedShiftRemaining <= 0}
-            className={`flex-1 h-11 rounded-xl font-poppins font-black text-[12px] uppercase tracking-wider transition-all active:scale-[0.98]
-              ${applyMutation.isPending || hasApplied || selectedShiftRemaining <= 0
-                ? 'bg-surface-container-high text-on-surface-variant/40 border border-outline-variant/10'
-                : 'bg-gradient-to-r from-[#0369A1] to-[#004F7B] text-white shadow-md shadow-[#0369A1]/20'
-              }
-            `}
-          >
-            <span className="flex items-center justify-center gap-1.5">
-              {applyMutation.isPending ? 'ĐANG XỬ LÝ...' : hasApplied ? 'ĐÃ ỨNG TUYỂN' : selectedShiftRemaining <= 0 ? 'HẾT CHỖ' : 'ỨNG TUYỂN NGAY'}
-              {!applyMutation.isPending && !hasApplied && selectedShiftRemaining > 0 && <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>bolt</span>}
-            </span>
-          </button>
+          {canCancel ? (
+            <>
+              {!showCancelConfirm ? (
+                <button
+                  onClick={() => setShowCancelConfirm(true)}
+                  disabled={isWithdrawing}
+                  className={`flex-1 h-11 rounded-xl font-poppins font-black text-[12px] uppercase tracking-wider transition-all active:scale-[0.98]
+                    ${isWithdrawing 
+                      ? 'bg-surface-container-high text-on-surface-variant/40 border border-outline-variant/10' 
+                      : 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 shadow-sm'}`}
+                >
+                  <span className="flex items-center justify-center gap-1.5">
+                    {isWithdrawing ? 'ĐANG XỬ LÝ...' : 'HỦY CA LÀM'}
+                    {!isWithdrawing && <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>cancel</span>}
+                  </span>
+                </button>
+              ) : (
+                <div className="flex-1 flex gap-2">
+                  <button
+                    onClick={() => setShowCancelConfirm(false)}
+                    className="flex-1 h-11 rounded-xl font-poppins font-bold text-[11px] uppercase tracking-wider bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-all active:scale-[0.98]"
+                  >
+                    KHÔNG
+                  </button>
+                  <button
+                    disabled={isWithdrawing}
+                    onClick={() => {
+                      withdraw({ applicationId: existingApplication.id, candidateId: userProfile?.uid || '' }, {
+                        onSuccess: () => {
+                          toast.success('Đã hủy ứng tuyển thành công.');
+                          setShowCancelConfirm(false);
+                        },
+                        onError: (err: Error) => {
+                          toast.error(err.message || 'Không thể hủy, vui lòng thử lại.');
+                        }
+                      });
+                    }}
+                    className="flex-1 h-11 rounded-xl font-poppins font-black text-[11px] uppercase tracking-wider bg-red-600 text-white hover:bg-red-700 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1"
+                  >
+                    {isWithdrawing && <span className="animate-spin">⏳</span>}
+                    XÁC NHẬN HỦY
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <button
+              onClick={handleApply}
+              disabled={applyMutation.isPending || hasApplied || selectedShiftRemaining <= 0}
+              className={`flex-1 h-11 rounded-xl font-poppins font-black text-[12px] uppercase tracking-wider transition-all active:scale-[0.98]
+                ${applyMutation.isPending || hasApplied || selectedShiftRemaining <= 0
+                  ? 'bg-surface-container-high text-on-surface-variant/40 border border-outline-variant/10'
+                  : 'bg-gradient-to-r from-[#0369A1] to-[#004F7B] text-white shadow-md shadow-[#0369A1]/20'
+                }
+              `}
+            >
+              <span className="flex items-center justify-center gap-1.5">
+                {applyMutation.isPending ? 'ĐANG XỬ LÝ...' : hasApplied ? 'ĐÃ ỨNG TUYỂN' : selectedShiftRemaining <= 0 ? 'HẾT CHỖ' : 'ỨNG TUYỂN NGAY'}
+                {!applyMutation.isPending && !hasApplied && selectedShiftRemaining > 0 && <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>bolt</span>}
+              </span>
+            </button>
+          )}
         </div>
       </div>
     </div>

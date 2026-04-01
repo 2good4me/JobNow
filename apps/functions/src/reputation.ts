@@ -56,6 +56,8 @@ export interface ApplyReputationActionInput {
   actorId?: string | null;
   metadata?: Record<string, unknown>;
   status?: ReputationActionStatus;
+  /** Pre-read history snapshot to avoid tx.get() after writes */
+  preReadHistorySnap?: FirebaseFirestore.DocumentSnapshot | null;
 }
 
 export interface ApplyReputationActionResult {
@@ -116,16 +118,39 @@ function getHistoryRef(
   return db.collection('reputation_history').doc(normalized);
 }
 
+export function getReputationHistoryRef(
+  db: FirebaseFirestore.Firestore,
+  userId: string,
+  actionCode: ReputationActionCode,
+  dedupeKey: string
+) {
+  return getHistoryRef(db, userId, actionCode, dedupeKey);
+}
+
 export async function applyReputationAction(input: ApplyReputationActionInput): Promise<ApplyReputationActionResult> {
   const action = REPUTATION_ACTIONS[input.actionCode];
   const userRef = input.db.collection('users').doc(input.userId);
   const historyRef = getHistoryRef(input.db, input.userId, input.actionCode, input.dedupeKey);
   const status = input.status ?? 'APPLIED';
 
-  const [historySnap, userSnap] = await Promise.all([
-    input.tx.get(historyRef),
-    input.userData ? Promise.resolve(null) : input.tx.get(userRef),
-  ]);
+  // Use pre-read snapshot if available, otherwise do tx.get (only safe before writes)
+  let historySnap: FirebaseFirestore.DocumentSnapshot;
+  let userSnap: FirebaseFirestore.DocumentSnapshot | null = null;
+  if (input.preReadHistorySnap !== undefined && input.preReadHistorySnap !== null) {
+    historySnap = input.preReadHistorySnap;
+    userSnap = null;
+  } else if (input.preReadHistorySnap === null) {
+    // preReadHistorySnap is explicitly null → doc doesn't exist, create a fake non-existing snap
+    // We still need to call tx.get if we don't have a pre-read snap
+    // But if null is passed, it means the doc was pre-checked and doesn't exist
+    historySnap = { exists: false } as FirebaseFirestore.DocumentSnapshot;
+    userSnap = null;
+  } else {
+    [historySnap, userSnap] = await Promise.all([
+      input.tx.get(historyRef),
+      input.userData ? Promise.resolve(null) : input.tx.get(userRef),
+    ]);
+  }
 
   if (historySnap.exists) {
     const existing = historySnap.data() || {};
