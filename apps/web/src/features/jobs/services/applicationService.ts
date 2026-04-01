@@ -1,5 +1,6 @@
-import { collection, getDocs, query, where, limit, doc, getDoc, updateDoc, serverTimestamp, onSnapshot, writeBatch, increment, type Unsubscribe } from 'firebase/firestore';
-import { db } from '@/config/firebase';
+import { collection, getDocs, query, where, limit, doc, getDoc, updateDoc, serverTimestamp, onSnapshot, type Unsubscribe } from 'firebase/firestore';
+import { db, functions } from '@/config/firebase';
+import { httpsCallable } from 'firebase/functions';
 import { addNotification } from '@/features/notifications/services/notificationService';
 import type { Application, ApplicationStatus } from '@jobnow/types';
 import { mapApplicationDocToApplication } from './adapters';
@@ -216,34 +217,12 @@ export async function updateApplicationStatus(
     status: ApplicationStatus
 ): Promise<Application> {
     try {
+        const updateCall = httpsCallable<{ applicationId: string; status: ApplicationStatus }, any>(functions, 'updateApplicationStatus');
+        await updateCall({ applicationId, status });
+        
         const appRef = doc(db, 'applications', applicationId);
-        
-        await updateDoc(appRef, {
-            status: status,
-            updatedAt: serverTimestamp(),
-            updated_at: serverTimestamp()
-        });
-        
         const refreshed = await getDoc(appRef);
         const data = refreshed.data() as Record<string, unknown>;
-
-        // Send notification
-        if (status === 'APPROVED' || status === 'REJECTED') {
-            const candidateId = String(data.candidate_id || data.candidateId || '');
-            const jobTitle = String(data.job_title || data.jobTitle || 'Một công việc');
-            if (candidateId) {
-                addNotification({
-                    userId: candidateId,
-                    type: status === 'APPROVED' ? 'APPLICATION_APPROVED' : 'APPLICATION_REJECTED',
-                    category: 'APPLICATION',
-                    title: status === 'APPROVED' ? 'Đơn ứng tuyển được duyệt' : 'Đơn ứng tuyển bị từ chối',
-                    body: status === 'APPROVED' 
-                        ? `Chúc mừng! Bạn đã được nhận vào vị trí ${jobTitle}.`
-                        : `Rất tiếc, đơn ứng tuyển cho vị trí ${jobTitle} của bạn không phù hợp.`,
-                    data: { applicationId }
-                }).catch(console.error);
-            }
-        }
 
         return mapApplicationDocToApplication(refreshed.id, data);
     } catch (error: any) {
@@ -261,104 +240,20 @@ export async function updateApplicationStatus(
 export async function completeApplicationWithPayment(
     applicationId: string,
     paymentMethod: 'APP' | 'CASH',
-    employerId: string
+    _employerId: string
 ): Promise<Application> {
     try {
-        const appRef = doc(db, 'applications', applicationId);
-        const appSnap = await getDoc(appRef);
-        if (!appSnap.exists()) throw new Error('Không tìm thấy đơn ứng tuyển.');
-        const appData = appSnap.data() as Record<string, any>;
-        
         if (paymentMethod === 'APP') {
-            const candidateId = String(appData.candidate_id || appData.candidateId || '');
-            const jobId = String(appData.job_id || appData.jobId || '');
-
-            let amount = 0;
-            if (jobId) {
-                const jobSnap = await getDoc(doc(db, 'jobs', jobId));
-                if (jobSnap.exists()) {
-                    const jobData = jobSnap.data();
-                    const salary = Number(jobData.salary || 0);
-                    const salaryType = jobData.salary_type || jobData.salaryType;
-
-                    if (salaryType === 'HOURLY') {
-                        const checkIn = appData.check_in_time || appData.checkInTime;
-                        const checkOut = appData.check_out_time || appData.checkOutTime;
-                        
-                        if (checkIn && checkOut) {
-                            const inDate = typeof checkIn.toDate === 'function' ? checkIn.toDate() : new Date(checkIn);
-                            const outDate = typeof checkOut.toDate === 'function' ? checkOut.toDate() : new Date(checkOut);
-                            const diffMs = outDate.getTime() - inDate.getTime();
-                            const hours = Math.max(0, diffMs / (1000 * 60 * 60));
-                            amount = Math.round(hours * salary);
-                        } else {
-                            // Fallback calculation if times are missing but it's completed
-                            amount = salary * 4;
-                        }
-                    } else {
-                        // DAILY, PER_SHIFT, JOB, etc.
-                        amount = salary;
-                    }
-                }
-            }
-
-            if (amount <= 0) amount = 50000; // ultimate fallback to visually see the test transaction happening
-
-            const batch = writeBatch(db);
-            const now = serverTimestamp();
-
-            // 1. Cập nhật đơn
-            batch.update(appRef, {
-                status: 'COMPLETED',
-                paymentStatus: 'PAID',
-                payment_status: 'PAID',
-                paymentMethod: 'APP',
-                payment_method: 'APP',
-                updatedAt: now,
-                updated_at: now
-            });
-
-            // 2. Chuyển tiền mock (update balance)
-            if (employerId) {
-                batch.update(doc(db, 'users', employerId), {
-                    balance: increment(-amount)
-                });
-                
-                const txEmpRef = doc(collection(db, 'transactions'));
-                batch.set(txEmpRef, {
-                    user_id: employerId,
-                    userId: employerId,
-                    amount: -amount,
-                    type: 'PAYMENT',
-                    status: 'COMPLETED',
-                    reference_id: applicationId,
-                    description: 'Thanh toán lương qua ứng dụng',
-                    created_at: now,
-                    updated_at: now
-                });
-            }
-
-            if (candidateId) {
-                batch.update(doc(db, 'users', candidateId), {
-                    balance: increment(amount)
-                });
-
-                const txCanRef = doc(collection(db, 'transactions'));
-                batch.set(txCanRef, {
-                    user_id: candidateId,
-                    userId: candidateId,
-                    amount: amount,
-                    type: 'SALARY',
-                    status: 'COMPLETED',
-                    reference_id: applicationId,
-                    description: 'Nhận lương qua ứng dụng',
-                    created_at: now,
-                    updated_at: now
-                });
-            }
-
-            await batch.commit();
+            const callable = httpsCallable(functions, 'confirmCompletion');
+            await callable({ applicationId });
+            const refreshed = await getDoc(doc(db, 'applications', applicationId));
+            return mapApplicationDocToApplication(refreshed.id, refreshed.data() as any);
         } else {
+            const appRef = doc(db, 'applications', applicationId);
+            const appSnap = await getDoc(appRef);
+            if (!appSnap.exists()) throw new Error('Không tìm thấy đơn ứng tuyển.');
+            const appData = appSnap.data() as Record<string, any>;
+
             await updateDoc(appRef, {
                 status: 'CASH_CONFIRMATION',
                 paymentMethod: 'CASH',
@@ -366,26 +261,23 @@ export async function completeApplicationWithPayment(
                 updatedAt: serverTimestamp(),
                 updated_at: serverTimestamp()
             });
-        }
 
-        // Notify Candidate about Payment Completion
-        const candidateId = String(appData.candidate_id || appData.candidateId || '');
-        const jobTitle = String(appData.job_title || appData.jobTitle || 'công việc');
-        if (candidateId) {
-            addNotification({
-                userId: candidateId,
-                type: 'PAYMENT_RECEIVED',
-                category: 'PAYMENT',
-                title: paymentMethod === 'APP' ? 'Thanh toán thành công' : 'Chờ xác nhận tiền mặt',
-                body: paymentMethod === 'APP'
-                    ? `Bạn vừa nhận được thanh toán cho ${jobTitle}.`
-                    : `Nhà tuyển dụng đã xác nhận thanh toán tiền mặt cho ${jobTitle}. Vui lòng xác nhận.`,
-                data: { applicationId }
-            }).catch(console.error);
-        }
+            const candidateId = String(appData.candidate_id || appData.candidateId || '');
+            const jobTitle = String(appData.job_title || appData.jobTitle || 'công việc');
+            if (candidateId) {
+                addNotification({
+                    userId: candidateId,
+                    type: 'PAYMENT_RECEIVED',
+                    category: 'PAYMENT',
+                    title: 'Chờ xác nhận tiền mặt',
+                    body: `Nhà tuyển dụng đã xác nhận thanh toán tiền mặt cho ${jobTitle}. Vui lòng xác nhận.`,
+                    data: { applicationId }
+                }).catch(console.error);
+            }
 
-        const refreshed = await getDoc(appRef);
-        return mapApplicationDocToApplication(refreshed.id, refreshed.data() as any);
+            const refreshed = await getDoc(appRef);
+            return mapApplicationDocToApplication(refreshed.id, refreshed.data() as any);
+        }
     } catch (error: any) {
         console.error('Error in completeApplicationWithPayment:', error);
         throw new Error(error.message || 'Thanh toán thất bại.');

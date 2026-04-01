@@ -7,9 +7,10 @@ import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useCreateJob, useUpdateJob, useJobDetail, useGetCategories, useJobPostingQuota } from '@/features/jobs/hooks/useEmployerJobs';
+import { useWalletBalance } from '@/features/wallet/hooks/useWallet';
 
 
-import type { Job, SalaryType, GenderPreference as GenderPref } from '@jobnow/types';
+import type { SalaryType, GenderPreference as GenderPref } from '@jobnow/types';
 
 import Step1Info from './-components/post-job/Step1Info';
 import Step2Details from './-components/post-job/Step2Details';
@@ -18,7 +19,6 @@ import Step4Review from './-components/post-job/Step4Review';
 import { CategoryBottomSheet } from './-components/post-job/CategoryBottomSheet';
 import {
   jobFormSchema,
-  type JobFormState as JobFormSchemaState,
 } from './-schemas/jobFormSchema';
 import {
   type JobFormState,
@@ -114,6 +114,7 @@ function EmployerPostJobRoute() {
   const { user, userProfile } = useAuth();
   const navigate = useNavigate();
   const { data: postingQuota } = useJobPostingQuota(Boolean(userProfile && userProfile.role === 'EMPLOYER'));
+  const { data: balance = 0 } = useWalletBalance(user?.uid);
 
   const { mutateAsync: createJob, isPending: isCreating } = useCreateJob();
   const { mutateAsync: updateJob, isPending: isUpdating } = useUpdateJob();
@@ -204,13 +205,12 @@ function EmployerPostJobRoute() {
       if (form.paymentMethod === 'WALLET') {
         const salary = Number(form.salary.replace(/\D/g, '')) || 0;
         const budget = calculateBudget(form.payType as PayType, salary, form.vacancies, form.shifts);
-        const balance = (userProfile as any)?.balance || 0;
         return balance >= budget.totalBudget;
       }
       return true;
     }
     return true;
-  }, [step, form, userProfile]);
+  }, [step, form, balance]);
 
   /* ── Shift helpers ── */
   const addShift = useCallback(() => {
@@ -249,7 +249,7 @@ function EmployerPostJobRoute() {
   }, [requirementInput, form.requirements]);
 
   const removeRequirement = useCallback((tag: string) => {
-    setForm(prev => ({ ...prev, requirements: prev.requirements.filter(r => r !== tag) }));
+    setForm(prev => ({ ...prev, requirements: prev.requirements.filter((r: string) => r !== tag) }));
   }, []);
 
   const mapPayType = (pt: PayType): SalaryType => {
@@ -592,7 +592,7 @@ function EmployerPostJobRoute() {
               setForm={setForm}
               fileInputId={fileInputId}
               handleImageSelect={handleImageSelect}
-              balance={(userProfile as any)?.balance || 0}
+              balance={balance}
             />
           )}
           </form>
