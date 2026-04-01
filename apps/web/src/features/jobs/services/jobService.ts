@@ -88,7 +88,7 @@ function mapJobSnapshot(
     shiftsOverride?: Array<{ id: string; name: string; start_time: string; end_time: string; quantity: number }>,
 ): Job {
     const raw = docSnap.data();
-    
+
     // Convert Firestore Timestamp to Date if it has a toDate method
     const convertTimestamp = (timestamp: any): string | undefined => {
         if (!timestamp) return undefined;
@@ -98,7 +98,7 @@ function mapJobSnapshot(
         }
         return undefined;
     };
-    
+
     const normalized = {
         ...mapNearbyApiToJobDoc(raw),
         employer_id: String(raw.employer_id ?? raw.employerId ?? ''),
@@ -108,17 +108,17 @@ function mapJobSnapshot(
         shifts: Array.isArray(shiftsOverride) && shiftsOverride.length > 0
             ? shiftsOverride
             : Array.isArray(raw.shifts)
-            ? raw.shifts.map((shift) => {
-                const s = shift as Record<string, unknown>;
-                return {
-                    id: String(s.id ?? ''),
-                    name: String(s.name ?? ''),
-                    start_time: String(s.start_time ?? s.startTime ?? '00:00'),
-                    end_time: String(s.end_time ?? s.endTime ?? '00:00'),
-                    quantity: Number(s.quantity ?? 0),
-                };
-            })
-            : [],
+                ? raw.shifts.map((shift) => {
+                    const s = shift as Record<string, unknown>;
+                    return {
+                        id: String(s.id ?? ''),
+                        name: String(s.name ?? ''),
+                        start_time: String(s.start_time ?? s.startTime ?? '00:00'),
+                        end_time: String(s.end_time ?? s.endTime ?? '00:00'),
+                        quantity: Number(s.quantity ?? 0),
+                    };
+                })
+                : [],
         created_at: convertTimestamp(raw.created_at ?? raw.createdAt),
         updated_at: convertTimestamp(raw.updated_at ?? raw.updatedAt),
         moderation_status: (raw.moderation_status ?? raw.moderationStatus) as any,
@@ -436,7 +436,7 @@ export async function closeJobSafely(
 ): Promise<{ requiresConfirmation: boolean; affectedCandidates: number; latePenaltyPossible: boolean; success?: boolean }> {
     try {
         const jobRef = doc(db, 'jobs', jobId);
-        
+
         const jobSnap = await getDoc(jobRef);
         const employerId = jobSnap.data()?.employerId || jobSnap.data()?.employer_id;
         const jobTitle = jobSnap.data()?.title || 'một công việc';
@@ -446,7 +446,7 @@ export async function closeJobSafely(
             updated_at: serverTimestamp(),
             updatedAt: serverTimestamp()
         });
-        
+
         if (employerId) {
             addNotification({
                 userId: employerId,

@@ -386,7 +386,7 @@ async function getCapacityForShift(
 function parseDateTime(dateStr: string, timeStr: string): Date {
   const dateParts = dateStr.split(/[-/]/);
   let year, month, day;
-  
+
   if (dateParts.length === 3) {
     if (dateParts[0].length === 4) {
       // YYYY-MM-DD
@@ -398,16 +398,16 @@ function parseDateTime(dateStr: string, timeStr: string): Date {
       // Fallback to direct parse
       return new Date(`${dateStr}T${timeStr}:00+07:00`);
     }
-    
+
     const timeParts = timeStr.split(':');
     const hours = parseInt(timeParts[0], 10);
     const minutes = parseInt(timeParts[1], 10);
-    
+
     // Construct ISO string with timezone to be safe
     const isoStr = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00+07:00`;
     return new Date(isoStr);
   }
-  
+
   return new Date(`${dateStr}T${timeStr}:00+07:00`);
 }
 
@@ -753,15 +753,15 @@ export const applyJob = onCall<ApplyJobInput>({ region: 'asia-southeast1' }, asy
     // ─── Check Reputation Rules ───
     const currentScore = Number(candidateData.reputation_score ?? DEFAULT_REPUTATION_SCORE);
     const bannedUntil = candidateData.banned_until;
-    
+
     if (bannedUntil && typeof bannedUntil.toMillis === 'function' && bannedUntil.toMillis() > Date.now()) {
       throw new HttpsError('failed-precondition', 'Bạn đang trong thời gian bị cấm ứng tuyển do vi phạm quy định.');
     }
-    
+
     if (currentScore < 30) {
       throw new HttpsError('failed-precondition', 'Điểm uy tín của bạn quá thấp (< 30), không thể ứng tuyển.');
     }
-    
+
     if (currentScore < 60) {
       const activeAppsQuery = db.collection('applications')
         .where('candidate_id', '==', input.candidateId)
@@ -1020,7 +1020,7 @@ export const updateApplicationStatus = onCall<UpdateApplicationStatusInput>({ re
       const jobTitle = String(jobData?.title ?? 'Công việc');
 
       const title = input.status === 'APPROVED' ? 'Ứng tuyển thành công' : 'Kết quả ứng tuyển';
-      const body = input.status === 'APPROVED' 
+      const body = input.status === 'APPROVED'
         ? `Đơn ứng tuyển của bạn cho công việc "${jobTitle}" đã được duyệt.`
         : `Rất tiếc, đơn ứng tuyển của bạn cho công việc "${jobTitle}" không được duyệt lần này.`;
 
@@ -1097,7 +1097,7 @@ export const checkIn = onCall<CheckInInput>({ region: 'asia-southeast1' }, async
     const shiftWindow = await getShiftWindow(jobRef, jobData, shiftId, tx);
     let isLate = false;
     let lateMinutes = 0;
-    
+
     if (shiftWindow) {
       const now = new Date();
       const startTime = shiftWindow.start;
@@ -1109,7 +1109,7 @@ export const checkIn = onCall<CheckInInput>({ region: 'asia-southeast1' }, async
       if (diffMins < -30) {
         throw new HttpsError('failed-precondition', 'Còn quá sớm để check-in. Bạn chỉ có thể check-in trước tối đa 30 phút.');
       }
-      
+
       if (diffMins > 30) {
         throw new HttpsError('failed-precondition', 'Đã quá thời hạn check-in (tối đa 30 phút sau khi ca bắt đầu). Vui lòng liên hệ nhà tuyển dụng.');
       }
@@ -2769,7 +2769,7 @@ export const onApplicationCreated = onDocumentCreated({
 
   // ─── Recover jobTitle and employerId if missing ───
   let jobTitle = String(appData.job_title ?? appData.jobTitle ?? 'Công việc');
-  
+
   try {
     const jobSnap = await db.collection('jobs').doc(jobId).get();
     if (jobSnap.exists) {
@@ -2795,7 +2795,7 @@ export const onApplicationCreated = onDocumentCreated({
 
   const notifRef = db.collection('notifications').doc();
   const timestamp = FieldValue.serverTimestamp();
-  
+
   const notificationPayload = {
     userId: employerId,
     user_id: employerId,
