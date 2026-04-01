@@ -102,7 +102,7 @@ export const REPUTATION_ACTIONS: Record<ReputationActionCode, ReputationActionDe
         role: 'CANDIDATE',
         label: 'Cancelled more than 24h before shift',
         labelVi: 'Hủy đơn trước ca hơn 24 giờ',
-        points: -5,
+        points: -2,
         direction: 'PENALTY',
     },
     C_CANCEL_2_24: {
@@ -110,7 +110,7 @@ export const REPUTATION_ACTIONS: Record<ReputationActionCode, ReputationActionDe
         role: 'CANDIDATE',
         label: 'Cancelled within 2-24h before shift',
         labelVi: 'Hủy đơn trong khoảng 2-24 giờ trước ca',
-        points: -15,
+        points: -10,
         direction: 'PENALTY',
     },
     C_CANCEL_L2: {

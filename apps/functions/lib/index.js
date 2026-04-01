@@ -459,6 +459,25 @@ exports.applyJob = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (req
         const shiftWindow = await getShiftWindow(jobRef, jobData, input.shiftId, tx);
         // ─── Denormalize candidate snapshot ───
         const candidateData = candidateSnap.exists ? (candidateSnap.data() || {}) : {};
+        // ─── Check Reputation Rules ───
+        const currentScore = Number(candidateData.reputation_score ?? reputation_1.DEFAULT_REPUTATION_SCORE);
+        const bannedUntil = candidateData.banned_until;
+        if (bannedUntil && typeof bannedUntil.toMillis === 'function' && bannedUntil.toMillis() > Date.now()) {
+            throw new https_1.HttpsError('failed-precondition', 'Bạn đang trong thời gian bị cấm ứng tuyển do vi phạm quy định.');
+        }
+        if (currentScore < 30) {
+            throw new https_1.HttpsError('failed-precondition', 'Điểm uy tín của bạn quá thấp (< 30), không thể ứng tuyển.');
+        }
+        if (currentScore < 60) {
+            const activeAppsQuery = db.collection('applications')
+                .where('candidate_id', '==', input.candidateId)
+                .where('status', 'in', ['APPROVED', 'CHECKED_IN'])
+                .limit(1);
+            const activeAppsSnap = await tx.get(activeAppsQuery);
+            if (!activeAppsSnap.empty) {
+                throw new https_1.HttpsError('failed-precondition', 'Điểm uy tín của bạn dưới 60, chỉ được phép có tối đa 1 đơn ứng tuyển đang ở trạng thái Active (APPROVED/CHECKED_IN).');
+            }
+        }
         const candidateName = String(candidateData.full_name ?? candidateData.fullName ?? candidateData.display_name ?? candidateData.displayName ?? '');
         const candidateAvatar = String(candidateData.avatar_url ?? candidateData.avatarUrl ?? candidateData.photo_url ?? candidateData.photoURL ?? '');
         const candidateSkills = candidateData.skills ?? [];
@@ -580,6 +599,13 @@ exports.withdrawApplication = (0, https_1.onCall)({ region: 'asia-southeast1' },
             });
             if (result.delta < 0) {
                 await createNotification(tx, uid, 'SYSTEM_ALERT', 'Điểm uy tín bị trừ', `Bạn bị trừ ${Math.abs(result.delta)} điểm uy tín do hủy đơn ứng tuyển.`, { applicationId: input.applicationId, jobId, shiftId }, 'SYSTEM');
+            }
+            if (actionCode === 'C_CANCEL_L2') {
+                const bannedUntil = firestore_1.Timestamp.fromMillis(Date.now() + 3 * 24 * 60 * 60 * 1000);
+                tx.set(candidateRef, {
+                    banned_until: bannedUntil,
+                    updated_at: firestore_1.FieldValue.serverTimestamp(),
+                }, { merge: true });
             }
         }
         if (isUrgent) {
