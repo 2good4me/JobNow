@@ -45,6 +45,7 @@ export default defineConfig({
             workbox: {
                 // Cache Firebase SDK và static assets
                 globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+                maximumFileSizeToCacheInBytes: 5000000,
                 runtimeCaching: [
                     {
                         // Cache Google Fonts
@@ -74,6 +75,10 @@ export default defineConfig({
         host: true,
         port: 3000,
         proxy: {
+            '/api/verify-cccd': {
+                target: 'http://localhost:8000',
+                changeOrigin: true,
+            },
             '/api': {
                 target: 'http://localhost:3001',
                 changeOrigin: true,

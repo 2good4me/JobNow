@@ -18,7 +18,8 @@
     },
     "dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "passThroughEnv": ["APPDATA", "LOCALAPPDATA", "USERPROFILE", "USERNAME", "USER"]
     }
   }
 }

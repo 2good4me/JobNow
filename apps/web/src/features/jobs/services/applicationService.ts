@@ -211,26 +211,31 @@ export function subscribeEmployerApplications(
 
 /**
  * Update an application's status directly via Firestore
+ * (Bypasses Cloud Functions to avoid IAM/CORS issues on Spark plan)
  */
 export async function updateApplicationStatus(
     applicationId: string,
     status: ApplicationStatus
 ): Promise<Application> {
     try {
-        const updateCall = httpsCallable<{ applicationId: string; status: ApplicationStatus }, any>(functions, 'updateApplicationStatus');
-        await updateCall({ applicationId, status });
-        
         const appRef = doc(db, 'applications', applicationId);
+
+        // Direct Firestore write — Employer authorized by Firestore security rules
+        await updateDoc(appRef, {
+            status,
+            updated_at: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+        });
+
         const refreshed = await getDoc(appRef);
         const data = refreshed.data() as Record<string, unknown>;
-
         return mapApplicationDocToApplication(refreshed.id, data);
     } catch (error: any) {
-        console.error('Lỗi chi tiết khi updateApplicationStatus:', error);
-        if (error?.code) {
-           throw new Error(`Firebase [${error.code}]: ` + (error?.message || 'Không rõ nguyên nhân.'));
+        console.error('Loi chi tiet khi updateApplicationStatus:', error);
+        if (error?.code === 'permission-denied') {
+            throw new Error('Ban khong co quyen cap nhat don ung tuyen nay.');
         }
-        throw new Error(error?.message || 'Không thể cập nhật trạng thái đơn ứng tuyển. (Internal)');
+        throw new Error(error?.message || 'Khong the cap nhat trang thai don ung tuyen.');
     }
 }
 

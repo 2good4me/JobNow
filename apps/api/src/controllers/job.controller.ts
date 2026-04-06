@@ -114,9 +114,12 @@ export const getNearbyJobs = async (req: Request, res: Response) => {
             next_cursor: nextCursor,
             data: result.items
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error fetching nearby jobs:', error);
-        res.status(500).json({ error: 'Failed to fetch jobs' });
+        res.status(500).json({ 
+            error: 'Failed to fetch jobs',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 };
 

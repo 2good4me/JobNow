@@ -385,6 +385,7 @@ async function sendPushForNotification(notification) {
     }
 }
 exports.applyJob = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    console.log('[applyJob] Triggered by UID:', request.auth?.uid);
     const uid = assertAuth(request);
     const input = request.data;
     if (uid !== input.candidateId) {
@@ -706,157 +707,169 @@ exports.withdrawApplication = (0, https_1.onCall)({ region: 'asia-southeast1' },
     });
     return { success: true };
 });
-exports.updateApplicationStatus = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+// @ts-expect-error invoker handles v2 configs
+exports.updateApplicationStatus = (0, https_1.onCall)({ region: 'asia-southeast1', invoker: 'public' }, async (request) => {
+    console.log('[updateApplicationStatus] Triggered by UID:', request.auth?.uid, 'Data:', JSON.stringify(request.data));
     const uid = assertAuth(request);
     const input = request.data;
-    const applicationRef = db.collection('applications').doc(input.applicationId);
-    const application = await db.runTransaction(async (tx) => {
-        const appSnap = await tx.get(applicationRef);
-        if (!appSnap.exists) {
-            throw new https_1.HttpsError('not-found', 'Đơn ứng tuyển không tồn tại.');
-        }
-        const appData = appSnap.data() || {};
-        const employerId = String(appData.employer_id ?? appData.employerId ?? '');
-        const candidateId = String(appData.candidate_id ?? appData.candidateId ?? '');
-        const byEmployer = uid === employerId && ['APPROVED', 'REJECTED', 'COMPLETED'].includes(input.status);
-        const byCandidate = uid === candidateId && input.status === 'CANCELLED';
-        console.log(`[updateApplicationStatus] Attempting to update application ${input.applicationId} to status ${input.status}`);
-        console.log(`[updateApplicationStatus] Caller UID: ${uid}, App EmployerId: ${employerId}, App CandidateId: ${candidateId}`);
-        console.log(`[updateApplicationStatus] Check result -> byEmployer: ${byEmployer}, byCandidate: ${byCandidate}`);
-        if (!byEmployer && !byCandidate) {
-            throw new https_1.HttpsError('permission-denied', `Bạn không có quyền cập nhật trạng thái này. UID của bạn là ${uid}, nhưng cần là ${employerId} hoặc ${candidateId}.`);
-        }
-        // ─── Fetch Job & Employer Data ───
-        const jobRef = db.collection('jobs').doc(String(appData.job_id ?? appData.jobId ?? ''));
-        const employerRef = db.collection('users').doc(employerId || 'unknown');
-        // Using Promise.all to fetch both in parallel within transaction
-        const [jobSnap, employerSnap] = await Promise.all([
-            tx.get(jobRef),
-            employerId ? tx.get(employerRef) : Promise.resolve(null)
-        ]);
-        const jobData = jobSnap.exists ? (jobSnap.data() || {}) : {};
-        const employerData = employerSnap?.exists ? (employerSnap.data() || {}) : {};
-        const jobTitle = String(jobData.title ?? 'Công việc');
-        const salary = Number(jobData.salary ?? 0);
-        const employerBalance = Number(employerData.balance ?? 0);
-        // ─── GIAI ĐOẠN 1: ESCROW LOCK (HOLD) ───
-        if (input.status === 'APPROVED' && employerId) {
-            if (employerBalance < salary) {
-                throw new https_1.HttpsError('failed-precondition', `Số dư không đủ để duyệt ứng viên. Bạn cần nạp thêm ${(salary - employerBalance).toLocaleString('vi-VN')}đ.`);
+    try {
+        const applicationRef = db.collection('applications').doc(input.applicationId);
+        const application = await db.runTransaction(async (tx) => {
+            const appSnap = await tx.get(applicationRef);
+            if (!appSnap.exists) {
+                throw new https_1.HttpsError('not-found', 'Đơn ứng tuyển không tồn tại.');
             }
-            // Deduct balance
-            tx.set(employerRef, {
-                balance: employerBalance - salary,
-                updated_at: firestore_1.FieldValue.serverTimestamp(),
-            }, { merge: true });
-            // Create PENDING transaction for employer
-            const txRef = db.collection('transactions').doc(normalizeDocumentId(`lock_${input.applicationId}`));
-            tx.set(txRef, {
-                userId: employerId,
-                user_id: employerId,
-                type: 'PAYMENT',
-                entry_type: 'DEBIT',
-                amount: -salary,
-                description: `Tạm giữ tiền lương cho "${jobTitle}"`,
-                related_application_id: input.applicationId,
-                related_job_id: jobSnap.id,
-                status: 'PENDING',
-                created_at: firestore_1.FieldValue.serverTimestamp(),
-                createdAt: firestore_1.FieldValue.serverTimestamp(),
-                updated_at: firestore_1.FieldValue.serverTimestamp(),
-            });
-        }
-        // ─── GIAI ĐOẠN 3: ESCROW REFUND ───
-        const oldStatus = String(appData.status ?? 'NEW');
-        if ((input.status === 'REJECTED' || input.status === 'CANCELLED') && (oldStatus === 'APPROVED' || oldStatus === 'CHECKED_IN')) {
-            if (employerId && employerSnap?.exists) {
-                // Add back balance
+            const appData = appSnap.data() || {};
+            const employerId = String(appData.employer_id ?? appData.employerId ?? '');
+            const candidateId = String(appData.candidate_id ?? appData.candidateId ?? '');
+            const byEmployer = uid === employerId && ['APPROVED', 'REJECTED', 'COMPLETED'].includes(input.status);
+            const byCandidate = uid === candidateId && input.status === 'CANCELLED';
+            console.log(`[updateApplicationStatus] Attempting to update application ${input.applicationId} to status ${input.status}`);
+            console.log(`[updateApplicationStatus] Caller UID: ${uid}, App EmployerId: ${employerId}, App CandidateId: ${candidateId}`);
+            console.log(`[updateApplicationStatus] Check result -> byEmployer: ${byEmployer}, byCandidate: ${byCandidate}`);
+            if (!byEmployer && !byCandidate) {
+                throw new https_1.HttpsError('permission-denied', `Bạn không có quyền cập nhật trạng thái này. UID của bạn là ${uid}, nhưng cần là ${employerId} hoặc ${candidateId}.`);
+            }
+            // ─── Fetch Job & Employer Data ───
+            const jobRef = db.collection('jobs').doc(String(appData.job_id ?? appData.jobId ?? ''));
+            const employerRef = db.collection('users').doc(employerId || 'unknown');
+            // Using Promise.all to fetch both in parallel within transaction
+            const [jobSnap, employerSnap] = await Promise.all([
+                tx.get(jobRef),
+                employerId ? tx.get(employerRef) : Promise.resolve(null)
+            ]);
+            const jobData = jobSnap.exists ? (jobSnap.data() || {}) : {};
+            const employerData = employerSnap?.exists ? (employerSnap.data() || {}) : {};
+            const jobTitle = String(jobData.title ?? 'Công việc');
+            const salary = Number(jobData.salary ?? 0);
+            const employerBalance = Number(employerData.balance ?? 0);
+            // ─── GIAI ĐOẠN 1: ESCROW LOCK (HOLD) ───
+            if (input.status === 'APPROVED' && employerId) {
+                if (employerBalance < salary) {
+                    throw new https_1.HttpsError('failed-precondition', `Số dư không đủ để duyệt ứng viên. Bạn cần nạp thêm ${(salary - employerBalance).toLocaleString('vi-VN')}đ.`);
+                }
+                // Deduct balance
                 tx.set(employerRef, {
-                    balance: employerBalance + salary,
+                    balance: employerBalance - salary,
                     updated_at: firestore_1.FieldValue.serverTimestamp(),
                 }, { merge: true });
-                // Create REFUND transaction
-                const refundTxRef = db.collection('transactions').doc(normalizeDocumentId(`refund_${input.applicationId}_${Date.now()}`));
-                tx.set(refundTxRef, {
+                // Create PENDING transaction for employer
+                const txRef = db.collection('transactions').doc(normalizeDocumentId(`lock_${input.applicationId}`));
+                tx.set(txRef, {
                     userId: employerId,
                     user_id: employerId,
-                    type: 'REFUND',
-                    entry_type: 'CREDIT',
-                    amount: salary,
-                    description: `Hoàn tiền lương từ "${jobTitle}" do đơn bị hủy/từ chối`,
+                    type: 'PAYMENT',
+                    entry_type: 'DEBIT',
+                    amount: -salary,
+                    description: `Tạm giữ tiền lương cho "${jobTitle}"`,
                     related_application_id: input.applicationId,
                     related_job_id: jobSnap.id,
-                    status: 'COMPLETED',
+                    status: 'PENDING',
                     created_at: firestore_1.FieldValue.serverTimestamp(),
                     createdAt: firestore_1.FieldValue.serverTimestamp(),
                     updated_at: firestore_1.FieldValue.serverTimestamp(),
                 });
-                // Cancel the pending lock transaction
-                const lockTxRef = db.collection('transactions').doc(normalizeDocumentId(`lock_${input.applicationId}`));
-                tx.set(lockTxRef, {
-                    status: 'CANCELLED',
-                    updated_at: firestore_1.FieldValue.serverTimestamp(),
-                }, { merge: true });
             }
-        }
-        tx.set(applicationRef, {
-            status: input.status,
-            updated_at: firestore_1.FieldValue.serverTimestamp(),
-        }, { merge: true });
-        // ─── Employer Reputation Action ───
-        if (input.status === 'APPROVED' && employerId && employerSnap?.exists) {
-            const employerRole = getUserRoleFromData(employerData);
-            const appliedAt = timestampToDate(appData.applied_at ?? appData.created_at ?? appData.createdAt);
-            const approvedQuickly = appliedAt ? (Date.now() - appliedAt.getTime()) <= (2 * 60 * 60 * 1000) : false;
-            if (employerRole === 'EMPLOYER' && approvedQuickly) {
-                await (0, reputation_1.applyReputationAction)({
-                    tx,
-                    db,
-                    userId: employerId,
-                    userRole: employerRole,
-                    userData: employerData,
-                    actionCode: 'E_QUICK_APP',
-                    dedupeKey: input.applicationId,
+            // ─── GIAI ĐOẠN 3: ESCROW REFUND ───
+            const oldStatus = String(appData.status ?? 'NEW');
+            if ((input.status === 'REJECTED' || input.status === 'CANCELLED') && (oldStatus === 'APPROVED' || oldStatus === 'CHECKED_IN')) {
+                if (employerId && employerSnap?.exists) {
+                    // Add back balance
+                    tx.set(employerRef, {
+                        balance: employerBalance + salary,
+                        updated_at: firestore_1.FieldValue.serverTimestamp(),
+                    }, { merge: true });
+                    // Create REFUND transaction
+                    const refundTxRef = db.collection('transactions').doc(normalizeDocumentId(`refund_${input.applicationId}_${Date.now()}`));
+                    tx.set(refundTxRef, {
+                        userId: employerId,
+                        user_id: employerId,
+                        type: 'REFUND',
+                        entry_type: 'CREDIT',
+                        amount: salary,
+                        description: `Hoàn tiền lương từ "${jobTitle}" do đơn bị hủy/từ chối`,
+                        related_application_id: input.applicationId,
+                        related_job_id: jobSnap.id,
+                        status: 'COMPLETED',
+                        created_at: firestore_1.FieldValue.serverTimestamp(),
+                        createdAt: firestore_1.FieldValue.serverTimestamp(),
+                        updated_at: firestore_1.FieldValue.serverTimestamp(),
+                    });
+                    // Cancel the pending lock transaction
+                    const lockTxRef = db.collection('transactions').doc(normalizeDocumentId(`lock_${input.applicationId}`));
+                    tx.set(lockTxRef, {
+                        status: 'CANCELLED',
+                        updated_at: firestore_1.FieldValue.serverTimestamp(),
+                    }, { merge: true });
+                }
+            }
+            tx.set(applicationRef, {
+                status: input.status,
+                updated_at: firestore_1.FieldValue.serverTimestamp(),
+            }, { merge: true });
+            // ─── Employer Reputation Action ───
+            if (input.status === 'APPROVED' && employerId && employerSnap?.exists) {
+                const employerRole = getUserRoleFromData(employerData);
+                const appliedAt = timestampToDate(appData.applied_at ?? appData.created_at ?? appData.createdAt);
+                const approvedQuickly = appliedAt ? (Date.now() - appliedAt.getTime()) <= (2 * 60 * 60 * 1000) : false;
+                if (employerRole === 'EMPLOYER' && approvedQuickly) {
+                    await (0, reputation_1.applyReputationAction)({
+                        tx,
+                        db,
+                        userId: employerId,
+                        userRole: employerRole,
+                        userData: employerData,
+                        actionCode: 'E_QUICK_APP',
+                        dedupeKey: input.applicationId,
+                        jobId: String(appData.job_id ?? appData.jobId ?? ''),
+                        applicationId: input.applicationId,
+                        shiftId: String(appData.shift_id ?? appData.shiftId ?? ''),
+                        actorId: uid,
+                        metadata: {
+                            source: 'updateApplicationStatus',
+                            approved_within_hours: 2,
+                        },
+                    });
+                }
+            }
+            // ─── Notify Candidate ───
+            if (input.status === 'APPROVED' || input.status === 'REJECTED') {
+                const title = input.status === 'APPROVED' ? 'Ứng tuyển thành công' : 'Kết quả ứng tuyển';
+                const body = input.status === 'APPROVED'
+                    ? `Đơn ứng tuyển của bạn cho công việc "${jobTitle}" đã được duyệt.`
+                    : `Rất tiếc, đơn ứng tuyển của bạn cho công việc "${jobTitle}" không được duyệt lần này.`;
+                await createNotification(tx, candidateId, `APPLICATION_${input.status}`, title, body, {
+                    applicationId: appSnap.id,
                     jobId: String(appData.job_id ?? appData.jobId ?? ''),
-                    applicationId: input.applicationId,
-                    shiftId: String(appData.shift_id ?? appData.shiftId ?? ''),
-                    actorId: uid,
-                    metadata: {
-                        source: 'updateApplicationStatus',
-                        approved_within_hours: 2,
-                    },
+                    status: input.status,
                 });
             }
-        }
-        // ─── Notify Candidate ───
-        if (input.status === 'APPROVED' || input.status === 'REJECTED') {
-            const title = input.status === 'APPROVED' ? 'Ứng tuyển thành công' : 'Kết quả ứng tuyển';
-            const body = input.status === 'APPROVED'
-                ? `Đơn ứng tuyển của bạn cho công việc "${jobTitle}" đã được duyệt.`
-                : `Rất tiếc, đơn ứng tuyển của bạn cho công việc "${jobTitle}" không được duyệt lần này.`;
-            await createNotification(tx, candidateId, `APPLICATION_${input.status}`, title, body, {
-                applicationId: appSnap.id,
+            const payload = {
+                id: appSnap.id,
                 jobId: String(appData.job_id ?? appData.jobId ?? ''),
+                shiftId: String(appData.shift_id ?? appData.shiftId ?? ''),
+                employerId,
+                candidateId,
                 status: input.status,
-            });
+                paymentStatus: String(appData.payment_status ?? appData.paymentStatus ?? 'UNPAID'),
+                coverLetter: String(appData.cover_letter ?? appData.coverLetter ?? ''),
+                createdAt: typeof (appData.created_at ?? appData.createdAt)?.toDate === 'function' ? (appData.created_at ?? appData.createdAt).toDate().toISOString() : null,
+                updatedAt: new Date().toISOString(),
+            };
+            return payload;
+        });
+        return { application };
+    }
+    catch (err) {
+        console.error("[updateApplicationStatus] FATAL ERROR:", err);
+        if (err instanceof https_1.HttpsError) {
+            throw err;
         }
-        const payload = {
-            id: appSnap.id,
-            jobId: String(appData.job_id ?? appData.jobId ?? ''),
-            shiftId: String(appData.shift_id ?? appData.shiftId ?? ''),
-            employerId,
-            candidateId,
-            status: input.status,
-            paymentStatus: String(appData.payment_status ?? appData.paymentStatus ?? 'UNPAID'),
-            coverLetter: String(appData.cover_letter ?? appData.coverLetter ?? ''),
-            createdAt: appData.created_at ?? appData.createdAt,
-            updatedAt: firestore_1.Timestamp.now(),
-        };
-        return payload;
-    });
-    return { application };
+        throw new https_1.HttpsError('internal', `Hệ thống gặp lỗi: ${err?.message || 'Không rõ nguyên nhân'}`);
+    }
 });
 exports.checkIn = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    console.log('[checkIn] Triggered by UID:', request.auth?.uid);
     const uid = assertAuth(request);
     const input = request.data;
     if (uid !== input.candidateId) {
@@ -961,6 +974,7 @@ exports.checkIn = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (requ
     return result;
 });
 exports.checkOut = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    console.log('[checkOut] Triggered by UID:', request.auth?.uid);
     const uid = assertAuth(request);
     const input = request.data;
     if (uid !== input.candidateId) {
@@ -1019,6 +1033,7 @@ exports.checkOut = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (req
     return { success: true };
 });
 exports.forceCheckOut = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    console.log('[forceCheckOut] Triggered by UID:', request.auth?.uid);
     const uid = assertAuth(request);
     const input = request.data;
     if (uid !== input.employerId) {
@@ -1078,6 +1093,7 @@ exports.forceCheckOut = (0, https_1.onCall)({ region: 'asia-southeast1' }, async
     return { success: true };
 });
 exports.simulateWorkTime = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    console.log('[simulateWorkTime] Triggered');
     const uid = assertAuth(request);
     await assertAdmin(uid);
     const input = request.data;
@@ -1097,6 +1113,7 @@ exports.simulateWorkTime = (0, https_1.onCall)({ region: 'asia-southeast1' }, as
     return { success: true };
 });
 exports.startConversation = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    console.log('[startConversation] Triggered');
     const uid = assertAuth(request);
     const input = request.data;
     if (!input.applicationId) {
@@ -1151,6 +1168,7 @@ exports.startConversation = (0, https_1.onCall)({ region: 'asia-southeast1' }, a
     return result;
 });
 exports.sendChatMessage = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    console.log('[sendChatMessage] Triggered');
     const uid = assertAuth(request);
     const input = request.data;
     const text = String(input.text ?? '').trim();
@@ -1250,6 +1268,7 @@ exports.sendChatMessage = (0, https_1.onCall)({ region: 'asia-southeast1' }, asy
     return result;
 });
 exports.markConversationRead = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    console.log('[markConversationRead] Triggered');
     const uid = assertAuth(request);
     const input = request.data;
     if (!input.conversationId) {
@@ -1282,6 +1301,7 @@ exports.markConversationRead = (0, https_1.onCall)({ region: 'asia-southeast1' }
     return { success: true };
 });
 exports.submitRating = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
+    console.log('[submitRating] Triggered');
     const uid = assertAuth(request);
     const input = request.data;
     if (!input.applicationId?.trim()) {
