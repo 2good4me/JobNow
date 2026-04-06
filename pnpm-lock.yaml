@@ -99,6 +99,8 @@ importers:
         specifier: ^5.4.2
         version: 5.9.3
 
+  apps/ocr-service: {}
+
   apps/web:
     dependencies:
       '@emotion/react':

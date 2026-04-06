@@ -77,6 +77,14 @@ export function JobMapView({
                     />
                     <MapViewport center={center} />
                     <MapClickHandler onSelectLocation={onSelectLocation} />
+                    
+                    {/* Marker for selected search location (GPS PIN) */}
+                    {selectedLocation && (
+                        <Marker position={[selectedLocation.lat, selectedLocation.lng]} icon={markerIcon}>
+                            <Popup>Vị trí bạn đã ghim</Popup>
+                        </Marker>
+                    )}
+
                     {jobs
                         .filter((job) => job.location?.latitude && job.location?.longitude)
                         .map((job) => (

@@ -435,7 +435,13 @@ function CandidateSearchDashboard() {
           ) : filteredJobs.length === 0 ? (
             <div className="text-center py-10 text-slate-500">Không tìm thấy việc làm phù hợp.</div>
           ) : viewMode === 'map' ? (
-            <JobMapView jobs={filteredJobs as any} selectedLocation={selectedLocation} />
+            <JobMapView 
+              jobs={filteredJobs as any} 
+              selectedLocation={selectedLocation} 
+              onSelectLocation={(loc) => {
+                setSelectedLocation({...loc, address: 'Vị trí đã ghim'});
+              }}
+            />
           ) : (
             <>
               {filteredJobs.slice(0, visibleCount).map((job: any) => (

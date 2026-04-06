@@ -665,6 +665,7 @@ async function sendPushForNotification(notification: Record<string, unknown>) {
 }
 
 export const applyJob = onCall<ApplyJobInput>({ region: 'asia-southeast1' }, async (request) => {
+  console.log('[applyJob] Triggered by UID:', request.auth?.uid);
   const uid = assertAuth(request);
   const input = request.data;
 
@@ -1047,10 +1048,13 @@ export const withdrawApplication = onCall<WithdrawApplicationInput>({ region: 'a
   return { success: true };
 });
 
-export const updateApplicationStatus = onCall<UpdateApplicationStatusInput>({ region: 'asia-southeast1' }, async (request) => {
+// @ts-expect-error invoker handles v2 configs
+export const updateApplicationStatus = onCall<UpdateApplicationStatusInput>({ region: 'asia-southeast1', invoker: 'public' }, async (request) => {
+  console.log('[updateApplicationStatus] Triggered by UID:', request.auth?.uid, 'Data:', JSON.stringify(request.data));
   const uid = assertAuth(request);
   const input = request.data;
 
+  try {
   const applicationRef = db.collection('applications').doc(input.applicationId);
 
   const application = await db.runTransaction(async (tx) => {
@@ -1214,17 +1218,25 @@ export const updateApplicationStatus = onCall<UpdateApplicationStatusInput>({ re
       status: input.status,
       paymentStatus: String(appData.payment_status ?? appData.paymentStatus ?? 'UNPAID'),
       coverLetter: String(appData.cover_letter ?? appData.coverLetter ?? ''),
-      createdAt: appData.created_at ?? appData.createdAt,
-      updatedAt: Timestamp.now(),
+      createdAt: typeof (appData.created_at ?? appData.createdAt)?.toDate === 'function' ? (appData.created_at ?? appData.createdAt).toDate().toISOString() : null,
+      updatedAt: new Date().toISOString(),
     };
 
     return payload;
   });
 
   return { application };
+  } catch (err: any) {
+    console.error("[updateApplicationStatus] FATAL ERROR:", err);
+    if (err instanceof HttpsError) {
+      throw err;
+    }
+    throw new HttpsError('internal', `Hệ thống gặp lỗi: ${err?.message || 'Không rõ nguyên nhân'}`);
+  }
 });
 
 export const checkIn = onCall<CheckInInput>({ region: 'asia-southeast1' }, async (request) => {
+  console.log('[checkIn] Triggered by UID:', request.auth?.uid);
   const uid = assertAuth(request);
   const input = request.data;
 
@@ -1349,6 +1361,7 @@ export const checkIn = onCall<CheckInInput>({ region: 'asia-southeast1' }, async
 });
 
 export const checkOut = onCall<CheckOutInput>({ region: 'asia-southeast1' }, async (request) => {
+  console.log('[checkOut] Triggered by UID:', request.auth?.uid);
   const uid = assertAuth(request);
   const input = request.data;
 
@@ -1420,6 +1433,7 @@ export const checkOut = onCall<CheckOutInput>({ region: 'asia-southeast1' }, asy
 });
 
 export const forceCheckOut = onCall<ForceCheckOutInput>({ region: 'asia-southeast1' }, async (request) => {
+  console.log('[forceCheckOut] Triggered by UID:', request.auth?.uid);
   const uid = assertAuth(request);
   const input = request.data;
 
@@ -1492,6 +1506,7 @@ export const forceCheckOut = onCall<ForceCheckOutInput>({ region: 'asia-southeas
 });
 
 export const simulateWorkTime = onCall<SimulateWorkTimeInput>({ region: 'asia-southeast1' }, async (request) => {
+  console.log('[simulateWorkTime] Triggered');
   const uid = assertAuth(request);
   await assertAdmin(uid);
 
@@ -1516,6 +1531,7 @@ export const simulateWorkTime = onCall<SimulateWorkTimeInput>({ region: 'asia-so
 });
 
 export const startConversation = onCall<StartConversationInput>({ region: 'asia-southeast1' }, async (request) => {
+  console.log('[startConversation] Triggered');
   const uid = assertAuth(request);
   const input = request.data;
 
@@ -1580,6 +1596,7 @@ export const startConversation = onCall<StartConversationInput>({ region: 'asia-
 });
 
 export const sendChatMessage = onCall<SendChatMessageInput>({ region: 'asia-southeast1' }, async (request) => {
+  console.log('[sendChatMessage] Triggered');
   const uid = assertAuth(request);
   const input = request.data;
 
@@ -1700,6 +1717,7 @@ export const sendChatMessage = onCall<SendChatMessageInput>({ region: 'asia-sout
 });
 
 export const markConversationRead = onCall<MarkConversationReadInput>({ region: 'asia-southeast1' }, async (request) => {
+  console.log('[markConversationRead] Triggered');
   const uid = assertAuth(request);
   const input = request.data;
 
@@ -1740,6 +1758,7 @@ export const markConversationRead = onCall<MarkConversationReadInput>({ region: 
 });
 
 export const submitRating = onCall<RatingInput>({ region: 'asia-southeast1' }, async (request) => {
+  console.log('[submitRating] Triggered');
   const uid = assertAuth(request);
   const input = request.data;
 
