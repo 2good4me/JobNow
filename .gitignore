@@ -61,6 +61,12 @@ next-env.d.ts
 
 serviceAccountKey.json
 
+# Python
+.venv/
+__pycache__/
+apps/ocr-service/Python/
+apps/ocr-service/.venv/
+
 .env.local
 settings.json
 mcp.json

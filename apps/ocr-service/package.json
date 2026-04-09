@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "py main.py"
+    "dev": "./.venv/bin/python3 main.py"
   }
 }

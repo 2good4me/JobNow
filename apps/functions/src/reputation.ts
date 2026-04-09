@@ -29,7 +29,9 @@ export type ReputationActionCode =
   | 'E_CANCEL_L2'
   | 'E_REPORT_FALSE'
   | 'EKYC_VERIFIED'
-  | 'SYSTEM_STREAK_RECOVERY';
+  | 'SYSTEM_STREAK_RECOVERY'
+  | 'SYSTEM_C_PENALTY_NO_SHOW'
+  | 'SYSTEM_P_SETTLEMENT';
 
 export type ReputationActionStatus = 'APPLIED' | 'PENDING_REVIEW' | 'REVERSED';
 export type ReputationRole = 'CANDIDATE' | 'EMPLOYER';
@@ -83,6 +85,8 @@ export const REPUTATION_ACTIONS: Record<ReputationActionCode, ReputationActionDe
   E_REPORT_FALSE: { code: 'E_REPORT_FALSE', role: 'EMPLOYER', labelVi: 'Đăng thông tin sai sự thật', points: -50, direction: 'PENALTY' },
   EKYC_VERIFIED: { code: 'EKYC_VERIFIED', role: 'SYSTEM', labelVi: 'Xác thực eKYC thành công', points: EKYC_REPUTATION_BONUS, direction: 'REWARD' },
   SYSTEM_STREAK_RECOVERY: { code: 'SYSTEM_STREAK_RECOVERY', role: 'SYSTEM', labelVi: 'Hoàn điểm nhờ chuỗi hành vi tốt', points: 0, direction: 'REWARD' },
+  SYSTEM_C_PENALTY_NO_SHOW: { code: 'SYSTEM_C_PENALTY_NO_SHOW', role: 'SYSTEM', labelVi: 'Trừ điểm uy tín (Vắng mặt không phép)', points: -10, direction: 'PENALTY' },
+  SYSTEM_P_SETTLEMENT: { code: 'SYSTEM_P_SETTLEMENT', role: 'SYSTEM', labelVi: 'Cộng điểm uy tín (Hoàn tất thanh toán)', points: 2, direction: 'REWARD' },
 };
 
 export function clampReputationScore(score: number): number {
@@ -133,19 +137,26 @@ export async function applyReputationAction(input: ApplyReputationActionInput): 
   const historyRef = getHistoryRef(input.db, input.userId, input.actionCode, input.dedupeKey);
   const status = input.status ?? 'APPLIED';
 
-  // Use pre-read snapshot if available, otherwise do tx.get (only safe before writes)
+  // Use pre-read snapshot if already fetched to comply with Firestore transaction rules (read-before-write)
   let historySnap: FirebaseFirestore.DocumentSnapshot;
   let userSnap: FirebaseFirestore.DocumentSnapshot | null = null;
-  if (input.preReadHistorySnap !== undefined && input.preReadHistorySnap !== null) {
-    historySnap = input.preReadHistorySnap;
-    userSnap = null;
-  } else if (input.preReadHistorySnap === null) {
-    // preReadHistorySnap is explicitly null → doc doesn't exist, create a fake non-existing snap
-    // We still need to call tx.get if we don't have a pre-read snap
-    // But if null is passed, it means the doc was pre-checked and doesn't exist
-    historySnap = { exists: false } as FirebaseFirestore.DocumentSnapshot;
-    userSnap = null;
+
+  // If preReadHistorySnap is explicitly passed (either as a real snap or as null indicating it was checked and doesn't exist)
+  if (input.preReadHistorySnap !== undefined) {
+    if (input.preReadHistorySnap === null) {
+      // Create a fake snapshot that represents a non-existing document
+      historySnap = { 
+        exists: false, 
+        data: () => undefined,
+        id: historyRef.id,
+        ref: historyRef
+      } as unknown as FirebaseFirestore.DocumentSnapshot;
+    } else {
+      historySnap = input.preReadHistorySnap;
+    }
   } else {
+    // FALLBACK: Only if caller didn't provide pre-read data.
+    // WARNING: This will fail if any tx.set/update has already been called in this transaction.
     [historySnap, userSnap] = await Promise.all([
       input.tx.get(historyRef),
       input.userData ? Promise.resolve(null) : input.tx.get(userRef),

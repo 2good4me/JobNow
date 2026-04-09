@@ -733,10 +733,12 @@ exports.updateApplicationStatus = (0, https_1.onCall)({ region: 'asia-southeast1
             // ─── Fetch Job & Employer Data ───
             const jobRef = db.collection('jobs').doc(String(appData.job_id ?? appData.jobId ?? ''));
             const employerRef = db.collection('users').doc(employerId || 'unknown');
+            const historyRef = (0, reputation_1.getReputationHistoryRef)(db, employerId || 'unknown', 'E_QUICK_APP', input.applicationId);
             // Using Promise.all to fetch both in parallel within transaction
-            const [jobSnap, employerSnap] = await Promise.all([
+            const [jobSnap, employerSnap, historySnap] = await Promise.all([
                 tx.get(jobRef),
-                employerId ? tx.get(employerRef) : Promise.resolve(null)
+                employerId ? tx.get(employerRef) : Promise.resolve(null),
+                tx.get(historyRef)
             ]);
             const jobData = jobSnap.exists ? (jobSnap.data() || {}) : {};
             const employerData = employerSnap?.exists ? (employerSnap.data() || {}) : {};
@@ -825,6 +827,7 @@ exports.updateApplicationStatus = (0, https_1.onCall)({ region: 'asia-southeast1
                         applicationId: input.applicationId,
                         shiftId: String(appData.shift_id ?? appData.shiftId ?? ''),
                         actorId: uid,
+                        preReadHistorySnap: historySnap,
                         metadata: {
                             source: 'updateApplicationStatus',
                             approved_within_hours: 2,
@@ -937,6 +940,8 @@ exports.checkIn = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (requ
             }
             method = 'QR';
         }
+        // ─── Reputation History Pre-read ───
+        // No reputation history pre-read needed for checkIn as it doesn't currently trigger reputation actions.
         const checkinRef = applicationRef.collection('checkins').doc();
         tx.set(checkinRef, {
             application_id: input.applicationId,
@@ -1001,8 +1006,16 @@ exports.checkOut = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (req
             throw new https_1.HttpsError('permission-denied', 'Bạn không có quyền check-out đơn này.');
         }
         const candidateRef = db.collection('users').doc(uid);
-        const candidateSnap = await tx.get(candidateRef);
-        const candidateRole = getUserRoleFromData(candidateSnap.data());
+        const historyRef = (0, reputation_1.getReputationHistoryRef)(db, uid, 'C_COMPLETED', input.applicationId);
+        const [candidateSnap, historySnap] = await Promise.all([
+            tx.get(candidateRef),
+            tx.get(historyRef),
+        ]);
+        if (!candidateSnap.exists) {
+            throw new https_1.HttpsError('not-found', 'Không tìm thấy thông tin ứng viên.');
+        }
+        const candidateData = candidateSnap.data() || {};
+        const candidateRole = getUserRoleFromData(candidateData);
         tx.set(checkinRef, {
             status: 'CHECKED_OUT',
             check_out_time: firestore_1.FieldValue.serverTimestamp(),
@@ -1026,6 +1039,7 @@ exports.checkOut = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (req
                 applicationId: input.applicationId,
                 shiftId: String(appData.shift_id ?? appData.shiftId ?? ''),
                 actorId: uid,
+                preReadHistorySnap: historySnap,
                 metadata: { source: 'checkOut' },
             });
         }
@@ -1061,8 +1075,17 @@ exports.forceCheckOut = (0, https_1.onCall)({ region: 'asia-southeast1' }, async
         }
         const candidateId = String(appData.candidate_id ?? appData.candidateId ?? '');
         const candidateRef = db.collection('users').doc(candidateId);
-        const candidateSnap = await tx.get(candidateRef);
-        const candidateRole = getUserRoleFromData(candidateSnap.data());
+        const historyRef = (0, reputation_1.getReputationHistoryRef)(db, candidateId, 'SYSTEM_C_PENALTY_NO_SHOW', input.applicationId);
+        const [candidateSnap, historySnap] = await Promise.all([
+            tx.get(candidateRef),
+            tx.get(historyRef),
+        ]);
+        if (!candidateSnap.exists) {
+            throw new https_1.HttpsError('not-found', 'Không tìm thấy thông tin ứng viên.');
+        }
+        const candidateData = candidateSnap.data() || {};
+        const candidateRole = getUserRoleFromData(candidateData);
+        // All writes after this point
         tx.set(checkinRef, {
             status: 'CHECKED_OUT',
             check_out_time: firestore_1.FieldValue.serverTimestamp(),
@@ -1079,13 +1102,14 @@ exports.forceCheckOut = (0, https_1.onCall)({ region: 'asia-southeast1' }, async
                 db,
                 userId: candidateId,
                 userRole: candidateRole,
-                userData: candidateSnap.data() || {},
+                userData: candidateData,
                 actionCode: 'C_COMPLETED',
                 dedupeKey: input.applicationId,
                 jobId: String(appData.job_id ?? appData.jobId ?? ''),
                 applicationId: input.applicationId,
                 shiftId: String(appData.shift_id ?? appData.shiftId ?? ''),
                 actorId: uid,
+                preReadHistorySnap: historySnap,
                 metadata: { source: 'forceCheckOut' },
             });
         }
@@ -1301,7 +1325,7 @@ exports.markConversationRead = (0, https_1.onCall)({ region: 'asia-southeast1' }
     return { success: true };
 });
 exports.submitRating = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
-    console.log('[submitRating] Triggered');
+    console.log('[submitRating] Triggered (v2_fixed)');
     const uid = assertAuth(request);
     const input = request.data;
     if (!input.applicationId?.trim()) {
@@ -1316,106 +1340,145 @@ exports.submitRating = (0, https_1.onCall)({ region: 'asia-southeast1' }, async 
     if (input.rating < 1 || input.rating > 5) {
         throw new https_1.HttpsError('invalid-argument', 'Điểm đánh giá phải nằm trong khoảng 1-5.');
     }
-    const applicationRef = db.collection('applications').doc(input.applicationId);
-    const reviewId = `${input.applicationId}_${uid}`.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const reviewRef = db.collection('reviews').doc(reviewId);
-    const result = await db.runTransaction(async (tx) => {
-        const reviewerRef = db.collection('users').doc(input.reviewerId);
-        const revieweeRef = db.collection('users').doc(input.revieweeId);
-        const [appSnap, reviewSnap, reviewerSnap, revieweeSnap] = await Promise.all([
-            tx.get(applicationRef),
-            tx.get(reviewRef),
-            tx.get(reviewerRef),
-            tx.get(revieweeRef),
-        ]);
-        if (!appSnap.exists) {
-            throw new https_1.HttpsError('not-found', 'Không tìm thấy đơn ứng tuyển.');
-        }
-        const appData = appSnap.data() || {};
-        const appStatus = String(appData.status ?? 'NEW');
-        if (appStatus !== 'COMPLETED') {
-            throw new https_1.HttpsError('failed-precondition', 'Chỉ có thể đánh giá sau khi hoàn thành ca làm.');
-        }
-        const candId = String(appData.candidate_id ?? appData.candidateId ?? '');
-        const empId = String(appData.employer_id ?? appData.employerId ?? '');
-        const isParticipant = uid === candId || uid === empId;
-        if (!isParticipant) {
-            throw new https_1.HttpsError('permission-denied', 'Bạn không có quyền đánh giá đơn này.');
-        }
-        if (reviewSnap.exists) {
-            throw new https_1.HttpsError('already-exists', 'Bạn đã đánh giá cho đơn này rồi.');
-        }
-        const reviewerData = reviewerSnap.data() || {};
-        const revieweeData = revieweeSnap.data() || {};
-        const reviewerRole = getUserRoleFromData(reviewerData);
-        const revieweeRole = getUserRoleFromData(revieweeData);
-        tx.set(reviewRef, {
-            application_id: input.applicationId,
-            reviewer_id: input.reviewerId,
-            reviewee_id: input.revieweeId,
-            rating: input.rating,
-            comment: input.comment ?? '',
-            created_at: firestore_1.FieldValue.serverTimestamp(),
-            updated_at: firestore_1.FieldValue.serverTimestamp(),
-        });
-        const currentTotal = Number(revieweeData.total_ratings ?? 0);
-        const currentAverage = Number(revieweeData.average_rating ?? 0);
-        const newTotal = currentTotal + 1;
-        const newAverage = Number(((currentAverage * currentTotal + input.rating) / newTotal).toFixed(2));
-        tx.set(revieweeRef, {
-            average_rating: newAverage,
-            total_ratings: newTotal,
-            updated_at: firestore_1.FieldValue.serverTimestamp(),
-            updatedAt: firestore_1.FieldValue.serverTimestamp(),
-        }, { merge: true });
-        await createNotification(tx, input.revieweeId, 'NEW_REVIEW', 'Bạn có đánh giá mới', `Bạn vừa nhận được đánh giá ${input.rating} sao từ đối tác.`, {
-            applicationId: input.applicationId,
-            reviewerId: input.reviewerId,
-            rating: String(input.rating),
-        }, 'SYSTEM');
-        if (reviewerRole === 'CANDIDATE') {
-            await (0, reputation_1.applyReputationAction)({
-                tx,
-                db,
-                userId: input.reviewerId,
-                userRole: reviewerRole,
-                userData: reviewerData,
-                actionCode: 'C_REVIEW_OTHER',
-                dedupeKey: input.applicationId,
-                jobId: String(appData.job_id ?? appData.jobId ?? ''),
-                applicationId: input.applicationId,
-                shiftId: String(appData.shift_id ?? appData.shiftId ?? ''),
-                actorId: input.reviewerId,
-                metadata: { source: 'submitRating' },
+    try {
+        const applicationRef = db.collection('applications').doc(input.applicationId);
+        const reviewId = `${input.applicationId}_${uid}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const reviewRef = db.collection('reviews').doc(reviewId);
+        const result = await db.runTransaction(async (tx) => {
+            // ─── PHASE 1: ALL READS FIRST ───
+            const reviewerRef = db.collection('users').doc(input.reviewerId);
+            const revieweeRef = db.collection('users').doc(input.revieweeId);
+            const [appSnap, reviewSnap, reviewerSnap, revieweeSnap] = await Promise.all([
+                tx.get(applicationRef),
+                tx.get(reviewRef),
+                tx.get(reviewerRef),
+                tx.get(revieweeRef),
+            ]);
+            if (!appSnap.exists) {
+                throw new https_1.HttpsError('not-found', 'Không tìm thấy đơn ứng tuyển.');
+            }
+            if (reviewSnap.exists) {
+                throw new https_1.HttpsError('already-exists', 'Bạn đã đánh giá đơn ứng tuyển này rồi.');
+            }
+            if (!reviewerSnap.exists) {
+                throw new https_1.HttpsError('not-found', 'Không tìm thấy thông tin người đánh giá.');
+            }
+            if (!revieweeSnap.exists) {
+                throw new https_1.HttpsError('not-found', 'Không tìm thấy thông tin người được đánh giá.');
+            }
+            const appData = appSnap.data() || {};
+            const reviewerData = reviewerSnap.data() || {};
+            const revieweeData = revieweeSnap.data() || {};
+            const reviewerRole = getUserRoleFromData(reviewerData);
+            const revieweeRole = getUserRoleFromData(revieweeData);
+            // Pre-calculate all reputation history refs and read them BEFORE any writes
+            let reviewerHistoryRef = null;
+            let revieweeHistoryRef = null;
+            if (reviewerRole === 'CANDIDATE') {
+                reviewerHistoryRef = (0, reputation_1.getReputationHistoryRef)(db, input.reviewerId, 'C_REVIEW_OTHER', input.applicationId);
+            }
+            if (input.rating === 5 && revieweeRole) {
+                const actCode = revieweeRole === 'CANDIDATE' ? 'C_RATING_5' : 'E_RATING_5';
+                revieweeHistoryRef = (0, reputation_1.getReputationHistoryRef)(db, input.revieweeId, actCode, input.applicationId);
+            }
+            // Batch-read all reputation history docs together
+            const [reviewerHistorySnap, revieweeHistorySnap] = await Promise.all([
+                reviewerHistoryRef ? tx.get(reviewerHistoryRef) : Promise.resolve(null),
+                revieweeHistoryRef ? tx.get(revieweeHistoryRef) : Promise.resolve(null),
+            ]);
+            // ─── VALIDATION (no reads/writes) ───
+            const appStatus = String(appData.status ?? 'NEW');
+            if (appStatus !== 'COMPLETED') {
+                throw new https_1.HttpsError('failed-precondition', 'Chỉ có thể đánh giá sau khi hoàn thành ca làm.');
+            }
+            const candId = String(appData.candidate_id ?? appData.candidateId ?? '');
+            const empId = String(appData.employer_id ?? appData.employerId ?? '');
+            const isParticipant = uid === candId || uid === empId;
+            if (!isParticipant) {
+                throw new https_1.HttpsError('permission-denied', 'Bạn không có quyền đánh giá đơn này.');
+            }
+            // ─── PHASE 2: ALL WRITES AFTER READS ───
+            tx.set(reviewRef, {
+                application_id: input.applicationId,
+                reviewer_id: input.reviewerId,
+                reviewee_id: input.revieweeId,
+                rating: input.rating,
+                comment: input.comment ?? '',
+                created_at: firestore_1.FieldValue.serverTimestamp(),
+                updated_at: firestore_1.FieldValue.serverTimestamp(),
             });
-        }
-        if (input.rating === 5 && revieweeRole) {
-            const actionCode = revieweeRole === 'CANDIDATE' ? 'C_RATING_5' : 'E_RATING_5';
-            const reputationResult = await (0, reputation_1.applyReputationAction)({
-                tx,
-                db,
-                userId: input.revieweeId,
-                userRole: revieweeRole,
-                userData: revieweeData,
-                actionCode,
-                dedupeKey: input.applicationId,
-                jobId: String(appData.job_id ?? appData.jobId ?? ''),
+            const currentTotal = Number(revieweeData.total_ratings ?? 0);
+            const currentAverage = Number(revieweeData.average_rating ?? 0);
+            const newTotal = currentTotal + 1;
+            const newAverage = Number(((currentAverage * currentTotal + input.rating) / newTotal).toFixed(2));
+            tx.set(revieweeRef, {
+                average_rating: newAverage,
+                total_ratings: newTotal,
+                updated_at: firestore_1.FieldValue.serverTimestamp(),
+                updatedAt: firestore_1.FieldValue.serverTimestamp(),
+            }, { merge: true });
+            await createNotification(tx, input.revieweeId, 'NEW_REVIEW', 'Bạn có đánh giá mới', `Bạn vừa nhận được đánh giá ${input.rating} sao từ đối tác.`, {
                 applicationId: input.applicationId,
-                shiftId: String(appData.shift_id ?? appData.shiftId ?? ''),
-                actorId: input.reviewerId,
-                metadata: { source: 'submitRating', rating: input.rating },
-            });
+                reviewerId: input.reviewerId,
+                rating: String(input.rating),
+            }, 'SYSTEM');
+            // Reputation: reward reviewer (candidate only)
+            if (reviewerRole === 'CANDIDATE') {
+                await (0, reputation_1.applyReputationAction)({
+                    tx,
+                    db,
+                    userId: input.reviewerId,
+                    userRole: reviewerRole,
+                    userData: reviewerData,
+                    actionCode: 'C_REVIEW_OTHER',
+                    dedupeKey: input.applicationId,
+                    jobId: String(appData.job_id ?? appData.jobId ?? ''),
+                    applicationId: input.applicationId,
+                    shiftId: String(appData.shift_id ?? appData.shiftId ?? ''),
+                    actorId: input.reviewerId,
+                    preReadHistorySnap: reviewerHistorySnap,
+                    metadata: { source: 'submitRating' },
+                });
+            }
+            // Reputation: reward reviewee for 5-star rating
+            if (input.rating === 5 && revieweeRole) {
+                const actionCode = revieweeRole === 'CANDIDATE' ? 'C_RATING_5' : 'E_RATING_5';
+                const reputationResult = await (0, reputation_1.applyReputationAction)({
+                    tx,
+                    db,
+                    userId: input.revieweeId,
+                    userRole: revieweeRole,
+                    userData: revieweeData,
+                    actionCode,
+                    dedupeKey: input.applicationId,
+                    jobId: String(appData.job_id ?? appData.jobId ?? ''),
+                    applicationId: input.applicationId,
+                    shiftId: String(appData.shift_id ?? appData.shiftId ?? ''),
+                    actorId: input.reviewerId,
+                    preReadHistorySnap: revieweeHistorySnap,
+                    metadata: { source: 'submitRating', rating: input.rating },
+                });
+                return {
+                    reviewId,
+                    updatedReputationScore: reputationResult.score,
+                };
+            }
             return {
                 reviewId,
-                updatedReputationScore: reputationResult.score,
+                updatedReputationScore: (0, reputation_1.clampReputationScore)(Number(revieweeData.reputation_score ?? reputation_1.DEFAULT_REPUTATION_SCORE)),
             };
+        });
+        return result;
+    }
+    catch (error) {
+        // Re-throw HttpsError as-is so the client gets detailed error info
+        if (error instanceof https_1.HttpsError) {
+            throw error;
         }
-        return {
-            reviewId,
-            updatedReputationScore: (0, reputation_1.clampReputationScore)(Number(revieweeData.reputation_score ?? reputation_1.DEFAULT_REPUTATION_SCORE)),
-        };
-    });
-    return result;
+        const message = error instanceof Error ? error.message : 'Lỗi không xác định khi gửi đánh giá.';
+        console.error('[submitRating] Unexpected error:', error);
+        throw new https_1.HttpsError('internal', `submitRating failed: ${message}`);
+    }
 });
 exports.processPayment = (0, https_1.onCall)({ region: 'asia-southeast1' }, async (request) => {
     const uid = assertAuth(request);
@@ -1473,6 +1536,10 @@ exports.processPayment = (0, https_1.onCall)({ region: 'asia-southeast1' }, asyn
         const employerTxRef = db.collection('transactions').doc(normalizeDocumentId(`debit_${input.applicationId}`));
         const candidateTxRef = db.collection('transactions').doc(normalizeDocumentId(`credit_${input.applicationId}`));
         const jobTitle = String(jobData.title ?? 'Công việc');
+        const employerHistoryRef = (0, reputation_1.getReputationHistoryRef)(db, employerId, 'SYSTEM_P_SETTLEMENT', `payment_${input.applicationId}`);
+        const [employerHistorySnap] = await Promise.all([
+            tx.get(employerHistoryRef),
+        ]);
         tx.set(employerRef, {
             balance: employerBalance - amount,
             updated_at: firestore_1.FieldValue.serverTimestamp(),
@@ -1516,7 +1583,7 @@ exports.processPayment = (0, https_1.onCall)({ region: 'asia-southeast1' }, asyn
             createdAt: firestore_1.FieldValue.serverTimestamp(),
             updated_at: firestore_1.FieldValue.serverTimestamp(),
         });
-        await createNotification(tx, candidateId, 'PAYMENT_RECEIVED', 'Bạn đã nhận lương', `Bạn đã nhận ${amount.toLocaleString('vi-VN')}đ từ công việc "${jobTitle}".`, { applicationId: input.applicationId, jobId }, 'PAYMENT');
+        await createNotification(tx, candidateId, 'PAYMENT_RECEIVED', 'Bạn đã nhận lương', `Bạn đã nhận ${amount.toLocaleString('vi-VN')}đ từ công việc "${jobTitle}".`, { applicationId: input.applicationId, jobId });
         const employerRole = getUserRoleFromData(employerData);
         if (employerRole === 'EMPLOYER') {
             await (0, reputation_1.applyReputationAction)({
@@ -1531,6 +1598,7 @@ exports.processPayment = (0, https_1.onCall)({ region: 'asia-southeast1' }, asyn
                 applicationId: input.applicationId,
                 shiftId: String(appData.shift_id ?? appData.shiftId ?? ''),
                 actorId: employerId,
+                preReadHistorySnap: employerHistorySnap,
                 metadata: { source: 'processPayment' },
             });
         }
@@ -1566,10 +1634,15 @@ exports.confirmCompletion = (0, https_1.onCall)({ region: 'asia-southeast1' }, a
         }
         const jobRef = db.collection('jobs').doc(jobId);
         const candidateRef = db.collection('users').doc(candidateId);
-        // Using Promise.all within transaction
-        const [jobSnap, candidateSnap] = await Promise.all([
+        const employerRef = db.collection('users').doc(employerId);
+        const employerHistoryRef = (0, reputation_1.getReputationHistoryRef)(db, employerId || 'unknown', 'E_PAID_ONTIME', input.applicationId);
+        // Using Promise.all within transaction for all reads
+        // Move employerSnap up here!
+        const [jobSnap, candidateSnap, employerSnap, employerHistorySnap] = await Promise.all([
             tx.get(jobRef),
-            tx.get(candidateRef)
+            tx.get(candidateRef),
+            tx.get(employerRef),
+            tx.get(employerHistoryRef)
         ]);
         if (!jobSnap.exists) {
             throw new https_1.HttpsError('not-found', 'Không tìm thấy công việc.');
@@ -1618,9 +1691,6 @@ exports.confirmCompletion = (0, https_1.onCall)({ region: 'asia-southeast1' }, a
         }, { merge: true });
         // ─── Notify Candidate ───
         await createNotification(tx, candidateId, 'PAYMENT_RECEIVED', 'Bạn đã nhận lương', `Bạn đã nhận ${salary.toLocaleString('vi-VN')}đ từ công việc "${jobTitle}".`, { applicationId: input.applicationId, jobId }, 'PAYMENT');
-        // ─── Employer Reputation Action ───
-        const employerRef = db.collection('users').doc(employerId);
-        const employerSnap = await tx.get(employerRef);
         const employerData = employerSnap.exists ? employerSnap.data() || {} : {};
         const employerRole = getUserRoleFromData(employerData);
         if (employerRole === 'EMPLOYER') {
@@ -1636,6 +1706,7 @@ exports.confirmCompletion = (0, https_1.onCall)({ region: 'asia-southeast1' }, a
                 applicationId: input.applicationId,
                 shiftId: String(appData.shift_id ?? appData.shiftId ?? ''),
                 actorId: employerId,
+                preReadHistorySnap: employerHistorySnap,
                 metadata: { source: 'confirmCompletion' },
             });
         }
@@ -1679,6 +1750,12 @@ exports.deleteJobPosting = (0, https_1.onCall)({ region: 'asia-southeast1' }, as
             }
             actionCode = hasLateCancellation ? 'E_CANCEL_L2' : 'E_CANCEL_POST';
         }
+        // ─── Reputation History Pre-read ───
+        let historySnap = null;
+        if (actionCode && employerRole === 'EMPLOYER') {
+            const historyRef = (0, reputation_1.getReputationHistoryRef)(db, employerId, actionCode, input.jobId);
+            historySnap = await tx.get(historyRef);
+        }
         applicationsSnap.docs.forEach((docSnap) => {
             const appData = docSnap.data();
             tx.set(docSnap.ref, {
@@ -1704,6 +1781,7 @@ exports.deleteJobPosting = (0, https_1.onCall)({ region: 'asia-southeast1' }, as
                 dedupeKey: input.jobId,
                 jobId: input.jobId,
                 actorId: uid,
+                preReadHistorySnap: historySnap,
                 metadata: {
                     source: 'deleteJobPosting',
                     impacted_applications: applicationsSnap.size,
@@ -2279,6 +2357,10 @@ exports.closeJobSafely = (0, https_1.onCall)({ region: 'asia-southeast1' }, asyn
         const employerRef = db.collection('users').doc(uid);
         const employerSnap = await tx.get(employerRef);
         const employerRole = getUserRoleFromData(employerSnap.data());
+        // ─── Reputation History Pre-read ───
+        const actionCode = latePenaltyPossible ? 'E_CANCEL_L2' : 'E_CANCEL_POST';
+        const historyRef = (0, reputation_1.getReputationHistoryRef)(db, uid, actionCode, `close_${input.jobId}`);
+        const historySnap = await tx.get(historyRef);
         tx.set(jobRef, {
             status: 'CLOSED',
             updated_at: firestore_1.FieldValue.serverTimestamp(),
@@ -2303,10 +2385,11 @@ exports.closeJobSafely = (0, https_1.onCall)({ region: 'asia-southeast1' }, asyn
                 userId: uid,
                 userRole: employerRole,
                 userData: employerSnap.data() || {},
-                actionCode: latePenaltyPossible ? 'E_CANCEL_L2' : 'E_CANCEL_POST',
+                actionCode,
                 dedupeKey: `close_${input.jobId}`,
                 jobId: input.jobId,
                 actorId: uid,
+                preReadHistorySnap: historySnap,
                 metadata: {
                     source: 'closeJobSafely',
                     impacted_applications: approvedAppsSnap.size,
@@ -2502,9 +2585,11 @@ exports.penalizeNoShowCandidates = (0, scheduler_1.onSchedule)({
         if ((Date.now() - shiftWindow.start.getTime()) < (30 * 60 * 1000))
             return;
         await db.runTransaction(async (tx) => {
-            const [freshAppSnap, candidateSnap] = await Promise.all([
+            const historyRef = (0, reputation_1.getReputationHistoryRef)(db, candidateId, 'C_NOSHOW', appDoc.id);
+            const [freshAppSnap, candidateSnap, historySnap] = await Promise.all([
                 tx.get(appDoc.ref),
                 tx.get(db.collection('users').doc(candidateId)),
+                tx.get(historyRef),
             ]);
             if (!freshAppSnap.exists)
                 return;
@@ -2527,10 +2612,16 @@ exports.penalizeNoShowCandidates = (0, scheduler_1.onSchedule)({
                 applicationId: appDoc.id,
                 shiftId,
                 actorId: candidateId,
+                preReadHistorySnap: historySnap,
                 metadata: { source: 'penalizeNoShowCandidates' },
             });
             tx.set(appDoc.ref, {
                 no_show_penalized_at: firestore_1.FieldValue.serverTimestamp(),
+                updated_at: firestore_1.FieldValue.serverTimestamp(),
+            }, { merge: true });
+            const bannedUntil = firestore_1.Timestamp.fromMillis(Date.now() + 3 * 24 * 60 * 60 * 1000);
+            tx.set(db.collection('users').doc(candidateId), {
+                banned_until: bannedUntil,
                 updated_at: firestore_1.FieldValue.serverTimestamp(),
             }, { merge: true });
             await createNotification(tx, candidateId, 'NO_SHOW_PENALTY', 'Bạn bị đánh dấu bỏ ca', `Bạn bị trừ điểm uy tín do không check-in đúng giờ cho công việc "${String(jobSnap.data()?.title ?? 'Công việc')}".`, { applicationId: appDoc.id, jobId, shiftId }, 'SHIFT');
